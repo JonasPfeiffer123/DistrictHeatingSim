@@ -39,6 +39,7 @@ class CustomListWidget(QListWidget):
     """
     Custom list widget with drag-drop functionality for technology ordering.
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_tab = parent
@@ -53,6 +54,7 @@ class CustomListWidget(QListWidget):
         super().dropEvent(event)
         if self.parent_tab:
             self.parent_tab.updateTechObjectsOrder()
+
 
 class TechnologyTab(QWidget):
     """
@@ -73,7 +75,7 @@ class TechnologyTab(QWidget):
         "Gaskessel": 0,
         "AqvaHeat": 0,
         "Power-to-Heat": 0,
-        "Thermischer Netzspeicher": 0
+        "Thermischer Netzspeicher": 0,
     }
 
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -93,7 +95,7 @@ class TechnologyTab(QWidget):
         self.data_manager = data_manager
         self.config_manager = config_manager
         self.tech_objects = []
-        plt.style.use('seaborn-v0_8-darkgrid')
+        plt.style.use("seaborn-v0_8-darkgrid")
         self.initFileInputs()
         self.initUI()
 
@@ -106,8 +108,8 @@ class TechnologyTab(QWidget):
         """
         Initialize file input widgets.
         """
-        self.FilenameInput = QLineEdit('')
-        self.selectFileButton = QPushButton('Lastgang-CSV auswählen')
+        self.FilenameInput = QLineEdit("")
+        self.selectFileButton = QPushButton("Lastgang-CSV auswählen")
         self.selectFileButton.clicked.connect(self.on_selectFileButton_clicked)
 
     def updateDefaultPath(self, new_base_path):
@@ -119,7 +121,7 @@ class TechnologyTab(QWidget):
         """
         if new_base_path:
             self.base_path = new_base_path
-            new_output_path = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
+            new_output_path = os.path.join(self.base_path, self.config_manager.get_relative_path("load_profile_path"))
             self.FilenameInput.setText(new_output_path)
             self.loadFileAndPlot()
 
@@ -176,7 +178,7 @@ class TechnologyTab(QWidget):
         """
         Set up scale factor input widgets and layout.
         """
-        self.load_scale_factorLabel = QLabel('Lastgang skalieren?:')
+        self.load_scale_factorLabel = QLabel("Lastgang skalieren?:")
         self.load_scale_factorInput = QLineEdit("1")
         self.addHorizontalLayout(self.load_scale_factorLabel, self.load_scale_factorInput)
         self.load_scale_factorInput.textChanged.connect(self.loadFileAndPlot)
@@ -210,7 +212,7 @@ class TechnologyTab(QWidget):
         """
         Set up technology selection widgets and layout.
         """
-        self.addLabel('Definierte Wärmeerzeuger')
+        self.addLabel("Definierte Wärmeerzeuger")
         self.techList = CustomListWidget(self)
         self.techList.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.techList.itemDoubleClicked.connect(self.editTech)
@@ -230,7 +232,7 @@ class TechnologyTab(QWidget):
         """
         tech_classes = TECH_CLASS_REGISTRY
 
-        base_tech_type = tech_type.split('_')[0]
+        base_tech_type = tech_type.split("_")[0]
         tech_class = tech_classes.get(base_tech_type)
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
@@ -238,15 +240,14 @@ class TechnologyTab(QWidget):
         # Erhöhe den globalen Zähler für diese Technologieklasse
         self.global_counters[base_tech_type] += 1
         unique_name = f"{base_tech_type}_{self.global_counters[base_tech_type]}"
-        
+
         try:
             # Erstelle die Technologieinstanz
             return tech_class(name=unique_name, **inputs)
 
         except TypeError as e:
             raise TypeError(
-                f"Fehler beim Erstellen der Technologie '{tech_type}': {e}\n"
-                f"Übergebene Eingaben: {inputs}"
+                f"Fehler beim Erstellen der Technologie '{tech_type}': {e}\nÜbergebene Eingaben: {inputs}"
             ) from e
 
     def addTech(self, tech_type, tech_data):
@@ -262,7 +263,7 @@ class TechnologyTab(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             new_tech = self.createTechnology(tech_type, dialog.getInputs())
             # Speicheraktivität direkt vom Dialog abrufen und im tech-Objekt speichern
-            new_tech.has_storage = dialog.getInputs().get('speicher_aktiv', False) # thats stupid af
+            new_tech.has_storage = dialog.getInputs().get("speicher_aktiv", False)  # thats stupid af
             self.tech_objects.append(new_tech)
             self.updateTechList()
             self.addTechToScene(new_tech)  # Füge das neue Objekt zur Szene hinzu
@@ -276,14 +277,14 @@ class TechnologyTab(QWidget):
         """
         selected_tech_index = self.techList.row(item)
         selected_tech = self.tech_objects[selected_tech_index]
-        tech_data = {k: v for k, v in selected_tech.__dict__.items() if not k.startswith('_')}
+        tech_data = {k: v for k, v in selected_tech.__dict__.items() if not k.startswith("_")}
 
         dialog = TechInputDialog(selected_tech.name, tech_data)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             updated_inputs = dialog.getInputs()
-            updated_tech = self.createTechnology(selected_tech.name.split('_')[0], updated_inputs)
+            updated_tech = self.createTechnology(selected_tech.name.split("_")[0], updated_inputs)
             updated_tech.name = selected_tech.name
-            updated_tech.has_storage = updated_inputs.get('speicher_aktiv', False)  # Aktualisiere die Speicheroption
+            updated_tech.has_storage = updated_inputs.get("speicher_aktiv", False)  # Aktualisiere die Speicheroption
             self.tech_objects[selected_tech_index] = updated_tech
 
             # Lösche die gesamte Szene und erstelle neu
@@ -299,7 +300,7 @@ class TechnologyTab(QWidget):
         if selected_row != -1:
             # Finde das zu löschende Objekt
             removed_tech = self.tech_objects[selected_row]
-            tech_type = removed_tech.name.split('_')[0]
+            tech_type = removed_tech.name.split("_")[0]
 
             # Entferne das Objekt aus der Liste
             self.techList.takeItem(selected_row)
@@ -323,7 +324,7 @@ class TechnologyTab(QWidget):
             self.addTechToScene(tech)
 
             # Aktualisiere die Namen und Zähler basierend auf der Reihenfolge in der Liste
-            tech_type = tech.name.split('_')[0]
+            tech_type = tech.name.split("_")[0]
             # every other global counter should be 0
             for key in self.global_counters:
                 self.global_counters[key] = 0
@@ -348,7 +349,7 @@ class TechnologyTab(QWidget):
 
                 # Aktualisiere den Namen und das Label in der Szene
                 tech.scene_item.item_name = tech.name
-                
+
                 count += 1
 
         # Aktualisiere den globalen Zähler basierend auf der Anzahl verbleibender Objekte dieser Klasse
@@ -386,7 +387,7 @@ class TechnologyTab(QWidget):
         self.tech_objects = new_order
 
         self.rebuildScene()
-    
+
     def formatTechForDisplay(self, tech):
         """
         Delegate formatting of display text to technology object.
@@ -398,7 +399,7 @@ class TechnologyTab(QWidget):
         """
         try:
             return tech.get_display_text()
-        
+
         except Exception as e:
             return f"Error: {e}"
 
@@ -482,18 +483,18 @@ class TechnologyTab(QWidget):
             return
 
         self.createPlotCanvas()
-        
+
         ax = self.plotFigure.add_subplot(111)
 
         # Identifiziere alle Spalten, die Wärmeerzeugung enthalten
-        heat_generation_columns = [col for col in data.columns if 'Wärmeerzeugung' in col]
+        heat_generation_columns = [col for col in data.columns if "Wärmeerzeugung" in col]
 
-        if 'Zeit' in data.columns and heat_generation_columns:
+        if "Zeit" in data.columns and heat_generation_columns:
             # Summiere alle Wärmeerzeugungsspalten
-            data['Summenlastgang'] = data[heat_generation_columns].sum(axis=1) * scale_factor
+            data["Summenlastgang"] = data[heat_generation_columns].sum(axis=1) * scale_factor
 
             # Convert datetime to hours of year (0-8760)
-            time_data = pd.to_datetime(data['Zeit'])
+            time_data = pd.to_datetime(data["Zeit"])
             if len(time_data) > 0:
                 start_of_year = pd.Timestamp(time_data.iloc[0].year, 1, 1)
                 hours_of_year = [(t - start_of_year).total_seconds() / 3600 for t in time_data]
@@ -501,23 +502,22 @@ class TechnologyTab(QWidget):
                 hours_of_year = list(range(len(data)))
 
             # Modern plot styling
-            ax.plot(hours_of_year, data['Summenlastgang'], 
-                   label='Gesamtwärmebedarf', color='#3498db', linewidth=1.5)
-            
+            ax.plot(hours_of_year, data["Summenlastgang"], label="Gesamtwärmebedarf", color="#3498db", linewidth=1.5)
+
             # Modern styling
-            ax.set_title("Jahresganglinie Wärmeerzeugung (Summe)", fontsize=16, fontweight='bold', color='#2c3e50')
-            ax.set_xlabel("Jahresstunden [h]", fontsize=14, color='#2c3e50')
-            ax.set_ylabel("Wärmebedarf [kW]", fontsize=14, color='#2c3e50')
-            
+            ax.set_title("Jahresganglinie Wärmeerzeugung (Summe)", fontsize=16, fontweight="bold", color="#2c3e50")
+            ax.set_xlabel("Jahresstunden [h]", fontsize=14, color="#2c3e50")
+            ax.set_ylabel("Wärmebedarf [kW]", fontsize=14, color="#2c3e50")
+
             # Grid and styling
             ax.grid(True, alpha=0.3)
-            ax.tick_params(axis='both', labelsize=12, colors='#2c3e50')
-            
+            ax.tick_params(axis="both", labelsize=12, colors="#2c3e50")
+
             # Legend styling
             legend = ax.legend(fontsize=12, frameon=True, fancybox=True, shadow=True)
-            legend.get_frame().set_facecolor('#ffffff')
+            legend.get_frame().set_facecolor("#ffffff")
             legend.get_frame().set_alpha(0.9)
-            
+
             # X-axis ticks for better readability
             max_hours = max(hours_of_year) if hours_of_year else 8760
             if max_hours > 8760:  # More than one year
@@ -528,13 +528,13 @@ class TechnologyTab(QWidget):
                 ax.set_xticks(range(0, int(max_hours), 500))
             else:
                 ax.set_xticks(range(0, int(max_hours), 500))
-            
+
             # Tight layout for better appearance
             self.plotFigure.tight_layout()
             self.plotCanvas.draw()
         else:
             self.showErrorMessage("Die Datei enthält nicht die erforderlichen Spalten 'Zeit' und 'Wärmeerzeugung'.")
-    
+
     def showInfoMessageOnPlot(self, message):
         """
         Display information message on plot canvas with modern styling.
@@ -543,11 +543,19 @@ class TechnologyTab(QWidget):
         :type message: str
         """
         self.createPlotCanvas()
-        
+
         ax = self.plotFigure.add_subplot(111)
-        ax.text(0.5, 0.5, message, ha='center', va='center', transform=ax.transAxes,
-                fontsize=14, color='#7f8c8d', bbox=dict(boxstyle="round,pad=0.5", 
-                facecolor='#ecf0f1', edgecolor='#bdc3c7', alpha=0.8))
+        ax.text(
+            0.5,
+            0.5,
+            message,
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            fontsize=14,
+            color="#7f8c8d",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#ecf0f1", edgecolor="#bdc3c7", alpha=0.8),
+        )
         ax.set_axis_off()
         self.plotFigure.tight_layout()
         self.plotCanvas.draw()
@@ -559,28 +567,28 @@ class TechnologyTab(QWidget):
         :param tech: Technology object.
         :type tech: object
         """
-        has_storage = getattr(tech, 'has_storage', False)  # Prüfe, ob der Speicher ausgewählt wurde
+        has_storage = getattr(tech, "has_storage", False)  # Prüfe, ob der Speicher ausgewählt wurde
         name = tech.name  # Nutze den eindeutigen Namen für die Szene
 
-        if tech.name.startswith('Solarthermie'):
-            tech.scene_item = self.schematic_scene.add_component('Solar', name, storage=True)
-        elif tech.name.startswith('BHKW'):
-            tech.scene_item = self.schematic_scene.add_component('CHP', name, storage=has_storage)
-        elif tech.name.startswith('Holzgas-BHKW'):
-            tech.scene_item = self.schematic_scene.add_component('Wood-CHP', name, storage=has_storage)
-        elif tech.name.startswith('Geothermie'):
-            tech.scene_item = self.schematic_scene.add_component('Geothermal Heat Pump', name, storage=False)
-        elif tech.name.startswith('Abwärmepumpe'):
-            tech.scene_item = self.schematic_scene.add_component('Waste Heat Pump', name, storage=False)
-        elif tech.name.startswith('Flusswärmepumpe'):
-            tech.scene_item = self.schematic_scene.add_component('River Heat Pump', name, storage=False)
-        elif tech.name.startswith('AqvaHeat'):
-            tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)
-        elif tech.name.startswith('Biomassekessel'):
-            tech.scene_item = self.schematic_scene.add_component('Biomass Boiler', name, storage=has_storage)
-        elif tech.name.startswith('Gaskessel'):
-            tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
-        elif tech.name.startswith('PowerToHeat'):
-            tech.scene_item = self.schematic_scene.add_component('Power-to-Heat', name, storage=False)
-        elif isinstance(tech, ThermalStorageAdapter) or tech.name.startswith('Thermischer Netzspeicher'):
-            tech.scene_item = self.schematic_scene.add_component('Seasonal Thermal Storage', name, storage=False)
+        if tech.name.startswith("Solarthermie"):
+            tech.scene_item = self.schematic_scene.add_component("Solar", name, storage=True)
+        elif tech.name.startswith("BHKW"):
+            tech.scene_item = self.schematic_scene.add_component("CHP", name, storage=has_storage)
+        elif tech.name.startswith("Holzgas-BHKW"):
+            tech.scene_item = self.schematic_scene.add_component("Wood-CHP", name, storage=has_storage)
+        elif tech.name.startswith("Geothermie"):
+            tech.scene_item = self.schematic_scene.add_component("Geothermal Heat Pump", name, storage=False)
+        elif tech.name.startswith("Abwärmepumpe"):
+            tech.scene_item = self.schematic_scene.add_component("Waste Heat Pump", name, storage=False)
+        elif tech.name.startswith("Flusswärmepumpe"):
+            tech.scene_item = self.schematic_scene.add_component("River Heat Pump", name, storage=False)
+        elif tech.name.startswith("AqvaHeat"):
+            tech.scene_item = self.schematic_scene.add_component("Aqva Heat Pump", name, storage=False)
+        elif tech.name.startswith("Biomassekessel"):
+            tech.scene_item = self.schematic_scene.add_component("Biomass Boiler", name, storage=has_storage)
+        elif tech.name.startswith("Gaskessel"):
+            tech.scene_item = self.schematic_scene.add_component("Gas Boiler", name, storage=False)
+        elif tech.name.startswith("PowerToHeat"):
+            tech.scene_item = self.schematic_scene.add_component("Power-to-Heat", name, storage=False)
+        elif isinstance(tech, ThermalStorageAdapter) or tech.name.startswith("Thermischer Netzspeicher"):
+            tech.scene_item = self.schematic_scene.add_component("Seasonal Thermal Storage", name, storage=False)

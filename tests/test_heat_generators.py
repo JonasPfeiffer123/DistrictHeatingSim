@@ -27,8 +27,10 @@ class TestGasBoiler:
     @staticmethod
     def _make():
         return GasBoiler(
-            name="GB", thermal_capacity_kW=200,
-            spez_Investitionskosten=30, Nutzungsgrad=0.9,
+            name="GB",
+            thermal_capacity_kW=200,
+            spez_Investitionskosten=30,
+            Nutzungsgrad=0.9,
         )
 
     def test_golden_master(self, economic_parameters, load_profile):
@@ -52,8 +54,10 @@ class TestGasBoiler:
 class TestPowerToHeat:
     def test_golden_master(self, economic_parameters, load_profile):
         pth = PowerToHeat(
-            name="PTH", thermal_capacity_kW=1000,
-            spez_Investitionskosten=30, Nutzungsgrad=0.98,
+            name="PTH",
+            thermal_capacity_kW=1000,
+            spez_Investitionskosten=30,
+            Nutzungsgrad=0.98,
         )
         r = pth.calculate(economic_parameters, 1, load_profile)
         assert r["Wärmemenge"] == pytest.approx(1971.0, rel=REL)
@@ -66,13 +70,26 @@ class TestBiomassBoiler:
     @staticmethod
     def _make():
         return BiomassBoiler(
-            name="BB", thermal_capacity_kW=200, Größe_Holzlager=40,
-            spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400,
-            Nutzungsgrad_BMK=0.8, min_Teillast=0.3, speicher_aktiv=False,
-            Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0,
-            min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750,
-            active=True, opt_BMK_min=0, opt_BMK_max=1000,
-            opt_Speicher_min=0, opt_Speicher_max=100,
+            name="BB",
+            thermal_capacity_kW=200,
+            Größe_Holzlager=40,
+            spez_Investitionskosten=200,
+            spez_Investitionskosten_Holzlager=400,
+            Nutzungsgrad_BMK=0.8,
+            min_Teillast=0.3,
+            speicher_aktiv=False,
+            Speicher_Volumen=20,
+            T_vorlauf=90,
+            T_ruecklauf=60,
+            initial_fill=0.0,
+            min_fill=0.2,
+            max_fill=0.8,
+            spez_Investitionskosten_Speicher=750,
+            active=True,
+            opt_BMK_min=0,
+            opt_BMK_max=1000,
+            opt_Speicher_min=0,
+            opt_Speicher_max=100,
         )
 
     def test_golden_master(self, economic_parameters, load_profile):
@@ -88,14 +105,26 @@ class TestCHP:
     @staticmethod
     def _make(name="BHKW"):
         return CHP(
-            name=name, th_Leistung_kW=100,
-            spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850,
-            el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, min_Teillast=0.7,
-            speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90,
-            T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8,
-            spez_Investitionskosten_Speicher=750, active=True,
-            opt_BHKW_min=0, opt_BHKW_max=1000,
-            opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100,
+            name=name,
+            th_Leistung_kW=100,
+            spez_Investitionskosten_GBHKW=1500,
+            spez_Investitionskosten_HBHKW=1850,
+            el_Wirkungsgrad=0.33,
+            KWK_Wirkungsgrad=0.9,
+            min_Teillast=0.7,
+            speicher_aktiv=False,
+            Speicher_Volumen_BHKW=20,
+            T_vorlauf=90,
+            T_ruecklauf=60,
+            initial_fill=0.0,
+            min_fill=0.2,
+            max_fill=0.8,
+            spez_Investitionskosten_Speicher=750,
+            active=True,
+            opt_BHKW_min=0,
+            opt_BHKW_max=1000,
+            opt_BHKW_Speicher_min=0,
+            opt_BHKW_Speicher_max=100,
         )
 
     def test_golden_master(self, economic_parameters, load_profile):

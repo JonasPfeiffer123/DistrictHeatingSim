@@ -40,6 +40,7 @@ pytestmark = pytest.mark.skipif(
 def goerlitz_run():
     """Run the full production pipeline once for the whole module."""
     import matplotlib
+
     matplotlib.use("Agg")
 
     from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (

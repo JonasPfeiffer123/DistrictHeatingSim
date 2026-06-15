@@ -30,10 +30,8 @@ from PyQt6.QtWidgets import (
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CheckableComboBox, CollapsibleHeader
 
 # Month labels and starts for a full year (8760 h)
-_MONTH_NAMES  = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-                  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
-_MONTH_STARTS = [0, 744, 1416, 2160, 2880, 3624,
-                  4344, 5088, 5832, 6552, 7296, 8016]
+_MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+_MONTH_STARTS = [0, 744, 1416, 2160, 2880, 3624, 4344, 5088, 5832, 6552, 7296, 8016]
 
 
 def _apply_month_xticks(ax, n_steps: int):
@@ -47,11 +45,22 @@ def _apply_month_xticks(ax, n_steps: int):
         ax.set_xticks(np.arange(0, n_steps + step, step))
 
 
-def _plot_storage_panels(fig, hours, net_flow, soc, T_top, T_middle, T_bottom, Q_loss,
-                          title: str, n_steps: int,
-                          min_fill: float | None = None, max_fill: float | None = None,
-                          gen_profile: np.ndarray | None = None,
-                          load_profile: np.ndarray | None = None):
+def _plot_storage_panels(
+    fig,
+    hours,
+    net_flow,
+    soc,
+    T_top,
+    T_middle,
+    T_bottom,
+    Q_loss,
+    title: str,
+    n_steps: int,
+    min_fill: float | None = None,
+    max_fill: float | None = None,
+    gen_profile: np.ndarray | None = None,
+    load_profile: np.ndarray | None = None,
+):
     """
     Draw the 4-panel storage overview into *fig*.
 
@@ -65,44 +74,44 @@ def _plot_storage_panels(fig, hours, net_flow, soc, T_top, T_middle, T_bottom, Q
 
     # Panel 1 – net storage flow (+ optional load/generator overlay)
     if gen_profile is not None and load_profile is not None:
-        ax1.fill_between(hours, load_profile, alpha=0.2, color='gray', label='Wärmebedarf (kW)')
-        ax1.plot(hours, gen_profile, color='orange', linewidth=0.7, label='Erzeuger (kW)')
-    ax1.fill_between(hours, net_flow, where=(net_flow > 0), color='steelblue', alpha=0.7,
-                     label='Beladung (kW)')
-    ax1.fill_between(hours, net_flow, where=(net_flow < 0), color='tomato', alpha=0.7,
-                     label='Entladung (kW)')
-    ax1.axhline(0, color='black', linewidth=0.5)
-    ax1.set_ylabel('Speicherfluss (kW)')
-    ax1.legend(fontsize=7, loc='upper right')
+        ax1.fill_between(hours, load_profile, alpha=0.2, color="gray", label="Wärmebedarf (kW)")
+        ax1.plot(hours, gen_profile, color="orange", linewidth=0.7, label="Erzeuger (kW)")
+    ax1.fill_between(hours, net_flow, where=(net_flow > 0), color="steelblue", alpha=0.7, label="Beladung (kW)")
+    ax1.fill_between(hours, net_flow, where=(net_flow < 0), color="tomato", alpha=0.7, label="Entladung (kW)")
+    ax1.axhline(0, color="black", linewidth=0.5)
+    ax1.set_ylabel("Speicherfluss (kW)")
+    ax1.legend(fontsize=7, loc="upper right")
     ax1.grid(True, alpha=0.3)
 
     # Panel 2 – SOC
-    ax2.fill_between(hours, soc, alpha=0.35, color='steelblue')
-    ax2.plot(hours, soc, color='steelblue', linewidth=0.8, label='SOC (%)')
+    ax2.fill_between(hours, soc, alpha=0.35, color="steelblue")
+    ax2.plot(hours, soc, color="steelblue", linewidth=0.8, label="SOC (%)")
     if min_fill is not None:
-        ax2.axhline(min_fill * 100, color='red', linewidth=0.9, linestyle='--',
-                    label=f'min_fill {min_fill*100:.0f} %')
+        ax2.axhline(
+            min_fill * 100, color="red", linewidth=0.9, linestyle="--", label=f"min_fill {min_fill * 100:.0f} %"
+        )
     if max_fill is not None:
-        ax2.axhline(max_fill * 100, color='green', linewidth=0.9, linestyle='--',
-                    label=f'max_fill {max_fill*100:.0f} %')
-    ax2.set_ylabel('SOC (%)')
+        ax2.axhline(
+            max_fill * 100, color="green", linewidth=0.9, linestyle="--", label=f"max_fill {max_fill * 100:.0f} %"
+        )
+    ax2.set_ylabel("SOC (%)")
     ax2.set_ylim(0, 100)
-    ax2.legend(fontsize=7, loc='upper right')
+    ax2.legend(fontsize=7, loc="upper right")
     ax2.grid(True, alpha=0.3)
 
     # Panel 3 – temperatures
-    ax3.plot(hours, T_top,    color='red',       linewidth=0.8, label='T oben (°C)')
-    ax3.plot(hours, T_middle, color='orange',     linewidth=0.8, label='T mitte (°C)')
-    ax3.plot(hours, T_bottom, color='royalblue',  linewidth=0.8, label='T unten (°C)')
-    ax3.set_ylabel('Temperatur (°C)')
-    ax3.legend(fontsize=7, loc='upper right')
+    ax3.plot(hours, T_top, color="red", linewidth=0.8, label="T oben (°C)")
+    ax3.plot(hours, T_middle, color="orange", linewidth=0.8, label="T mitte (°C)")
+    ax3.plot(hours, T_bottom, color="royalblue", linewidth=0.8, label="T unten (°C)")
+    ax3.set_ylabel("Temperatur (°C)")
+    ax3.legend(fontsize=7, loc="upper right")
     ax3.grid(True, alpha=0.3)
 
     # Panel 4 – heat loss
-    ax4.fill_between(hours, Q_loss, alpha=0.5, color='orange')
-    ax4.plot(hours, Q_loss, color='darkorange', linewidth=0.7, label='Wärmeverluste (kW)')
-    ax4.set_ylabel('Verluste (kW)')
-    ax4.legend(fontsize=7, loc='upper right')
+    ax4.fill_between(hours, Q_loss, alpha=0.5, color="orange")
+    ax4.plot(hours, Q_loss, color="darkorange", linewidth=0.7, label="Wärmeverluste (kW)")
+    ax4.set_ylabel("Verluste (kW)")
+    ax4.legend(fontsize=7, loc="upper right")
     ax4.grid(True, alpha=0.3)
 
     _apply_month_xticks(ax4, n_steps)
@@ -122,6 +131,7 @@ class ResultsTab(QWidget):
         results (dict): A dictionary to store results.
         selected_variables (list): A list of selected variables for plotting.
     """
+
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     def __init__(self, data_manager, parent=None):
@@ -277,11 +287,19 @@ class ResultsTab(QWidget):
         """
         self.resultsTable = QTableWidget()
         self.resultsTable.setColumnCount(9)
-        self.resultsTable.setHorizontalHeaderLabels([
-            'Technologie', 'Wärmemenge (MWh)', 'Anzahl Betriebsstunden',
-            'Anzahl Starts', 'Betriebsstunden/Start', 'Kosten (€/MWh)',
-            'Anteil (%)', 'CO2-eq (t_CO2/MWh_th)', 'Primärenergiefaktor'
-        ])
+        self.resultsTable.setHorizontalHeaderLabels(
+            [
+                "Technologie",
+                "Wärmemenge (MWh)",
+                "Anzahl Betriebsstunden",
+                "Anzahl Starts",
+                "Betriebsstunden/Start",
+                "Kosten (€/MWh)",
+                "Anteil (%)",
+                "CO2-eq (t_CO2/MWh_th)",
+                "Primärenergiefaktor",
+            ]
+        )
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def setupAdditionalResultsTable(self):
@@ -290,7 +308,7 @@ class ResultsTab(QWidget):
         """
         self.additionalResultsTable = QTableWidget()
         self.additionalResultsTable.setColumnCount(3)
-        self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
+        self.additionalResultsTable.setHorizontalHeaderLabels(["Ergebnis", "Wert", "Einheit"])
         self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def adjustTableSize(self, table):
@@ -329,12 +347,20 @@ class ResultsTab(QWidget):
         results = self.energy_system.results
 
         self.resultsTable.setRowCount(0)
-        self.resultsTable.setRowCount(len(results['techs']))
+        self.resultsTable.setRowCount(len(results["techs"]))
 
         for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy, wärmeleistung) in enumerate(
-                zip(results['techs'], results['Wärmemengen'], results['WGK'],
-                    results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'], results['Wärmeleistung_L'], strict=False)):
-
+            zip(
+                results["techs"],
+                results["Wärmemengen"],
+                results["WGK"],
+                results["Anteile"],
+                results["specific_emissions_L"],
+                results["primärenergie_L"],
+                results["Wärmeleistung_L"],
+                strict=False,
+            )
+        ):
             if not isinstance(wärmeleistung, (list, np.ndarray)):
                 wärmeleistung = [wärmeleistung]
             wärmeleistung = np.array(wärmeleistung)
@@ -364,26 +390,45 @@ class ResultsTab(QWidget):
             np.sum(self.energy_system.results["waerme_ges_kW"]),
             np.sum(self.energy_system.results["strom_wp_kW"]),
         )
-        if 'Summe Infrastruktur' in self.parent.costTab.data.index:
-            self.WGK_Infra = self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] / self.energy_system.results['Jahreswärmebedarf']
+        if "Summe Infrastruktur" in self.parent.costTab.data.index:
+            self.WGK_Infra = (
+                self.parent.costTab.data.at["Summe Infrastruktur", "Annuität"]
+                / self.energy_system.results["Jahreswärmebedarf"]
+            )
             if self.energy_system.economic_parameters["subsidy_eligibility"] == "Ja":
-                self.WGK_Infra = (self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] * 0.6) / self.energy_system.results['Jahreswärmebedarf']
+                self.WGK_Infra = (
+                    self.parent.costTab.data.at["Summe Infrastruktur", "Annuität"] * 0.6
+                ) / self.energy_system.results["Jahreswärmebedarf"]
         else:
             self.WGK_Infra = 0
-        self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.economic_parameters["electricity_price"]) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
-        self.WGK_Gesamt = self.energy_system.results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity
+        self.wgk_heat_pump_electricity = (
+            (self.strom_wp_kW / 1000) * self.parent.economic_parameters["electricity_price"]
+        ) / ((self.strom_wp_kW + self.waerme_ges_kW) / 1000)
+        self.WGK_Gesamt = self.energy_system.results["WGK_Gesamt"] + self.WGK_Infra + self.wgk_heat_pump_electricity
 
         data = [
-            ("Jahreswärmebedarf", round(self.energy_system.results['Jahreswärmebedarf'], 1), "MWh"),
-            ("Stromerzeugung", round(self.energy_system.results['Strommenge'], 2), "MWh"),
-            ("Strombedarf", round(self.energy_system.results['Strombedarf'], 2), "MWh"),
-            ("Wärmegestehungskosten Erzeugeranlagen", round(self.energy_system.results['WGK_Gesamt'], 2), "€/MWh"),
+            ("Jahreswärmebedarf", round(self.energy_system.results["Jahreswärmebedarf"], 1), "MWh"),
+            ("Stromerzeugung", round(self.energy_system.results["Strommenge"], 2), "MWh"),
+            ("Strombedarf", round(self.energy_system.results["Strombedarf"], 2), "MWh"),
+            ("Wärmegestehungskosten Erzeugeranlagen", round(self.energy_system.results["WGK_Gesamt"], 2), "€/MWh"),
             ("Wärmegestehungskosten Netzinfrastruktur", round(self.WGK_Infra, 2), "€/MWh"),
             ("Wärmegestehungskosten dezentrale Wärmepumpen", round(self.wgk_heat_pump_electricity, 2), "€/MWh"),
             ("Wärmegestehungskosten Gesamt", round(self.WGK_Gesamt, 2), "€/MWh"),
-            ("spez. CO2-Emissionen Wärme", round(self.energy_system.results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
-            ("CO2-Emissionen Wärme", round(self.energy_system.results["specific_emissions_Gesamt"]*self.energy_system.results['Jahreswärmebedarf'], 2), "t_CO2"),
-            ("Primärenergiefaktor", round(self.energy_system.results["primärenergiefaktor_Gesamt"], 4), "-")
+            (
+                "spez. CO2-Emissionen Wärme",
+                round(self.energy_system.results["specific_emissions_Gesamt"], 4),
+                "t_CO2/MWh_th",
+            ),
+            (
+                "CO2-Emissionen Wärme",
+                round(
+                    self.energy_system.results["specific_emissions_Gesamt"]
+                    * self.energy_system.results["Jahreswärmebedarf"],
+                    2,
+                ),
+                "t_CO2",
+            ),
+            ("Primärenergiefaktor", round(self.energy_system.results["primärenergiefaktor_Gesamt"], 4), "-"),
         ]
 
         self.additionalResultsTable.setRowCount(len(data))
@@ -417,7 +462,7 @@ class ResultsTab(QWidget):
         self.energy_system.plot_stack_plot(
             figure=self.stackPlotFigure,
             selected_vars=self.selected_variables,
-            second_y_axis=self.secondYAxisCheckBox.isChecked()
+            second_y_axis=self.secondYAxisCheckBox.isChecked(),
         )
         self.stackPlotCanvas.draw()
 
@@ -430,7 +475,7 @@ class ResultsTab(QWidget):
         self.energy_system.plot_stack_plot(
             figure=self.stackPlotFigure,
             selected_vars=self.selected_variables,
-            second_y_axis=self.secondYAxisCheckBox.isChecked()
+            second_y_axis=self.secondYAxisCheckBox.isChecked(),
         )
         self.stackPlotCanvas.draw()
 
@@ -439,15 +484,15 @@ class ResultsTab(QWidget):
         Draws the 4-panel network storage overview plot.
         Hidden when no ThermalStorageAdapter is attached to the energy system.
         """
-        storage = getattr(self.energy_system, 'storage', None)
+        storage = getattr(self.energy_system, "storage", None)
         if storage is None:
             self.diagram3_section.setVisible(False)
             return
 
         self.diagram3_section.setVisible(True)
         n_steps = len(storage._soc)
-        hours   = np.arange(n_steps)
-        net     = storage._Q_net_storage_flow
+        hours = np.arange(n_steps)
+        net = storage._Q_net_storage_flow
 
         _plot_storage_panels(
             fig=self.storageFigure,
@@ -458,7 +503,7 @@ class ResultsTab(QWidget):
             T_middle=storage._T_middle,
             T_bottom=storage._T_return,
             Q_loss=storage.Q_loss,
-            title=f'Thermischer Netzspeicher – {storage.name}',
+            title=f"Thermischer Netzspeicher – {storage.name}",
             n_steps=n_steps,
         )
         self.storageCanvas.draw()
@@ -477,8 +522,7 @@ class ResultsTab(QWidget):
         self._buffer_section_widgets.clear()
 
         techs_with_buffer = [
-            tech for tech in self.energy_system.technologies
-            if getattr(tech, 'buffer', None) is not None
+            tech for tech in self.energy_system.technologies if getattr(tech, "buffer", None) is not None
         ]
 
         for tech in techs_with_buffer:
@@ -489,21 +533,21 @@ class ResultsTab(QWidget):
                 continue
 
             n_steps = len(buf.soc_history)
-            hours   = np.arange(n_steps)
-            soc     = np.array(buf.soc_history) * 100.0
-            T_top   = np.array(buf.T_top_history)
-            T_mid   = np.array(buf.T_middle_history)
-            T_bot   = np.array(buf.T_bottom_history)
-            Q_loss  = np.array(buf.Q_loss_history)
-            Q_net   = np.array(buf.Q_net_history)  # + = charge, − = discharge
+            hours = np.arange(n_steps)
+            soc = np.array(buf.soc_history) * 100.0
+            T_top = np.array(buf.T_top_history)
+            T_mid = np.array(buf.T_middle_history)
+            T_bot = np.array(buf.T_bottom_history)
+            Q_loss = np.array(buf.Q_loss_history)
+            Q_net = np.array(buf.Q_net_history)  # + = charge, − = discharge
 
             # Generator output profile (from results) + load profile
             gen_profile = None
             load_profile = None
             results = self.energy_system.results
-            if tech.name in results.get('techs', []):
-                idx = list(results['techs']).index(tech.name)
-                gen_arr = results['Wärmeleistung_L'][idx]
+            if tech.name in results.get("techs", []):
+                idx = list(results["techs"]).index(tech.name)
+                gen_arr = results["Wärmeleistung_L"][idx]
                 if len(gen_arr) == n_steps:
                     gen_profile = gen_arr
             load_arr = self.energy_system.load_profile
@@ -525,11 +569,11 @@ class ResultsTab(QWidget):
                 T_middle=T_mid,
                 T_bottom=T_bot,
                 Q_loss=Q_loss,
-                title=f'Anlagenspezifischer Pufferspeicher – {tech.name}  '
-                      f'(V = {buf.volume:.0f} m³, Kapazität ≈ {buf.get_capacity_kwh():.0f} kWh)',
+                title=f"Anlagenspezifischer Pufferspeicher – {tech.name}  "
+                f"(V = {buf.volume:.0f} m³, Kapazität ≈ {buf.get_capacity_kwh():.0f} kWh)",
                 n_steps=n_steps,
-                min_fill=getattr(tech, 'min_fill', None),
-                max_fill=getattr(tech, 'max_fill', None),
+                min_fill=getattr(tech, "min_fill", None),
+                max_fill=getattr(tech, "max_fill", None),
                 gen_profile=gen_profile,
                 load_profile=load_profile,
             )
@@ -541,9 +585,7 @@ class ResultsTab(QWidget):
             inner_layout.addWidget(canvas)
             inner_layout.addWidget(toolbar)
 
-            section = CollapsibleHeader(
-                f'Anlagenspezifischer Pufferspeicher – {tech.name}', inner
-            )
+            section = CollapsibleHeader(f"Anlagenspezifischer Pufferspeicher – {tech.name}", inner)
             self._buffer_container_layout.addWidget(section)
             self._buffer_section_widgets.append(section)
 
@@ -554,6 +596,7 @@ class ResultsTab(QWidget):
         self.pieChartFigure.clear()
         self.energy_system.plot_pie_chart(self.pieChartFigure)
         self.pieChartCanvas.draw()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

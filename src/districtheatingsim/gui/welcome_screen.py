@@ -38,7 +38,7 @@ class ThemeToggleSwitch(QCheckBox):
     .. note::
        Renders custom painted toggle with sun/moon icons for light/dark theme indication.
     """
-    
+
     def __init__(self, parent=None):
         """
         Initialize toggle switch with custom styling and animation.
@@ -58,12 +58,12 @@ class ThemeToggleSwitch(QCheckBox):
                 height: 0px;
             }
         """)
-        
+
         # Animation for smooth toggle
         self.animation = QPropertyAnimation(self, b"geometry")
         self.animation.setDuration(200)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        
+
     def mousePressEvent(self, event):
         """
         Handle mouse press events to toggle the checkbox state.
@@ -74,7 +74,7 @@ class ThemeToggleSwitch(QCheckBox):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setChecked(not self.isChecked())
         super().mousePressEvent(event)
-        
+
     def paintEvent(self, event):
         """
         Custom paint event for rendering the toggle switch with animated handle.
@@ -87,26 +87,26 @@ class ThemeToggleSwitch(QCheckBox):
         """
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
+
         # Track (background)
         track_color = QColor("#4a90e2" if self.isChecked() else "#ccc")
         painter.setBrush(track_color)
         painter.setPen(Qt.PenStyle.NoPen)
         track_rect = QRect(0, 0, self.width(), self.height())
-        painter.drawRoundedRect(track_rect, self.height()//2, self.height()//2)
-        
+        painter.drawRoundedRect(track_rect, self.height() // 2, self.height() // 2)
+
         # Handle (circle)
         handle_radius = self.height() - 4
         handle_x = self.width() - handle_radius - 2 if self.isChecked() else 2
         handle_y = 2
-        
+
         painter.setBrush(QColor("white"))
         painter.drawEllipse(handle_x, handle_y, handle_radius, handle_radius)
-        
+
         # Icons
         icon_size = 12
         icon_y = (self.height() - icon_size) // 2
-        
+
         # Sun icon (left side) - visible when light mode (unchecked)
         if not self.isChecked():
             painter.setPen(QPen(QColor("#666"), 2))
@@ -119,7 +119,7 @@ class ThemeToggleSwitch(QCheckBox):
             painter.drawLine(sun_center_x, sun_center_y + 6, sun_center_x, sun_center_y + 8)
             painter.drawLine(sun_center_x - 8, sun_center_y, sun_center_x - 6, sun_center_y)
             painter.drawLine(sun_center_x + 6, sun_center_y, sun_center_x + 8, sun_center_y)
-        
+
         # Moon icon (right side) - visible when dark mode (checked)
         else:
             painter.setPen(QPen(QColor("white"), 2))
@@ -141,9 +141,9 @@ class RecentProjectWidget(QFrame):
     .. note::
        Displays project name, path, and last modification date in clickable frame.
     """
-    
+
     projectSelected = pyqtSignal(str)  # Signal emitted when project is selected
-    
+
     def __init__(self, project_path: str, project_info: dict):
         """
         Initialize recent project widget.
@@ -157,7 +157,7 @@ class RecentProjectWidget(QFrame):
         self.project_path = project_path
         self.project_info = project_info
         self.setup_ui()
-    
+
     def setup_ui(self):
         """
         Setup the UI for the recent project widget with name, path, and modification date.
@@ -167,37 +167,37 @@ class RecentProjectWidget(QFrame):
         """
         self.setFrameStyle(QFrame.Shape.Box)
         # Styling is handled by central QSS themes
-        
+
         layout = QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
-        
+
         # Project name
-        name_label = QLabel(self.project_info.get('name', os.path.basename(self.project_path)))
+        name_label = QLabel(self.project_info.get("name", os.path.basename(self.project_path)))
         name_font = QFont()
         name_font.setBold(True)
         name_font.setPointSize(11)
         name_label.setFont(name_font)
         name_label.setWordWrap(True)
         layout.addWidget(name_label)
-        
+
         # Project path (shortened)
         path_label = QLabel(self._get_display_path())
         # Styling handled by central QSS themes
         path_label.setWordWrap(True)
         layout.addWidget(path_label)
-        
+
         # Last modified
-        if 'last_modified' in self.project_info:
+        if "last_modified" in self.project_info:
             modified_label = QLabel(f"Geändert: {self.project_info['last_modified']}")
             # Styling handled by central QSS themes
             layout.addWidget(modified_label)
-        
+
         self.setLayout(layout)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(100)
         self.setMinimumWidth(200)
-    
+
     def _get_display_path(self) -> str:
         """
         Get the full project path for display in widget.
@@ -206,7 +206,7 @@ class RecentProjectWidget(QFrame):
         :rtype: str
         """
         return str(Path(self.project_path))
-    
+
     def mousePressEvent(self, event):
         """
         Handle mouse press to emit project selection signal.
@@ -230,11 +230,11 @@ class WelcomeScreen(QWidget):
     .. note::
        Features recent projects display, quick action buttons, documentation links, and clean modern interface.
     """
-    
+
     projectSelected = pyqtSignal(str)  # Signal when user selects a project
     newProjectRequested = pyqtSignal()  # Signal when user wants to create new project
     themeChangeRequested = pyqtSignal(str)  # Signal when user changes theme (light/dark)
-    
+
     def __init__(self, config_manager=None):
         """
         Initialize welcome screen with config manager for recent projects.
@@ -247,7 +247,7 @@ class WelcomeScreen(QWidget):
         self.recent_projects = []
         self.setup_ui()
         self.load_recent_projects()
-    
+
     def setup_ui(self):
         """
         Setup the main welcome screen UI with header, content sections, and footer.
@@ -257,34 +257,34 @@ class WelcomeScreen(QWidget):
         """
         self.setWindowTitle("DistrictHeatingSim - Welcome")
         self.setMinimumSize(1000, 700)
-        
+
         # Main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(50, 40, 50, 40)
         main_layout.setSpacing(40)
-        
+
         # Header
         self.create_header(main_layout)
-        
+
         # Content area with better proportions
         content_layout = QHBoxLayout()
         content_layout.setSpacing(50)
-        
+
         # Left side - Recent Projects (60% width)
         self.create_recent_projects_section(content_layout)
-        
+
         # Right side - Quick Actions and Getting Started (40% width)
         self.create_actions_section(content_layout)
-        
+
         main_layout.addLayout(content_layout, 1)  # Stretch factor 1
-        
+
         # Funding/Project Information Footer
         self.create_funding_footer(main_layout)
-        
+
         main_layout.addStretch(0)  # No extra stretch at bottom
-        
+
         self.setLayout(main_layout)
-    
+
     def create_header(self, parent_layout):
         """
         Create the welcome screen header with title, subtitle, and theme switcher.
@@ -297,7 +297,7 @@ class WelcomeScreen(QWidget):
         """
         header_layout = QVBoxLayout()
         header_layout.setSpacing(15)
-        
+
         # Main title
         title_label = QLabel("Willkommen bei DistrictHeatingSim")
         title_font = QFont()
@@ -306,7 +306,7 @@ class WelcomeScreen(QWidget):
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(title_label)
-        
+
         # Subtitle with better description
         subtitle_label = QLabel("Professionelle Fernwärmesystem-Planung und -Analyse")
         subtitle_font = QFont()
@@ -314,7 +314,7 @@ class WelcomeScreen(QWidget):
         subtitle_label.setFont(subtitle_font)
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(subtitle_label)
-        
+
         # Add introduction text
         intro_text = QLabel(
             "Planen, analysieren und optimieren Sie Fernwärmenetze mit umfassenden Werkzeugen für "
@@ -327,36 +327,36 @@ class WelcomeScreen(QWidget):
         intro_font = QFont()
         intro_font.setPointSize(11)
         intro_text.setFont(intro_font)
-        
+
         # Center the intro text
         intro_container = QHBoxLayout()
         intro_container.addStretch()
         intro_container.addWidget(intro_text)
         intro_container.addStretch()
         header_layout.addLayout(intro_container)
-        
+
         # Theme switcher (moved to top-right corner)
         theme_layout = QHBoxLayout()
         theme_layout.addStretch()  # Push theme switcher to the right
-        
+
         theme_label = QLabel("☀️")
         theme_label.setFont(QFont("Arial", 14))
         theme_layout.addWidget(theme_label)
-        
+
         # Modern toggle switch
         self.theme_toggle = ThemeToggleSwitch()
         self.theme_toggle.setToolTip("Zwischen hellem und dunklem Design wechseln")
         self.theme_toggle.toggled.connect(self.on_theme_toggle)
         theme_layout.addWidget(self.theme_toggle)
-        
+
         dark_label = QLabel("🌙")
         dark_label.setFont(QFont("Arial", 14))
         theme_layout.addWidget(dark_label)
-        
+
         header_layout.addLayout(theme_layout)
-        
+
         parent_layout.addLayout(header_layout)
-    
+
     def create_recent_projects_section(self, parent_layout):
         """
         Create the recent projects section with scrollable project list.
@@ -371,7 +371,7 @@ class WelcomeScreen(QWidget):
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(20)
-        
+
         # Section title with project count
         title_layout = QHBoxLayout()
         recent_title = QLabel("Aktuelle Projekte")
@@ -381,16 +381,16 @@ class WelcomeScreen(QWidget):
         recent_title.setFont(recent_font)
         title_layout.addWidget(recent_title)
         title_layout.addStretch()
-        
+
         # Project count badge
         self.project_count_label = QLabel("0")
         self.project_count_label.setObjectName("projectCountBadge")
         self.project_count_label.setFixedSize(25, 25)
         self.project_count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_layout.addWidget(self.project_count_label)
-        
+
         left_layout.addLayout(title_layout)
-        
+
         # Scroll area for projects
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -398,21 +398,21 @@ class WelcomeScreen(QWidget):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_area.setMinimumHeight(400)
         scroll_area.setObjectName("projectScrollArea")
-        
+
         # Container for project widgets
         self.projects_container = QWidget()
         self.projects_layout = QVBoxLayout()
         self.projects_layout.setContentsMargins(5, 5, 5, 5)
         self.projects_layout.setSpacing(12)
         self.projects_container.setLayout(self.projects_layout)
-        
+
         scroll_area.setWidget(self.projects_container)
         left_layout.addWidget(scroll_area)
-        
+
         left_widget.setLayout(left_layout)
         left_widget.setMinimumWidth(500)  # Increased width
         parent_layout.addWidget(left_widget, 3)  # 60% of space
-    
+
     def create_actions_section(self, parent_layout):
         """
         Create the quick actions and getting started section in right panel.
@@ -427,18 +427,18 @@ class WelcomeScreen(QWidget):
         right_layout = QVBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(35)
-        
+
         # Quick Actions
         self.create_quick_actions(right_layout)
-        
+
         # Getting Started
         self.create_getting_started(right_layout)
-        
+
         right_layout.addStretch()
         right_widget.setLayout(right_layout)
         right_widget.setMinimumWidth(350)  # Increased width
         parent_layout.addWidget(right_widget, 2)  # 40% of space
-    
+
     def create_quick_actions(self, parent_layout):
         """
         Create the quick actions section with New Project and Open Project buttons.
@@ -455,29 +455,25 @@ class WelcomeScreen(QWidget):
         actions_font.setBold(True)
         actions_title.setFont(actions_font)
         parent_layout.addWidget(actions_title)
-        
+
         # Action buttons with descriptions
         actions_layout = QVBoxLayout()
         actions_layout.setSpacing(20)
-        
+
         # New Project button with description
         new_project_container = self.create_action_button(
-            "🆕 Neues Projekt erstellen",
-            "primaryButton",
-            self.new_project_clicked
+            "🆕 Neues Projekt erstellen", "primaryButton", self.new_project_clicked
         )
         actions_layout.addWidget(new_project_container)
-        
-        # Open Project button with description  
+
+        # Open Project button with description
         open_project_container = self.create_action_button(
-            "📂 Bestehendes Projekt öffnen",
-            "secondaryButton", 
-            self.open_project_clicked
+            "📂 Bestehendes Projekt öffnen", "secondaryButton", self.open_project_clicked
         )
         actions_layout.addWidget(open_project_container)
-        
+
         parent_layout.addLayout(actions_layout)
-    
+
     def create_action_button(self, title: str, style_class: str, callback):
         """
         Create an action button with title and callback inside styled container.
@@ -493,21 +489,21 @@ class WelcomeScreen(QWidget):
         container = QFrame()
         container.setFrameStyle(QFrame.Shape.Box)
         container.setObjectName("actionButtonContainer")
-        
+
         layout = QVBoxLayout()
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(8)
-        
+
         # Main button
         button = QPushButton(title)
         button.setMinimumHeight(45)
         button.setObjectName(style_class)
         button.clicked.connect(callback)
         layout.addWidget(button)
-        
+
         container.setLayout(layout)
         return container
-    
+
     def create_getting_started(self, parent_layout):
         """
         Create the getting started section with documentation, examples, and support links.
@@ -524,34 +520,34 @@ class WelcomeScreen(QWidget):
         started_font.setBold(True)
         started_title.setFont(started_font)
         parent_layout.addWidget(started_title)
-        
+
         # Getting started content
         started_layout = QVBoxLayout()
         started_layout.setSpacing(15)
-        
+
         # Documentation link
         doc_btn = QPushButton("📖 Dokumentation öffnen")
         doc_btn.setMinimumHeight(40)
         doc_btn.setObjectName("linkButton")
         doc_btn.clicked.connect(self.open_documentation)
         started_layout.addWidget(doc_btn)
-        
+
         # Examples
         examples_btn = QPushButton("🔧 Beispiele")
         examples_btn.setMinimumHeight(40)
         examples_btn.setObjectName("linkButton")
         examples_btn.clicked.connect(self.open_examples)
         started_layout.addWidget(examples_btn)
-        
+
         # Support
         support_btn = QPushButton("💬 Unterstützung")
         support_btn.setMinimumHeight(40)
         support_btn.setObjectName("linkButton")
         support_btn.clicked.connect(self.open_support)
         started_layout.addWidget(support_btn)
-        
+
         parent_layout.addLayout(started_layout)
-    
+
     def create_funding_footer(self, parent_layout):
         """
         Create the funding notice footer with logo and project information.
@@ -565,18 +561,18 @@ class WelcomeScreen(QWidget):
         footer_container = QFrame()
         footer_container.setFrameStyle(QFrame.Shape.Box)
         footer_container.setObjectName("fundingFooter")
-        
+
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(20, 15, 20, 15)
         footer_layout.setSpacing(20)
-        
+
         # Funding logo
         try:
             from districtheatingsim.utilities.utilities import get_resource_path
-            
+
             # Logo is in src/districtheatingsim/images/
-            logo_path = get_resource_path(self.config_manager.get_relative_path('funding_logo_path'))
-            
+            logo_path = get_resource_path(self.config_manager.get_relative_path("funding_logo_path"))
+
             if os.path.exists(logo_path):
                 logo_label = QLabel()
                 pixmap = QPixmap(logo_path)
@@ -587,13 +583,15 @@ class WelcomeScreen(QWidget):
                 footer_layout.addWidget(logo_label)
         except Exception:
             pass  # Logo not available — skip silently
-        
+
         # Project information text
         info_layout = QVBoxLayout()
         info_layout.setSpacing(5)
-        
+
         # Title
-        project_title = QLabel("Gefördert durch das Sächsische Staatsministerium für Wissenschaft, Kultur und Tourismus")
+        project_title = QLabel(
+            "Gefördert durch das Sächsische Staatsministerium für Wissenschaft, Kultur und Tourismus"
+        )
         project_title.setWordWrap(True)
         project_title.setObjectName("fundingTitle")
         project_font = QFont()
@@ -601,7 +599,7 @@ class WelcomeScreen(QWidget):
         project_font.setPointSize(10)
         project_title.setFont(project_font)
         info_layout.addWidget(project_title)
-        
+
         # Project name and details
         project_details = QLabel(
             "Projekt: SMWK-NEUES TG70 – Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze"
@@ -612,18 +610,18 @@ class WelcomeScreen(QWidget):
         details_font.setPointSize(9)
         project_details.setFont(details_font)
         info_layout.addWidget(project_details)
-        
+
         # Developer info
         developer_info = QLabel("Entwickelt von Dipl.-Ing. (FH) Jonas Pfeiffer, Hochschule Zittau/Görlitz")
         developer_info.setObjectName("fundingDetails")
         developer_info.setFont(details_font)
         info_layout.addWidget(developer_info)
-        
+
         footer_layout.addLayout(info_layout, 1)  # Let text take remaining space
-        
+
         footer_container.setLayout(footer_layout)
         parent_layout.addWidget(footer_container)
-    
+
     def load_recent_projects(self):
         """
         Load and display recent projects from config manager with fallback to example project.
@@ -636,7 +634,7 @@ class WelcomeScreen(QWidget):
             child = self.projects_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-        
+
         # Get recent projects from config manager if available
         self.recent_projects = []
         if self.config_manager:
@@ -648,13 +646,13 @@ class WelcomeScreen(QWidget):
                         self.recent_projects.append((project_path, project_info))
             except Exception:
                 pass  # Config not available — skip silently
-        
+
         # Always add the bundled example project (Görlitz) if no recent projects exist
         if not self.recent_projects:
             example_project = self.get_bundled_example_project()
             if example_project:
                 self.recent_projects.append(example_project)
-        
+
         if not self.recent_projects:
             # Show "no projects" message with helpful tips
             no_projects_container = QFrame()
@@ -662,7 +660,7 @@ class WelcomeScreen(QWidget):
             no_projects_layout = QVBoxLayout()
             no_projects_layout.setContentsMargins(20, 30, 20, 30)
             no_projects_layout.setSpacing(15)
-            
+
             no_projects_label = QLabel("Keine aktuellen Projekte gefunden")
             no_projects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             no_projects_label.setObjectName("noProjectsTitle")
@@ -671,16 +669,16 @@ class WelcomeScreen(QWidget):
             font.setPointSize(14)
             no_projects_label.setFont(font)
             no_projects_layout.addWidget(no_projects_label)
-            
+
             tip_label = QLabel("Erstellen Sie ein neues Projekt oder öffnen Sie ein bestehendes, um zu beginnen!")
             tip_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             tip_label.setWordWrap(True)
             tip_label.setObjectName("noProjectsTip")
             no_projects_layout.addWidget(tip_label)
-            
+
             no_projects_container.setLayout(no_projects_layout)
             self.projects_layout.addWidget(no_projects_container)
-            
+
             self.project_count_label.setText("0")
         else:
             # Add recent project widgets
@@ -690,38 +688,38 @@ class WelcomeScreen(QWidget):
                 self.projects_layout.addWidget(project_widget)
 
             self.project_count_label.setText(str(min(len(self.recent_projects), 10)))
-        
+
         self.projects_layout.addStretch()
-    
+
     def get_bundled_example_project(self) -> tuple | None:
         """
         Get the bundled Görlitz example project path.
-        
+
         This method locates the Görlitz example project that is bundled with
         the application in the project_data directory. Works both in development
         and in frozen (PyInstaller) deployments.
-        
+
         Returns:
             Optional[tuple]: (project_path, project_info) if found, None otherwise
         """
         try:
             # Import utilities to get resource path
             from districtheatingsim.utilities.utilities import get_resource_path
-            
+
             # Try to get the standard folder path from config
             standard_project_path = None
-            
+
             if self.config_manager:
                 try:
-                    standard_relative = self.config_manager.get_relative_path('standard_folder_path')
+                    standard_relative = self.config_manager.get_relative_path("standard_folder_path")
                     standard_project_path = get_resource_path(standard_relative)
                 except Exception:
                     pass  # Config key not available — use fallback paths
-            
+
             # Fallback: try common locations
             if not standard_project_path or not os.path.exists(standard_project_path):
                 # Get application base directory
-                if getattr(sys, 'frozen', False):
+                if getattr(sys, "frozen", False):
                     # Running as compiled executable
                     base_path = sys._MEIPASS
                     # Also check directory where exe is located (for user-accessible folders)
@@ -730,33 +728,33 @@ class WelcomeScreen(QWidget):
                     # Running in development
                     base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                     exe_dir = base_path
-                
+
                 # Try different possible locations
                 possible_paths = [
                     # First check next to exe (user-accessible location)
-                    os.path.join(exe_dir, 'project_data', 'Görlitz'),
+                    os.path.join(exe_dir, "project_data", "Görlitz"),
                     # Then check in _MEIPASS (internal location)
-                    os.path.join(base_path, 'project_data', 'Görlitz'),
-                    os.path.join(base_path, 'districtheatingsim', 'project_data', 'Görlitz'),
-                    os.path.join(os.path.dirname(base_path), 'project_data', 'Görlitz'),
+                    os.path.join(base_path, "project_data", "Görlitz"),
+                    os.path.join(base_path, "districtheatingsim", "project_data", "Görlitz"),
+                    os.path.join(os.path.dirname(base_path), "project_data", "Görlitz"),
                 ]
-                
+
                 for path in possible_paths:
                     if os.path.exists(path) and os.path.isdir(path):
                         standard_project_path = path
                         break
-            
+
             # Check if we found a valid example project
             if standard_project_path and os.path.exists(standard_project_path):
                 project_info = self.get_project_info(standard_project_path)
-                project_info['name'] = '📚 Görlitz Beispielprojekt'  # Add icon to indicate it's the example
+                project_info["name"] = "📚 Görlitz Beispielprojekt"  # Add icon to indicate it's the example
                 return (standard_project_path, project_info)
-            
+
         except Exception:
             pass
 
         return None
-    
+
     def is_project_folder(self, folder_path: str) -> bool:
         """
         Check if a folder contains typical DistrictHeatingSim project structure.
@@ -775,15 +773,15 @@ class WelcomeScreen(QWidget):
             "Definition Quartier IST",
             DEFAULT_VARIANT_NAME,
             "Gebäudedaten",
-            "Wärmenetz"
+            "Wärmenetz",
         ]
-        
+
         try:
             contents = os.listdir(folder_path)
             return any(indicator in contents for indicator in indicators)
         except (OSError, PermissionError):
             return False
-    
+
     def get_project_info(self, project_path: str) -> dict:
         """
         Get metadata information about a project folder.
@@ -796,22 +794,19 @@ class WelcomeScreen(QWidget):
         .. note::
            Extracts folder name and modification timestamp for display and sorting.
         """
-        info = {
-            'name': os.path.basename(project_path),
-            'path': project_path
-        }
-        
+        info = {"name": os.path.basename(project_path), "path": project_path}
+
         try:
             # Get folder modification time
             stat = os.stat(project_path)
-            info['last_modified_timestamp'] = stat.st_mtime
-            info['last_modified'] = datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M")
+            info["last_modified_timestamp"] = stat.st_mtime
+            info["last_modified"] = datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M")
         except (OSError, PermissionError):
-            info['last_modified'] = "Unbekannt"
-            info['last_modified_timestamp'] = 0
-        
+            info["last_modified"] = "Unbekannt"
+            info["last_modified_timestamp"] = 0
+
         return info
-    
+
     def new_project_clicked(self):
         """
         Handle new project button click by emitting newProjectRequested signal.
@@ -822,7 +817,7 @@ class WelcomeScreen(QWidget):
         # Simply emit the signal - the main window will handle the complete workflow
         # including folder selection, project name input, and project creation
         self.newProjectRequested.emit()
-    
+
     def open_project_clicked(self):
         """
         Handle open project button click with file dialog for folder selection.
@@ -832,13 +827,9 @@ class WelcomeScreen(QWidget):
         """
         # Start in a sensible default location - check for existing projects first
         start_dir = self.get_default_project_directory()
-        
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "Projektordner auswählen",
-            start_dir
-        )
-        
+
+        folder = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", start_dir)
+
         if folder:
             self.projectSelected.emit(folder)
 
@@ -862,10 +853,10 @@ class WelcomeScreen(QWidget):
                     return os.path.dirname(most_recent)
             except Exception:
                 pass
-        
+
         # Fallback to Documents folder
         return os.path.expanduser("~/Documents")
-    
+
     def project_selected(self, project_path: str):
         """
         Handle project selection by emitting projectSelected signal.
@@ -874,7 +865,7 @@ class WelcomeScreen(QWidget):
         :type project_path: str
         """
         self.projectSelected.emit(project_path)
-    
+
     def open_documentation(self):
         """
         Open the ReadTheDocs documentation website in default browser.
@@ -883,7 +874,7 @@ class WelcomeScreen(QWidget):
            Opens https://districtheatingsim.readthedocs.io/en/latest/
         """
         webbrowser.open("https://districtheatingsim.readthedocs.io/en/latest/")
-    
+
     def open_examples(self):
         """
         Open example projects folder or GitHub examples page.
@@ -893,15 +884,16 @@ class WelcomeScreen(QWidget):
         """
         examples_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "examples")
         if os.path.exists(examples_path):
-            if os.name == 'nt':
+            if os.name == "nt":
                 os.startfile(examples_path)
             else:
                 import sys
-                opener = 'open' if sys.platform == 'darwin' else 'xdg-open'
+
+                opener = "open" if sys.platform == "darwin" else "xdg-open"
                 subprocess.run([opener, examples_path])
         else:
             webbrowser.open("https://github.com/JonasPfeiffer123/DistrictHeatingSim/tree/main/examples")
-    
+
     def open_support(self):
         """
         Open GitHub issues page for support and bug reporting.
@@ -930,7 +922,7 @@ class WelcomeScreen(QWidget):
         .. note::
            Emits themeChangeRequested signal with 'light_theme_style_path'.
         """
-        self.themeChangeRequested.emit('light_theme_style_path')
+        self.themeChangeRequested.emit("light_theme_style_path")
 
     def apply_dark_theme(self):
         """
@@ -939,8 +931,8 @@ class WelcomeScreen(QWidget):
         .. note::
            Emits themeChangeRequested signal with 'dark_theme_style_path'.
         """
-        self.themeChangeRequested.emit('dark_theme_style_path')
-    
+        self.themeChangeRequested.emit("dark_theme_style_path")
+
     def set_current_theme(self, is_dark_theme: bool):
         """
         Set the toggle switch state based on current theme without triggering signals.
@@ -956,7 +948,7 @@ class WelcomeScreen(QWidget):
         self.theme_toggle.setChecked(is_dark_theme)
         # Reconnect the signal
         self.theme_toggle.toggled.connect(self.on_theme_toggle)
-    
+
     def refresh_recent_projects(self):
         """
         Refresh the recent projects list by reloading from config manager.
@@ -975,12 +967,12 @@ def main():
        Creates QApplication and displays WelcomeScreen widget.
     """
     app = QApplication([])
-    
+
     welcome = WelcomeScreen()
     welcome.show()
-    
+
     app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

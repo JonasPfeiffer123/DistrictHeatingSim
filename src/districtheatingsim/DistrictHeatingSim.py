@@ -68,14 +68,14 @@ def _configure_stdio_encoding():
 def main():
     """
     Initialize and launch the DistrictHeatingSim application.
-    
+
     This function sets up the Qt application, initializes all managers (config,
     data, folder), creates the main GUI window, connects the MVP components,
     applies the theme, and starts the event loop.
-    
+
     :raises SystemExit: Normal application termination
     :raises Exception: Caught by global exception handler for user-friendly error reporting
-    
+
     .. note::
         Windows-specific taskbar integration is applied if available but
         fails gracefully on other platforms.
@@ -85,16 +85,17 @@ def main():
 
     # Configure global exception handling for user-friendly error reporting
     sys.excepthook = handle_global_exception
-    
+
     # Initialize Qt application with Fusion style for consistent appearance
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    app.setStyle("Fusion")
 
     # Configure Windows-specific taskbar integration for professional appearance
     try:
         import ctypes
+
         # Set unique application ID for proper Windows taskbar grouping
-        myappid = 'districtheatingsim.main.1.0'
+        myappid = "districtheatingsim.main.1.0"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except (ImportError, Exception):
         pass  # Non-Windows or unavailable — graceful fallback
@@ -110,7 +111,7 @@ def main():
     # Initialize the presenter and establish MVP connections
     presenter = HeatSystemPresenter(view, folder_manager, data_manager, config_manager)
     view.set_presenter(presenter)
-    
+
     # Apply time-based theme for optimal user experience
     theme_path = get_stylesheet_based_on_time()
     view.applyTheme(theme_path)
@@ -122,18 +123,18 @@ def main():
     # Configure window display with proper timing to ensure complete initialization
     QTimer.singleShot(0, lambda: view.showMaximized())
     QTimer.singleShot(0, lambda: view.update_project_folder_label(folder_manager.variant_folder))
-    
+
     # Start the application event loop and handle clean shutdown
     exit_code = app.exec()
     sys.exit(exit_code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import traceback
-    
+
     # Check if stdin is available (console window exists)
-    has_console = sys.stdin is not None and hasattr(sys.stdin, 'fileno')
-    
+    has_console = sys.stdin is not None and hasattr(sys.stdin, "fileno")
+
     try:
         if has_console:
             print("DistrictHeatingSim wird gestartet...")
@@ -141,14 +142,14 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         if has_console:
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("FEHLER BEIM START DER ANWENDUNG")
-            print("="*80)
+            print("=" * 80)
             print(f"\nFehlermeldung: {e}\n")
             print("Vollständiger Traceback:")
-            print("-"*80)
+            print("-" * 80)
             traceback.print_exc()
-            print("-"*80)
+            print("-" * 80)
             print("\nDrücken Sie ENTER zum Beenden...")
             try:
                 input()
@@ -158,7 +159,7 @@ if __name__ == '__main__':
     finally:
         # Keep console open when console window exists (debug builds, development)
         if has_console:
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("Drücken Sie ENTER zum Beenden der Konsole...")
             try:
                 input()

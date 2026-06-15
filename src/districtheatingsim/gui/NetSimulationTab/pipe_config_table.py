@@ -44,7 +44,7 @@ class PipeConfigTable(QWidget):
 
     pipe_highlight_requested = pyqtSignal(int)  # pipe index
 
-    _COLUMNS = ['Index', 'Name', 'Von', 'Nach', 'Länge [m]', 'Std-Typ', 'DN [mm]', 'k [mm]']
+    _COLUMNS = ["Index", "Name", "Von", "Nach", "Länge [m]", "Std-Typ", "DN [mm]", "k [mm]"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -63,7 +63,7 @@ class PipeConfigTable(QWidget):
         :param net_data: Simulation result data with ``net`` attribute.
         :type net_data: NetworkGenerationData
         """
-        if net_data is None or not hasattr(net_data, 'net'):
+        if net_data is None or not hasattr(net_data, "net"):
             return
 
         self._net_data = net_data
@@ -93,7 +93,7 @@ class PipeConfigTable(QWidget):
         """
         Write all editable table values back to *net_data.net.pipe*.
         """
-        if self._net_data is None or not hasattr(self._net_data, 'net'):
+        if self._net_data is None or not hasattr(self._net_data, "net"):
             return
 
         net = self._net_data.net
@@ -109,26 +109,32 @@ class PipeConfigTable(QWidget):
             if combo:
                 std_type = combo.currentText()
                 if std_type:
-                    net.pipe.at[pipe_idx, 'std_type'] = std_type
+                    net.pipe.at[pipe_idx, "std_type"] = std_type
                     if pipe_std_types is not None and std_type in pipe_std_types.index:
                         try:
-                            net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(pipe_std_types.loc[std_type])
+                            net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(
+                                pipe_std_types.loc[std_type]
+                            )
                         except ValueError:
                             # std-type carries no heat-loss value (e.g. an uninsulated
                             # type); keep the pipe's existing u_w_per_m2k.
-                            logging.warning("No heat-loss value for std-type '%s'; keeping existing u for pipe %d", std_type, pipe_idx)
+                            logging.warning(
+                                "No heat-loss value for std-type '%s'; keeping existing u for pipe %d",
+                                std_type,
+                                pipe_idx,
+                            )
 
             diameter_item = self._table.item(row, 6)
             if diameter_item:
                 try:
-                    net.pipe.at[pipe_idx, 'inner_diameter_mm'] = float(diameter_item.text())
+                    net.pipe.at[pipe_idx, "inner_diameter_mm"] = float(diameter_item.text())
                 except ValueError:
                     pass
 
             k_item = self._table.item(row, 7)
             if k_item:
                 try:
-                    net.pipe.at[pipe_idx, 'k_mm'] = float(k_item.text())
+                    net.pipe.at[pipe_idx, "k_mm"] = float(k_item.text())
                 except ValueError:
                     pass
 
@@ -242,13 +248,14 @@ class PipeConfigTable(QWidget):
             pipe_std_types = None
 
         for row, (idx, pipe_data) in enumerate(net.pipe.iterrows()):
+
             def ro(text):
                 item = QTableWidgetItem(str(text))
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 return item
 
             self._table.setItem(row, 0, ro(idx))
-            self._table.setItem(row, 1, ro(pipe_data.get('name', f'Pipe {idx}')))
+            self._table.setItem(row, 1, ro(pipe_data.get("name", f"Pipe {idx}")))
             self._table.setItem(row, 2, ro(f"J{pipe_data['from_junction']}"))
             self._table.setItem(row, 3, ro(f"J{pipe_data['to_junction']}"))
             self._table.setItem(row, 4, ro(f"{pipe_data['length_km'] * 1000:.1f}"))
@@ -275,7 +282,7 @@ class PipeConfigTable(QWidget):
             """)
             if pipe_std_types is not None:
                 combo.addItems(pipe_std_types.index.tolist())
-                current = pipe_data.get('std_type', '')
+                current = pipe_data.get("std_type", "")
                 if current and current in pipe_std_types.index:
                     combo.setCurrentText(current)
                 elif len(pipe_std_types.index) > 0:
@@ -322,9 +329,9 @@ class PipeConfigTable(QWidget):
         try:
             pipe_std_types = pp.std_types.available_std_types(net, "pipe")
             props = pipe_std_types.loc[new_std_type]
-            net.pipe.at[pipe_idx, 'std_type'] = new_std_type
-            net.pipe.at[pipe_idx, 'inner_diameter_mm'] = props['inner_diameter_mm']
-            net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(props)
+            net.pipe.at[pipe_idx, "std_type"] = new_std_type
+            net.pipe.at[pipe_idx, "inner_diameter_mm"] = props["inner_diameter_mm"]
+            net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(props)
 
             self._table.blockSignals(True)
             item = self._table.item(row, 6)
@@ -346,9 +353,9 @@ class PipeConfigTable(QWidget):
 
         try:
             if col == 6:
-                net.pipe.at[pipe_idx, 'inner_diameter_mm'] = float(item.text())
+                net.pipe.at[pipe_idx, "inner_diameter_mm"] = float(item.text())
             elif col == 7:
-                net.pipe.at[pipe_idx, 'k_mm'] = float(item.text())
+                net.pipe.at[pipe_idx, "k_mm"] = float(item.text())
         except ValueError:
             # Revert to stored value
             self._table.blockSignals(True)

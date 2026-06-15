@@ -58,7 +58,4 @@ def validate_csv_columns(df, kind: str) -> None:
     columns = list(df.columns)
     missing = [c for c in required if c not in columns]
     if missing:
-        raise KeyError(
-            f"CSV is missing required column(s) for kind '{kind}': {missing}. "
-            f"Present columns: {columns}"
-        )
+        raise KeyError(f"CSV is missing required column(s) for kind '{kind}': {missing}. Present columns: {columns}")

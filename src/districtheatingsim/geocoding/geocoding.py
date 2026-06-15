@@ -73,10 +73,12 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     failed_addresses = []
 
     try:
-        with open(input_csv, encoding='utf-8') as infile, \
-            open(temp_path, mode='w', newline='', encoding='utf-8-sig') as outfile:
-            reader = csv.reader(infile, delimiter=';')
-            writer = csv.writer(outfile, delimiter=';')
+        with (
+            open(input_csv, encoding="utf-8") as infile,
+            open(temp_path, mode="w", newline="", encoding="utf-8-sig") as outfile,
+        ):
+            reader = csv.reader(infile, delimiter=";")
+            writer = csv.writer(outfile, delimiter=";")
 
             headers = next(reader)
 
@@ -128,9 +130,10 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
 
     return {"total": total, "success": success, "failed": total - success, "failed_addresses": failed_addresses}
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # File name of the data file with addresses
-    input_csv = "data/data_geocoded.csv" # dummy file name, replace with actual file path
+    input_csv = "data/data_geocoded.csv"  # dummy file name, replace with actual file path
 
     # Call the process_data function to read from input_csv and write to
-    #process_data(input_csv)
+    # process_data(input_csv)

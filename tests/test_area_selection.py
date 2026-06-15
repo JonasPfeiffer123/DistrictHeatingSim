@@ -33,9 +33,7 @@ def _write_buildings_csv(path, *, with_utm=True):
     # Two points in EPSG:25833 (UTM 33N) near Zittau, Germany.
     if with_utm:
         path.write_text(
-            "UTM_X;UTM_Y\n"
-            "486000;5640000\n"
-            "486100;5640100\n",
+            "UTM_X;UTM_Y\n486000;5640000\n486100;5640100\n",
             encoding="utf-8",
         )
     else:
@@ -48,16 +46,17 @@ def _write_geojson_polygon(path, crs_epsg=4326):
     if crs_epsg == 4326:
         coords = [[14.80, 50.89], [14.81, 50.89], [14.81, 50.90], [14.80, 50.90], [14.80, 50.89]]
     else:
-        coords = [[486000, 5640000], [486200, 5640000], [486200, 5640200],
-                  [486000, 5640200], [486000, 5640000]]
+        coords = [[486000, 5640000], [486200, 5640000], [486200, 5640200], [486000, 5640200], [486000, 5640000]]
     fc = {
         "type": "FeatureCollection",
         "crs": {"type": "name", "properties": {"name": f"urn:ogc:def:crs:EPSG::{crs_epsg}"}},
-        "features": [{
-            "type": "Feature",
-            "properties": {},
-            "geometry": {"type": "Polygon", "coordinates": [coords]},
-        }],
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {"type": "Polygon", "coordinates": [coords]},
+            }
+        ],
     }
     path.write_text(json.dumps(fc), encoding="utf-8")
     return str(path)

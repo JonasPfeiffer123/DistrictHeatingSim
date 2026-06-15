@@ -57,8 +57,8 @@ class TestValidateSimulationResults:
 
     def test_non_numeric_and_empty_arrays_are_skipped(self):
         results = {
-            "labels": np.array(["a", "b"]),         # non-numeric → skipped
-            "empty": np.array([]),                   # empty → skipped
+            "labels": np.array(["a", "b"]),  # non-numeric → skipped
+            "empty": np.array([]),  # empty → skipped
             "ok": np.array([1.0, 2.0]),
         }
         validate_simulation_results(results)  # must not raise
@@ -71,15 +71,18 @@ class TestValidateNetResults:
     @staticmethod
     def _net(res_junction):
         from types import SimpleNamespace
+
         return SimpleNamespace(res_junction=res_junction)
 
     def test_finite_results_pass(self):
         import pandas as pd
+
         net = self._net(pd.DataFrame({"p_bar": [5.0, 4.9], "t_k": [358.0, 357.0]}))
         validate_net_results(net)  # must not raise
 
     def test_missing_or_empty_results_raise(self):
         import pandas as pd
+
         with pytest.raises(RuntimeError, match="no junction results"):
             validate_net_results(self._net(None))
         with pytest.raises(RuntimeError, match="no junction results"):
@@ -87,6 +90,7 @@ class TestValidateNetResults:
 
     def test_nan_results_raise(self):
         import pandas as pd
+
         net = self._net(pd.DataFrame({"p_bar": [5.0, np.nan]}))
         with pytest.raises(RuntimeError, match="NaN/inf"):
             validate_net_results(net)
@@ -105,10 +109,12 @@ class TestValidatePressurePlausibility:
         from types import SimpleNamespace
 
         import pandas as pd
+
         return SimpleNamespace(res_junction=pd.DataFrame({"p_bar": pressures}))
 
     def test_all_positive_pressures_pass_quietly(self, caplog):
         import logging
+
         with caplog.at_level(logging.WARNING):
             bad = validate_pressure_plausibility(self._net([2.5, 4.0, 1.05]))
         assert bad == []
@@ -116,6 +122,7 @@ class TestValidatePressurePlausibility:
 
     def test_negative_pressure_is_flagged_and_warns(self, caplog):
         import logging
+
         with caplog.at_level(logging.WARNING):
             bad = validate_pressure_plausibility(self._net([2.5, -0.3, 4.0, -1.2]))
         assert bad == [1, 3]
@@ -130,6 +137,7 @@ class TestValidatePressurePlausibility:
         from types import SimpleNamespace
 
         import pandas as pd
+
         assert validate_pressure_plausibility(SimpleNamespace(res_junction=None)) == []
         assert validate_pressure_plausibility(SimpleNamespace(res_junction=pd.DataFrame())) == []
 
@@ -144,6 +152,7 @@ class TestValidatePressurePlausibility:
 
     def test_context_in_warning(self, caplog):
         import logging
+
         with caplog.at_level(logging.WARNING):
             validate_pressure_plausibility(self._net([-1.0]), context="network generation")
         assert "network generation" in caplog.records[0].getMessage()
@@ -157,23 +166,31 @@ class TestDiameterLadders:
     @staticmethod
     def _catalog():
         import pandas as pd
+
         # Same bore repeats across grades (insulation differs, inner diameter does not).
         return pd.DataFrame(
             {"inner_diameter_mm": [21.7, 21.7, 21.7, 27.3, 27.3, 27.3, 53.9, 53.9]},
             index=[
-                "ISOPLUS_DRE20_STD", "ISOPLUS_DRE20_1x", "ISOPLUS_DRE20_2x",
-                "ISOPLUS_DRE25_STD", "ISOPLUS_DRE25_1x", "ISOPLUS_DRE25_2x",
-                "ISOPLUS_DRE50_STD", "ISOPLUS_DRE50_1x",
+                "ISOPLUS_DRE20_STD",
+                "ISOPLUS_DRE20_1x",
+                "ISOPLUS_DRE20_2x",
+                "ISOPLUS_DRE25_STD",
+                "ISOPLUS_DRE25_1x",
+                "ISOPLUS_DRE25_2x",
+                "ISOPLUS_DRE50_STD",
+                "ISOPLUS_DRE50_1x",
             ],
         )
 
     def test_insulation_grade_parsing(self):
         from districtheatingsim.net_simulation_pandapipes.utilities import _insulation_grade
+
         assert _insulation_grade("ISOPLUS_DRE100_2x") == "2x"
         assert _insulation_grade("ISOPLUS_DRE100_STD") == "STD"
 
     def test_ladders_grouped_by_grade_and_sorted(self):
         from districtheatingsim.net_simulation_pandapipes.utilities import build_diameter_ladders
+
         ladders = build_diameter_ladders(self._catalog())
         assert ladders["STD"] == ["ISOPLUS_DRE20_STD", "ISOPLUS_DRE25_STD", "ISOPLUS_DRE50_STD"]
         assert ladders["1x"] == ["ISOPLUS_DRE20_1x", "ISOPLUS_DRE25_1x", "ISOPLUS_DRE50_1x"]
@@ -184,6 +201,7 @@ class TestDiameterLadders:
             build_diameter_ladders,
             neighbor_std_type,
         )
+
         ladders = build_diameter_ladders(self._catalog())
         # The whole point: DRE20_STD upsizes to DRE25_STD, NOT DRE20_1x.
         assert neighbor_std_type("ISOPLUS_DRE20_STD", ladders, larger=True) == "ISOPLUS_DRE25_STD"
@@ -193,6 +211,7 @@ class TestDiameterLadders:
             build_diameter_ladders,
             neighbor_std_type,
         )
+
         ladders = build_diameter_ladders(self._catalog())
         assert neighbor_std_type("ISOPLUS_DRE25_2x", ladders, larger=False) == "ISOPLUS_DRE20_2x"
 
@@ -201,6 +220,7 @@ class TestDiameterLadders:
             build_diameter_ladders,
             neighbor_std_type,
         )
+
         ladders = build_diameter_ladders(self._catalog())
         assert neighbor_std_type("ISOPLUS_DRE50_STD", ladders, larger=True) is None
         assert neighbor_std_type("ISOPLUS_DRE20_STD", ladders, larger=False) is None
@@ -210,6 +230,7 @@ class TestDiameterLadders:
             build_diameter_ladders,
             neighbor_std_type,
         )
+
         ladders = build_diameter_ladders(self._catalog())
         assert neighbor_std_type("NOT_A_TYPE", ladders, larger=True) is None
 
@@ -217,8 +238,7 @@ class TestDiameterLadders:
 def _design_state(qext=7.5):
     return {
         "Heizentrale Haupteinspeisung": {
-            0: {"mass_flow_design": 1.2, "flow_temp_design": 85.0,
-                "return_temp_design": 60.0, "qext_kW_design": qext},
+            0: {"mass_flow_design": 1.2, "flow_temp_design": 85.0, "return_temp_design": 60.0, "qext_kW_design": qext},
         },
         "weitere Einspeisung": {},
     }
@@ -267,6 +287,7 @@ class TestResolvePipeU:
 
     def test_works_with_pandas_series(self):
         import pandas as pd
+
         s = pd.Series({"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3})
         assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)
 
@@ -281,6 +302,7 @@ class TestNetworkDataArrayCoercion:
         from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
             NetworkGenerationData,
         )
+
         return NetworkGenerationData._coerce_array(value)
 
     def test_string_repr_restored_to_array(self):
@@ -313,6 +335,7 @@ class TestNetworkDataArrayCoercion:
         from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
             json_default,
         )
+
         original = np.linspace(70.0, 85.0, 9000)  # long enough that str() abbreviates
         dumped = _json.dumps({"x": original}, default=json_default)
         assert "..." not in dumped  # serialised as a full list, not a truncated repr
@@ -333,6 +356,7 @@ class TestSecondaryProducerRoundTrip:
             SecondaryProducer,
             json_default,
         )
+
         return NetworkGenerationData, SecondaryProducer, json_default
 
     def test_json_default_serialises_dataclass_to_dict(self):
@@ -349,6 +373,7 @@ class TestSecondaryProducerRoundTrip:
 
     def test_full_json_round_trip(self):
         import json as _json
+
         NetworkGenerationData, SecondaryProducer, json_default = self._types()
         producers = [SecondaryProducer(index=1, load_percentage=5.0)]
         dumped = _json.dumps({"secondary_producers": producers}, default=json_default)
@@ -362,9 +387,12 @@ class TestSecondaryProducerRoundTrip:
         assert NetworkGenerationData._coerce_secondary_producers([]) == []
         assert NetworkGenerationData._coerce_secondary_producers(None) == []
         # legacy str(obj) repr is unrecoverable -> dropped
-        assert NetworkGenerationData._coerce_secondary_producers(
-            ["SecondaryProducer(index=1, load_percentage=5.0, mass_flow=None)"]
-        ) == []
+        assert (
+            NetworkGenerationData._coerce_secondary_producers(
+                ["SecondaryProducer(index=1, load_percentage=5.0, mass_flow=None)"]
+            )
+            == []
+        )
 
     def test_unexpected_dict_keys_ignored(self):
         NetworkGenerationData, SecondaryProducer, _ = self._types()
@@ -377,13 +405,16 @@ class TestSecondaryProducerRoundTrip:
 class TestKmrToIsoplus:
     """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
 
-    @pytest.mark.parametrize("kmr,iso", [
-        ("KMR 100/250-2v", "ISOPLUS_DRE100_2x"),
-        ("KMR 32/140-2v", "ISOPLUS_DRE32_2x"),
-        ("KMR 20/125-2v", "ISOPLUS_DRE20_2x"),
-        ("KMR 125/280-2v", "ISOPLUS_DRE125_2x"),
-        ("KMR 175/-2v", "ISOPLUS_DRE175_2x"),  # blank outer diameter in old data
-    ])
+    @pytest.mark.parametrize(
+        "kmr,iso",
+        [
+            ("KMR 100/250-2v", "ISOPLUS_DRE100_2x"),
+            ("KMR 32/140-2v", "ISOPLUS_DRE32_2x"),
+            ("KMR 20/125-2v", "ISOPLUS_DRE20_2x"),
+            ("KMR 125/280-2v", "ISOPLUS_DRE125_2x"),
+            ("KMR 175/-2v", "ISOPLUS_DRE175_2x"),  # blank outer diameter in old data
+        ],
+    )
     def test_kmr_names_map(self, kmr, iso):
         assert kmr_to_isoplus_std_type(kmr) == iso
 
@@ -399,6 +430,7 @@ class TestNearestIsoplusForKmr:
     @staticmethod
     def _catalog():
         import pandapipes as pp
+
         return pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe")
 
     def test_exact_match_used_when_available(self):
@@ -419,6 +451,7 @@ class TestMigrateLoadedNet:
     @staticmethod
     def _old_net():
         import pandapipes as pp
+
         net = pp.create_empty_network(fluid="water")
         j1 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
         j2 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
@@ -430,8 +463,12 @@ class TestMigrateLoadedNet:
         # Emulate the obsolete std-types library shipped inside an old pickle: it holds
         # only KMR types, so a lookup against this net would never find ISOPLUS.
         net.std_types["pipe"] = {
-            "KMR 32/140-2v": {"nominal_width_mm": 32, "inner_diameter_mm": 37.2,
-                              "outer_diameter_mm": 140, "u_w_per_m2k": 0.4},
+            "KMR 32/140-2v": {
+                "nominal_width_mm": 32,
+                "inner_diameter_mm": 37.2,
+                "outer_diameter_mm": 140,
+                "u_w_per_m2k": 0.4,
+            },
         }
         return net
 
@@ -439,6 +476,7 @@ class TestMigrateLoadedNet:
         import pandapipes as pp
 
         from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
         net = migrate_loaded_net(self._old_net())
         row = net.pipe.iloc[0]
         assert row["std_type"] == "ISOPLUS_DRE32_2x"
@@ -453,6 +491,7 @@ class TestMigrateLoadedNet:
 
     def test_inner_diameter_added_when_no_kmr_match(self):
         from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
         net = self._old_net()
         net.pipe["std_type"] = ""  # unknown / no remap
         migrate_loaded_net(net)
@@ -485,8 +524,7 @@ class TestNetworkInitialization:
         st = 85 + 273.15
         coords = [(0, 10), (0, 0), (10, 0), (60, 0), (85, 0), (85, 10), (60, 10), (10, 10)]
         j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=st, geodata=c) for c in coords]
-        pp.create_circ_pump_const_pressure(net, j[0], j[1], p_flow_bar=4, plift_bar=1.5,
-                                           t_flow_k=st, type="auto")
+        pp.create_circ_pump_const_pressure(net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=st, type="auto")
         for a, b, length in [(1, 2, 0.01), (2, 3, 0.05), (3, 4, 0.025)]:
             pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
         pp.create_heat_consumer(net, j[4], j[5], qext_w=500000, treturn_k=55 + 273.15)
@@ -495,8 +533,7 @@ class TestNetworkInitialization:
             pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
 
         pp.pipeflow(net, mode="bidirectional", iter=100)
-        net = create_controllers(net, np.array([500000, 200000]), 85, None,
-                                 np.array([55, 60]), None)
+        net = create_controllers(net, np.array([500000, 200000]), 85, None, np.array([55, 60]), None)
         run_control(net, mode="bidirectional", iter=100)
         net = correct_flow_directions(net)
         return init_diameter_types(net, v_max_pipe=1.5, k=0.1)
@@ -516,6 +553,7 @@ class TestNetworkInitialization:
         # The domain step behind the GUI "recalculate" button (extracted from the view,
         # BACKLOG B2): editing a pipe + recalculating must re-solve to finite results.
         from districtheatingsim.net_simulation_pandapipes.utilities import recalculate_net
+
         net = self._build_and_init()
         net.pipe.at[0, "inner_diameter_mm"] *= 1.5
         recalculate_net(net)
@@ -528,6 +566,7 @@ class TestNetworkInitialization:
         from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import (
             InteractiveNetworkPlot,
         )
+
         net = self._build_and_init()
         fig = InteractiveNetworkPlot(net, crs="EPSG:25833").create_plot(
             parameter="v_mean_m_per_s", component_type="pipe"
@@ -544,6 +583,7 @@ class TestNetworkInitialization:
         from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
             NetworkGenerationData,
         )
+
         net = self._build_and_init()
         nd = SimpleNamespace(net=net, waerme_ges_kW=np.array([100.0, 120.0]), pump_results=None)
         kpis = NetworkGenerationData.calculate_results(nd)
@@ -563,24 +603,26 @@ class TestAvailablePlotParameters:
         from districtheatingsim.net_simulation_pandapipes.plot_data import (
             available_plot_parameters,
         )
+
         return available_plot_parameters(net)
 
     def test_empty_net_has_no_parameters(self):
         from types import SimpleNamespace
+
         params = self._params(SimpleNamespace())
-        assert params == {"junction": [], "pipe": [], "heat_consumer": [],
-                          "pump": [], "flow_control": []}
+        assert params == {"junction": [], "pipe": [], "heat_consumer": [], "pump": [], "flow_control": []}
 
     def test_junction_pipe_consumer_parameters(self):
         from types import SimpleNamespace
 
         import pandas as pd
+
         net = SimpleNamespace(
             res_junction=pd.DataFrame(columns=["p_bar", "t_k"]),
-            res_pipe=pd.DataFrame(columns=["mdot_from_kg_per_s", "v_mean_m_per_s",
-                                           "t_from_k", "t_to_k", "p_from_bar", "p_to_bar"]),
-            res_heat_consumer=pd.DataFrame(columns=["qext_w", "mdot_from_kg_per_s",
-                                                    "t_from_k", "t_to_k"]),
+            res_pipe=pd.DataFrame(
+                columns=["mdot_from_kg_per_s", "v_mean_m_per_s", "t_from_k", "t_to_k", "p_from_bar", "p_to_bar"]
+            ),
+            res_heat_consumer=pd.DataFrame(columns=["qext_w", "mdot_from_kg_per_s", "t_from_k", "t_to_k"]),
         )
         params = self._params(net)
         assert params["junction"] == ["p_bar", "t_k"]
@@ -593,10 +635,10 @@ class TestAvailablePlotParameters:
         from types import SimpleNamespace
 
         import pandas as pd
+
         net = SimpleNamespace(
             res_circ_pump_pressure=pd.DataFrame(
-                {"mdot_from_kg_per_s": [1.0], "deltap_bar": [0.5],
-                 "t_from_k": [330.0], "t_to_k": [360.0]}
+                {"mdot_from_kg_per_s": [1.0], "deltap_bar": [0.5], "t_from_k": [330.0], "t_to_k": [360.0]}
             ),
         )
         params = self._params(net)
@@ -611,6 +653,7 @@ class TestJunctionPlotData:
         from types import SimpleNamespace
 
         import pandas as pd
+
         # Realistic EPSG:25833 (UTM33N) coordinates near Görlitz so reprojection works.
         return SimpleNamespace(
             junction_geodata=pd.DataFrame({"x": [500000.0, 500010.0], "y": [5680000.0, 5680010.0]}),
@@ -620,6 +663,7 @@ class TestJunctionPlotData:
 
     def test_coords_hover_and_values(self):
         from districtheatingsim.net_simulation_pandapipes.plot_data import junction_plot_data
+
         data = junction_plot_data(self._net(), "EPSG:25833", parameter="p_bar")
         assert len(data.lats) == len(data.lons) == 2
         # Reprojected to WGS84 -> latitudes ~51°, longitudes ~14-15° (Görlitz region).
@@ -632,6 +676,7 @@ class TestJunctionPlotData:
 
     def test_no_parameter_leaves_values_none(self):
         from districtheatingsim.net_simulation_pandapipes.plot_data import junction_plot_data
+
         data = junction_plot_data(self._net(), "EPSG:25833", parameter=None)
         assert data.values is None
         assert list(data.ids) == [0, 1]
@@ -642,6 +687,7 @@ class TestParameterHelpers:
 
     def test_parameter_label_known_and_unknown(self):
         from districtheatingsim.net_simulation_pandapipes.plot_data import parameter_label
+
         assert parameter_label("p_bar") == "Druck [bar]"
         assert parameter_label("v_mean_m_per_s") == "Geschwindigkeit [m/s]"
         assert parameter_label("unknown_param") == "unknown_param"  # fallback
@@ -650,12 +696,12 @@ class TestParameterHelpers:
         import pandas as pd
 
         from districtheatingsim.net_simulation_pandapipes.plot_data import parameter_value
+
         res = pd.DataFrame(
-            {"v_mean_m_per_s": [1.5], "t_from_k": [360.0], "t_to_k": [330.0],
-             "p_from_bar": [5.0], "p_to_bar": [4.2]}
+            {"v_mean_m_per_s": [1.5], "t_from_k": [360.0], "t_to_k": [330.0], "p_from_bar": [5.0], "p_to_bar": [4.2]}
         )
         assert parameter_value(res, 0, "v_mean_m_per_s") == 1.5
-        assert parameter_value(res, 0, "dt_k") == pytest.approx(30.0)   # t_from - t_to
+        assert parameter_value(res, 0, "dt_k") == pytest.approx(30.0)  # t_from - t_to
         assert parameter_value(res, 0, "dp_bar") == pytest.approx(0.8)  # p_from - p_to
         assert parameter_value(res, 0, "missing") is None
 
@@ -676,33 +722,38 @@ class TestPipePlotData:
             crs="EPSG:4326",
         )  # index 0, 1, 2
         net = SimpleNamespace(
-            pipe=pd.DataFrame({
-                "name": ["P0", "P1"],
-                "std_type": ["ISOPLUS_DRE100_2x", "ISOPLUS_DRE100_2x"],
-                "length_km": [0.10, 0.20],
-                "from_junction": [0, 1],
-                "to_junction": [1, 2],
-            }),
-            res_pipe=pd.DataFrame({
-                "mdot_from_kg_per_s": [1.2, 0.8],
-                "v_mean_m_per_s": [1.5, 0.9],
-                "t_from_k": [360.0, 360.0],
-                "t_to_k": [330.0, 332.0],
-                "p_from_bar": [5.0, 4.8],
-                "p_to_bar": [4.5, 4.4],
-            }),
+            pipe=pd.DataFrame(
+                {
+                    "name": ["P0", "P1"],
+                    "std_type": ["ISOPLUS_DRE100_2x", "ISOPLUS_DRE100_2x"],
+                    "length_km": [0.10, 0.20],
+                    "from_junction": [0, 1],
+                    "to_junction": [1, 2],
+                }
+            ),
+            res_pipe=pd.DataFrame(
+                {
+                    "mdot_from_kg_per_s": [1.2, 0.8],
+                    "v_mean_m_per_s": [1.5, 0.9],
+                    "t_from_k": [360.0, 360.0],
+                    "t_to_k": [330.0, 332.0],
+                    "p_from_bar": [5.0, 4.8],
+                    "p_to_bar": [4.5, 4.4],
+                }
+            ),
         )
         return net, junctions
 
     def test_segments_coords_and_values(self):
         from districtheatingsim.net_simulation_pandapipes.plot_data import pipe_plot_data
+
         net, junctions = self._net_and_junctions()
         data = pipe_plot_data(net, junctions, parameter="v_mean_m_per_s")
 
         assert len(data.segments) == 2
         seg = data.segments[0]
-        assert (seg.from_lat, seg.from_lon) == (51.0, 14.0)        # junction 0
-        assert (seg.to_lat, seg.to_lon) == (51.001, 14.001)        # junction 1
+        assert (seg.from_lat, seg.from_lon) == (51.0, 14.0)  # junction 0
+        assert (seg.to_lat, seg.to_lon) == (51.001, 14.001)  # junction 1
         assert seg.mid_lat == pytest.approx(51.0005)
         assert seg.value == 1.5
         assert (seg.idx, seg.name) == (0, "P0")
@@ -711,17 +762,19 @@ class TestPipePlotData:
 
     def test_hover_text_fields(self):
         from districtheatingsim.net_simulation_pandapipes.plot_data import pipe_plot_data
+
         net, junctions = self._net_and_junctions()
         hover = pipe_plot_data(net, junctions, parameter="v_mean_m_per_s").segments[0].hover_text
         assert "<b>P0</b>" in hover
         assert "Typ: ISOPLUS_DRE100_2x" in hover
         assert "Länge: 0.100 km" in hover
         assert "Massenstrom: 1.20 kg/s" in hover
-        assert "ΔT: 30.0 K" in hover           # 360 - 330
+        assert "ΔT: 30.0 K" in hover  # 360 - 330
         assert "Geschwindigkeit [m/s]: 1.50" in hover  # the coloured parameter line
 
     def test_no_parameter_leaves_values_none(self):
         from districtheatingsim.net_simulation_pandapipes.plot_data import pipe_plot_data
+
         net, junctions = self._net_and_junctions()
         data = pipe_plot_data(net, junctions, parameter=None)
         assert data.vmin is None and data.vmax is None
@@ -741,19 +794,26 @@ class TestHeatConsumerPlotData:
         import pandas as pd
         from shapely.geometry import Point
 
-        junctions = gpd.GeoDataFrame(
-            geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326"
-        )
+        junctions = gpd.GeoDataFrame(geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326")
         net = SimpleNamespace(
-            heat_consumer=pd.DataFrame({
-                "name": ["HC0"], "qext_w": [500000.0],
-                "from_junction": [0], "to_junction": [1],
-            }),
-            res_heat_consumer=pd.DataFrame({
-                "mdot_from_kg_per_s": [2.0], "qext_w": [500000.0],
-                "t_from_k": [358.15], "t_to_k": [330.15],
-                "p_from_bar": [5.0], "p_to_bar": [4.0],
-            }),
+            heat_consumer=pd.DataFrame(
+                {
+                    "name": ["HC0"],
+                    "qext_w": [500000.0],
+                    "from_junction": [0],
+                    "to_junction": [1],
+                }
+            ),
+            res_heat_consumer=pd.DataFrame(
+                {
+                    "mdot_from_kg_per_s": [2.0],
+                    "qext_w": [500000.0],
+                    "t_from_k": [358.15],
+                    "t_to_k": [330.15],
+                    "p_from_bar": [5.0],
+                    "p_to_bar": [4.0],
+                }
+            ),
         )
         return net, junctions
 
@@ -761,17 +821,18 @@ class TestHeatConsumerPlotData:
         from districtheatingsim.net_simulation_pandapipes.plot_data import (
             heat_consumer_plot_data,
         )
+
         net, junctions = self._net_and_junctions()
         data = heat_consumer_plot_data(net, junctions, parameter="qext_w")
         assert len(data.segments) == 1
         seg = data.segments[0]
         assert seg.value == 500000.0
         assert "<b>HC0</b>" in seg.hover_text
-        assert "Wärmebedarf: 500.0 kW" in seg.hover_text         # from heat_consumer.qext_w
-        assert "Vorlauftemp.: 85.0 °C" in seg.hover_text          # 358.15 - 273.15
-        assert "Rücklauftemp.: 57.0 °C" in seg.hover_text         # 330.15 - 273.15
-        assert "ΔT: 28.0 K" in seg.hover_text                     # t_from - t_to
-        assert "Wärmebedarf [W]: 500000.00" in seg.hover_text     # coloured parameter line
+        assert "Wärmebedarf: 500.0 kW" in seg.hover_text  # from heat_consumer.qext_w
+        assert "Vorlauftemp.: 85.0 °C" in seg.hover_text  # 358.15 - 273.15
+        assert "Rücklauftemp.: 57.0 °C" in seg.hover_text  # 330.15 - 273.15
+        assert "ΔT: 28.0 K" in seg.hover_text  # t_from - t_to
+        assert "Wärmebedarf [W]: 500000.00" in seg.hover_text  # coloured parameter line
 
 
 class TestPumpPlotData:
@@ -785,18 +846,25 @@ class TestPumpPlotData:
         import pandas as pd
         from shapely.geometry import Point
 
-        junctions = gpd.GeoDataFrame(
-            geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326"
-        )
+        junctions = gpd.GeoDataFrame(geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326")
         net = SimpleNamespace(
-            circ_pump_pressure=pd.DataFrame({
-                "name": ["Pump0"], "from_junction": [0], "to_junction": [1],
-            }),
-            res_circ_pump_pressure=pd.DataFrame({
-                "mdot_from_kg_per_s": [3.0], "deltap_bar": [2.0],
-                "t_from_k": [330.15], "t_to_k": [358.15],
-                "p_from_bar": [3.0], "p_to_bar": [5.0],
-            }),
+            circ_pump_pressure=pd.DataFrame(
+                {
+                    "name": ["Pump0"],
+                    "from_junction": [0],
+                    "to_junction": [1],
+                }
+            ),
+            res_circ_pump_pressure=pd.DataFrame(
+                {
+                    "mdot_from_kg_per_s": [3.0],
+                    "deltap_bar": [2.0],
+                    "t_from_k": [330.15],
+                    "t_to_k": [358.15],
+                    "p_from_bar": [3.0],
+                    "p_to_bar": [5.0],
+                }
+            ),
         )
         return net, junctions
 
@@ -804,6 +872,7 @@ class TestPumpPlotData:
         from districtheatingsim.net_simulation_pandapipes.plot_data import (
             pump_plot_data,
         )
+
         net, junctions = self._net_and_junctions()
         data = pump_plot_data(net, junctions, parameter="deltap_bar")
         assert len(data.segments) == 1
@@ -811,12 +880,12 @@ class TestPumpPlotData:
         assert seg.value == 2.0
         assert "<b>Pump0</b>" in seg.hover_text
         # Pumps run return->supply: Vorlauf reads *to*, Rücklauf reads *from*.
-        assert "Vorlauftemp.: 85.0 °C" in seg.hover_text        # t_to_k 358.15 - 273.15
-        assert "Rücklauftemp.: 57.0 °C" in seg.hover_text        # t_from_k 330.15 - 273.15
-        assert "Vorlaufdruck: 5.00 bar" in seg.hover_text        # p_to_bar
-        assert "Rücklaufdruck: 3.00 bar" in seg.hover_text       # p_from_bar
-        assert "Druckanhebung: 2.00 bar" in seg.hover_text       # deltap_bar
-        assert "Druckdifferenz [bar]: 2.00" in seg.hover_text    # coloured parameter line
+        assert "Vorlauftemp.: 85.0 °C" in seg.hover_text  # t_to_k 358.15 - 273.15
+        assert "Rücklauftemp.: 57.0 °C" in seg.hover_text  # t_from_k 330.15 - 273.15
+        assert "Vorlaufdruck: 5.00 bar" in seg.hover_text  # p_to_bar
+        assert "Rücklaufdruck: 3.00 bar" in seg.hover_text  # p_from_bar
+        assert "Druckanhebung: 2.00 bar" in seg.hover_text  # deltap_bar
+        assert "Druckdifferenz [bar]: 2.00" in seg.hover_text  # coloured parameter line
 
     def test_no_pumps_returns_empty(self):
         from types import SimpleNamespace
@@ -827,6 +896,7 @@ class TestPumpPlotData:
         from districtheatingsim.net_simulation_pandapipes.plot_data import (
             pump_plot_data,
         )
+
         junctions = gpd.GeoDataFrame(geometry=[Point(14.0, 51.0)], crs="EPSG:4326")
         data = pump_plot_data(SimpleNamespace(), junctions)
         assert data.segments == []
@@ -844,18 +914,24 @@ class TestFlowControlPlotData:
         import pandas as pd
         from shapely.geometry import Point
 
-        junctions = gpd.GeoDataFrame(
-            geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326"
-        )
+        junctions = gpd.GeoDataFrame(geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326")
         net = SimpleNamespace(
-            flow_control=pd.DataFrame({
-                "name": ["FC0"], "from_junction": [0], "to_junction": [1],
-                "controlled_mdot_kg_per_s": [1.5],
-            }),
-            res_flow_control=pd.DataFrame({
-                "mdot_from_kg_per_s": [1.5], "deltap_bar": [0.3],
-                "p_from_bar": [5.0], "p_to_bar": [4.7],
-            }),
+            flow_control=pd.DataFrame(
+                {
+                    "name": ["FC0"],
+                    "from_junction": [0],
+                    "to_junction": [1],
+                    "controlled_mdot_kg_per_s": [1.5],
+                }
+            ),
+            res_flow_control=pd.DataFrame(
+                {
+                    "mdot_from_kg_per_s": [1.5],
+                    "deltap_bar": [0.3],
+                    "p_from_bar": [5.0],
+                    "p_to_bar": [4.7],
+                }
+            ),
         )
         return net, junctions
 
@@ -863,6 +939,7 @@ class TestFlowControlPlotData:
         from districtheatingsim.net_simulation_pandapipes.plot_data import (
             flow_control_plot_data,
         )
+
         net, junctions = self._net_and_junctions()
         data = flow_control_plot_data(net, junctions, parameter="deltap_bar")
         assert len(data.segments) == 1
@@ -874,7 +951,7 @@ class TestFlowControlPlotData:
         assert "Vorlaufdruck: 5.00 bar" in seg.hover_text
         assert "Rücklaufdruck: 4.70 bar" in seg.hover_text
         assert "Druckdifferenz: 0.30 bar" in seg.hover_text
-        assert "Druckdifferenz [bar]: 0.30" in seg.hover_text    # coloured parameter line
+        assert "Druckdifferenz [bar]: 0.30" in seg.hover_text  # coloured parameter line
 
 
 class TestRecalculateNet:
@@ -882,6 +959,7 @@ class TestRecalculateNet:
         import pandapipes as pp
 
         from districtheatingsim.net_simulation_pandapipes.utilities import recalculate_net
+
         # An empty network cannot be solved; the opaque pandapipes error is re-raised
         # with run context instead (BACKLOG B2/C2).
         with pytest.raises(RuntimeError, match="recalculation failed"):

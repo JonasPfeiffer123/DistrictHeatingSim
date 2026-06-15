@@ -31,8 +31,15 @@ _ECON = {
 def _system():
     ts = pd.date_range("2023-01-01", periods=8760, freq="h").to_numpy()
     load = np.linspace(50.0, 400.0, 8760)
-    es = EnergySystem(ts, load, np.full(8760, 85.0), np.full(8760, 50.0),
-                      tuple(np.zeros(8760) for _ in range(5)), np.zeros((2, 2)), _ECON)
+    es = EnergySystem(
+        ts,
+        load,
+        np.full(8760, 85.0),
+        np.full(8760, 50.0),
+        tuple(np.zeros(8760) for _ in range(5)),
+        np.zeros((2, 2)),
+        _ECON,
+    )
     es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=100))
     es.add_technology(GasBoiler("Gaskessel_1", thermal_capacity_kW=500))
     return es
@@ -46,10 +53,10 @@ class TestWorkerIsolation:
         result = run_energy_system_calculation(es, optimize=False, weights=None)
 
         assert len(result) == 1
-        assert result[0] is not es                       # a deep copy, not the shared object
+        assert result[0] is not es  # a deep copy, not the shared object
         assert result[0].technologies is not es.technologies
-        assert result[0].results != {}                   # the copy was computed
-        assert es.results == {}                          # input NOT mutated (the C1 race)
+        assert result[0].results != {}  # the copy was computed
+        assert es.results == {}  # input NOT mutated (the C1 race)
 
     def test_repeated_calls_do_not_accumulate_on_input(self):
         es = _system()

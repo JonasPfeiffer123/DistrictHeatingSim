@@ -91,7 +91,7 @@ class TestAnnuityRateFactorGuard:
                 asset_lifespan_years=20,
                 installation_factor=0.03,
                 maintenance_inspection_factor=0.02,
-                interest_rate_factor=0.05,   # rate, not factor
+                interest_rate_factor=0.05,  # rate, not factor
                 inflation_rate_factor=1.03,
             )
 
@@ -103,7 +103,7 @@ class TestAnnuityRateFactorGuard:
                 installation_factor=0.03,
                 maintenance_inspection_factor=0.02,
                 interest_rate_factor=1.05,
-                inflation_rate_factor=0.03,   # rate, not factor
+                inflation_rate_factor=0.03,  # rate, not factor
             )
 
     def test_interest_factor_of_one_raises(self):
@@ -145,7 +145,10 @@ class TestAnnuityValidation:
     def test_equal_interest_and_inflation_raises(self):
         with pytest.raises(ZeroDivisionError):
             annuity(
-                10000, 20, 0.03, 0.02,
+                10000,
+                20,
+                0.03,
+                0.02,
                 interest_rate_factor=1.05,
                 inflation_rate_factor=1.05,
             )
@@ -163,7 +166,11 @@ class TestInfrastructureAnnuity:
     def test_matches_annuity_with_mapped_parameters(self, economic_parameters):
         A0, TN, f_inst, f_wi, effort = 50000, 20, 1.0, 2.0, 10
         expected = annuity(
-            A0, TN, f_inst, f_wi, effort,
+            A0,
+            TN,
+            f_inst,
+            f_wi,
+            effort,
             interest_rate_factor=economic_parameters["capital_interest_rate"],
             inflation_rate_factor=economic_parameters["inflation_rate"],
             consideration_time_period_years=economic_parameters["time_period"],

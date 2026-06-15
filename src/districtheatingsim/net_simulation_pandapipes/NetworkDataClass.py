@@ -47,29 +47,31 @@ def json_default(obj):
 class SecondaryProducer:
     """
     Secondary heat producer with mass flow control based on load percentage.
-    
+
     :ivar index: Unique producer index matching GeoJSON heat producer location
     :vartype index: int
     :ivar load_percentage: Percentage of total network heat load [%]
     :vartype load_percentage: float
     :ivar mass_flow: Calculated mass flow [kg/s], set during preprocessing
     :vartype mass_flow: Optional[float]
-    
+
     .. note::
        Load percentages across all secondary producers should not exceed 100%.
        Main producer handles remaining capacity. Extensible for additional parameters.
     """
+
     index: int
     load_percentage: float
     mass_flow: float | None = None
 
     # could be extended with additional parameters as needed
 
+
 @dataclass
 class NetworkGenerationData:
     """
     Central data container for district heating network simulation and analysis.
-    
+
     :ivar import_type: Import method type (currently "geoJSON")
     :vartype import_type: str
     :ivar network_geojson_path: Path to unified GeoJSON file (Wärmenetz.geojson)
@@ -114,13 +116,13 @@ class NetworkGenerationData:
     :vartype plot_data: Optional[Dict[str, Any]]
     :ivar kpi_results: Key performance indicators
     :vartype kpi_results: Optional[Dict[str, Union[int, float, None]]]
-    
+
     .. note::
        Supports GeoJSON-based initialization, time series simulation, KPI calculation.
        Handles cold networks (heat pumps), static/sliding temperature control.
        Data flow: GeoJSON+JSON → initialization → simulation → results → KPIs.
     """
-    
+
     # Input data for the network generation
     import_type: str
     network_geojson_path: str  # Unified GeoJSON file path
@@ -152,7 +154,7 @@ class NetworkGenerationData:
     # Producer configuration
     main_producer_location_index: int
     secondary_producers: list[SecondaryProducer]
-    
+
     # External data file paths
     COP_filename: str | None = None
     TRY_filename: str | None = None
@@ -167,7 +169,7 @@ class NetworkGenerationData:
     heizwaerme_gebaeude_ges_W: np.ndarray | None = None
     ww_waerme_gebaeude_ges_W: np.ndarray | None = None
     max_waerme_gebaeude_ges_W: np.ndarray | None = None
-    
+
     # Heat consumer data (network side)
     return_temperature_heat_consumer: np.ndarray | None = None
     min_supply_temperature_heat_consumer: np.ndarray | None = None
@@ -193,17 +195,17 @@ class NetworkGenerationData:
     net_results: dict[str, Any] | None = None
     pump_results: dict[str, Any] | None = None
     plot_data: dict[str, Any] | None = None
-    
+
     # KPI results
     kpi_results: dict[str, int | float | None] | None = None
 
     def calculate_results(self) -> dict[str, int | float | None]:
         """
         Calculate network KPIs including heat density, losses, and pump consumption.
-        
+
         :return: Dict with KPIs (Anzahl angeschlossene Gebäude, Jahresgesamtwärmebedarf [MWh/a], max. Heizlast [kW], Trassenlänge [m], Wärmebedarfsdichte [MWh/(a*m)], Anschlussdichte [kW/m], Jahreswärmeerzeugung [MWh], Pumpenstrom [MWh], Verteilverluste [MWh], rel. Verteilverluste [%])
         :rtype: Dict[str, Union[int, float, None]]
-        
+
         .. note::
            Density = demand/length. Losses = generation - demand. Pump power from mass flow and Δp.
            Network length divided by 2 (supply+return). Requires net, pump_results, waerme_ges_kW.
@@ -212,15 +214,13 @@ class NetworkGenerationData:
 
         # Network topology metrics
         results["Anzahl angeschlossene Gebäude"] = (
-            len(self.net.heat_consumer) if hasattr(self.net, 'heat_consumer') else None
+            len(self.net.heat_consumer) if hasattr(self.net, "heat_consumer") else None
         )
 
         # Heat generation capacity
-        if hasattr(self.net, 'circ_pump_pressure'):
-            if hasattr(self.net, 'circ_pump_mass'):
-                results["Anzahl Heizzentralen"] = (
-                    len(self.net.circ_pump_pressure) + len(self.net.circ_pump_mass)
-                )
+        if hasattr(self.net, "circ_pump_pressure"):
+            if hasattr(self.net, "circ_pump_mass"):
+                results["Anzahl Heizzentralen"] = len(self.net.circ_pump_pressure) + len(self.net.circ_pump_mass)
             else:
                 results["Anzahl Heizzentralen"] = len(self.net.circ_pump_pressure)
         else:
@@ -230,32 +230,29 @@ class NetworkGenerationData:
         results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] = (
             np.sum(self.waerme_ges_kW) / 1000 if self.waerme_ges_kW is not None else None
         )
-        results["max. Heizlast Gebäude [kW]"] = (
-            np.max(self.waerme_ges_kW) if self.waerme_ges_kW is not None else None
-        )
+        results["max. Heizlast Gebäude [kW]"] = np.max(self.waerme_ges_kW) if self.waerme_ges_kW is not None else None
 
         # Network infrastructure metrics
-        if hasattr(self.net, 'pipe') and hasattr(self.net.pipe, 'length_km'):
+        if hasattr(self.net, "pipe") and hasattr(self.net.pipe, "length_km"):
             # Divide by 2 for single-pipe equivalent length (supply + return)
             results["Trassenlänge Wärmenetz [m]"] = self.net.pipe.length_km.sum() * 1000 / 2
         else:
             results["Trassenlänge Wärmenetz [m]"] = None
 
         # Density calculations
-        if (results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] is not None and 
-            results["Trassenlänge Wärmenetz [m]"] is not None):
+        if (
+            results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] is not None
+            and results["Trassenlänge Wärmenetz [m]"] is not None
+        ):
             results["Wärmebedarfsdichte [MWh/(a*m)]"] = (
-                results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] / 
-                results["Trassenlänge Wärmenetz [m]"]
+                results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] / results["Trassenlänge Wärmenetz [m]"]
             )
         else:
             results["Wärmebedarfsdichte [MWh/(a*m)]"] = None
 
-        if (results["max. Heizlast Gebäude [kW]"] is not None and 
-            results["Trassenlänge Wärmenetz [m]"] is not None):
+        if results["max. Heizlast Gebäude [kW]"] is not None and results["Trassenlänge Wärmenetz [m]"] is not None:
             results["Anschlussdichte [kW/m]"] = (
-                results["max. Heizlast Gebäude [kW]"] / 
-                results["Trassenlänge Wärmenetz [m]"]
+                results["max. Heizlast Gebäude [kW]"] / results["Trassenlänge Wärmenetz [m]"]
             )
         else:
             results["Anschlussdichte [kW/m]"] = None
@@ -267,37 +264,32 @@ class NetworkGenerationData:
             for _pump_type, pumps in self.pump_results.items():
                 for _idx, pump_data in pumps.items():
                     # Heat generation [MWh/a]
-                    jahreswaermeerzeugung += np.sum(pump_data['qext_kW']) / 1000
+                    jahreswaermeerzeugung += np.sum(pump_data["qext_kW"]) / 1000
                     # Pump power: P = (ṁ * Δp) / ρ [MWh/a]
-                    pumpenstrom += np.sum(
-                        (pump_data['mass_flow']/1000) * (pump_data['deltap']*100)
-                    ) / 1000
+                    pumpenstrom += np.sum((pump_data["mass_flow"] / 1000) * (pump_data["deltap"] * 100)) / 1000
 
-        results["Jahreswärmeerzeugung [MWh]"] = (
-            jahreswaermeerzeugung if jahreswaermeerzeugung != 0 else None
-        )
+        results["Jahreswärmeerzeugung [MWh]"] = jahreswaermeerzeugung if jahreswaermeerzeugung != 0 else None
         results["Pumpenstrom [MWh]"] = pumpenstrom if pumpenstrom != 0 else None
 
         # Distribution loss calculations
-        if (results["Jahreswärmeerzeugung [MWh]"] is not None and 
-            results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] is not None):
-            verluste = (results["Jahreswärmeerzeugung [MWh]"] - 
-                       results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"])
+        if (
+            results["Jahreswärmeerzeugung [MWh]"] is not None
+            and results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] is not None
+        ):
+            verluste = results["Jahreswärmeerzeugung [MWh]"] - results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"]
             results["Verteilverluste [MWh]"] = verluste
-            results["rel. Verteilverluste [%]"] = (
-                (verluste / results["Jahreswärmeerzeugung [MWh]"]) * 100
-            )
+            results["rel. Verteilverluste [%]"] = (verluste / results["Jahreswärmeerzeugung [MWh]"]) * 100
         else:
             results["Verteilverluste [MWh]"] = None
             results["rel. Verteilverluste [%]"] = None
 
         self.kpi_results = results
         return results
-    
+
     def prepare_plot_data(self) -> None:
         """
         Structure simulation results for visualization with labels, axes, and time alignment.
-        
+
         .. note::
            Creates plot_data dict with entries: data (numpy array), label (string), axis
            (left/right), time (array). Includes heat demand, electrical data (cold networks),
@@ -305,112 +297,112 @@ class NetworkGenerationData:
            variable name and producer number.
         """
         # Determine time range for plots (use simulated range if available)
-        if hasattr(self, 'start_time_step') and hasattr(self, 'end_time_step'):
-            time_range = self.yearly_time_steps[self.start_time_step:self.end_time_step]
-            data_range_waerme = self.waerme_ges_kW[self.start_time_step:self.end_time_step]
-            data_range_strom = self.strombedarf_ges_kW[self.start_time_step:self.end_time_step]
+        if hasattr(self, "start_time_step") and hasattr(self, "end_time_step"):
+            time_range = self.yearly_time_steps[self.start_time_step : self.end_time_step]
+            data_range_waerme = self.waerme_ges_kW[self.start_time_step : self.end_time_step]
+            data_range_strom = self.strombedarf_ges_kW[self.start_time_step : self.end_time_step]
         else:
             # Fallback: use full year
             time_range = self.yearly_time_steps
             data_range_waerme = self.waerme_ges_kW
             data_range_strom = self.strombedarf_ges_kW
-        
+
         # Initialize plot data with base heat demand
         self.plot_data = {
             "Gesamtwärmebedarf Wärmeübertrager": {
                 "data": data_range_waerme,
                 "label": "Wärmebedarf Wärmeübertrager in kW",
                 "axis": "left",
-                "time": time_range
+                "time": time_range,
             }
         }
-        
+
         # Add electrical data for cold networks
         if np.sum(data_range_strom) > 0:
             self.plot_data["Gesamtheizlast Gebäude"] = {
                 "data": data_range_waerme + data_range_strom,
                 "label": "Gesamtheizlast Gebäude in kW",
                 "axis": "left",
-                "time": time_range
+                "time": time_range,
             }
             self.plot_data["Gesamtstrombedarf Wärmepumpen Gebäude"] = {
                 "data": data_range_strom,
                 "label": "Gesamtstrombedarf Wärmepumpen Gebäude in kW",
                 "axis": "left",
-                "time": time_range
+                "time": time_range,
             }
-        
+
         # Add detailed producer/pump data
         if self.pump_results is not None:
             for pump_type, pumps in self.pump_results.items():
                 for idx, pump_data in pumps.items():
                     # Time series data for simulation period
-                    time_series = self.yearly_time_steps[self.start_time_step:self.end_time_step]
-                    
+                    time_series = self.yearly_time_steps[self.start_time_step : self.end_time_step]
+
                     # Heat generation data
-                    self.plot_data[f"Wärmeerzeugung {pump_type} {idx+1}"] = {
-                        "data": pump_data['qext_kW'],
+                    self.plot_data[f"Wärmeerzeugung {pump_type} {idx + 1}"] = {
+                        "data": pump_data["qext_kW"],
                         "label": "Wärmeerzeugung in kW",
                         "axis": "left",
-                        "time": time_series
+                        "time": time_series,
                     }
-                    
+
                     # Hydraulic data
-                    self.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {
-                        "data": pump_data['mass_flow'],
+                    self.plot_data[f"Massenstrom {pump_type} {idx + 1}"] = {
+                        "data": pump_data["mass_flow"],
                         "label": "Massenstrom in kg/s",
                         "axis": "right",
-                        "time": time_series
+                        "time": time_series,
                     }
-                    
-                    self.plot_data[f"Delta p {pump_type} {idx+1}"] = {
-                        "data": pump_data['deltap'],
+
+                    self.plot_data[f"Delta p {pump_type} {idx + 1}"] = {
+                        "data": pump_data["deltap"],
                         "label": "Druckdifferenz in bar",
                         "axis": "right",
-                        "time": time_series
+                        "time": time_series,
                     }
-                    
+
                     # Temperature data
-                    self.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {
-                        "data": pump_data['flow_temp'],
+                    self.plot_data[f"Vorlauftemperatur {pump_type} {idx + 1}"] = {
+                        "data": pump_data["flow_temp"],
                         "label": "Temperatur in °C",
                         "axis": "right",
-                        "time": time_series
+                        "time": time_series,
                     }
-                    
-                    self.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {
-                        "data": pump_data['return_temp'],
+
+                    self.plot_data[f"Rücklauftemperatur {pump_type} {idx + 1}"] = {
+                        "data": pump_data["return_temp"],
                         "label": "Temperatur in °C",
                         "axis": "right",
-                        "time": time_series
+                        "time": time_series,
                     }
-                    
+
                     # Pressure data
-                    self.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {
-                        "data": pump_data['flow_pressure'],
+                    self.plot_data[f"Vorlaufdruck {pump_type} {idx + 1}"] = {
+                        "data": pump_data["flow_pressure"],
                         "label": "Druck in bar",
                         "axis": "right",
-                        "time": time_series
+                        "time": time_series,
                     }
-                    
-                    self.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {
-                        "data": pump_data['return_pressure'],
+
+                    self.plot_data[f"Rücklaufdruck {pump_type} {idx + 1}"] = {
+                        "data": pump_data["return_pressure"],
                         "label": "Druck in bar",
                         "axis": "right",
-                        "time": time_series
+                        "time": time_series,
                     }
-    
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize network data including KPIs for saving.
-        
+
         :return: Dictionary with all object attributes including kpi_results
         :rtype: Dict[str, Any]
         """
         data = self.__dict__.copy()
         # Only include serializable fields
-        if hasattr(self, 'kpi_results') and self.kpi_results is not None:
-            data['kpi_results'] = self.kpi_results
+        if hasattr(self, "kpi_results") and self.kpi_results is not None:
+            data["kpi_results"] = self.kpi_results
         return data
 
     @staticmethod
@@ -431,9 +423,9 @@ class NetworkGenerationData:
         if isinstance(value, str):
             s = value.strip()
             # Only a clean 1-D numpy repr is safely parseable.
-            if s.startswith('[') and s.endswith(']') and '...' not in s and '[' not in s[1:]:
+            if s.startswith("[") and s.endswith("]") and "..." not in s and "[" not in s[1:]:
                 try:
-                    arr = np.fromstring(s[1:-1], sep=' ')
+                    arr = np.fromstring(s[1:-1], sep=" ")
                     return arr if arr.size > 0 else None
                 except ValueError:
                     return None
@@ -457,14 +449,14 @@ class NetworkGenerationData:
             if isinstance(item, SecondaryProducer):
                 producers.append(item)
             elif isinstance(item, dict):
-                producers.append(SecondaryProducer(**{
-                    k: v for k, v in item.items() if k in SecondaryProducer.__annotations__
-                }))
+                producers.append(
+                    SecondaryProducer(**{k: v for k, v in item.items() if k in SecondaryProducer.__annotations__})
+                )
             # else: legacy str repr or junk -> skip
         return producers
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'NetworkGenerationData':
+    def from_dict(cls, data: dict[str, Any]) -> "NetworkGenerationData":
         """
         Deserialize network data from saved dictionary.
 
@@ -474,7 +466,7 @@ class NetworkGenerationData:
         :rtype: NetworkGenerationData
         """
         # Extract kpi_results before creating object
-        kpi_results = data.pop('kpi_results', None)
+        kpi_results = data.pop("kpi_results", None)
 
         # Create object with remaining data
         obj = cls(**{k: v for k, v in data.items() if k in cls.__annotations__})
@@ -482,13 +474,11 @@ class NetworkGenerationData:
         # Restore numpy-array fields that round-tripped through json default=str as
         # their string repr (otherwise the time-series controllers silently skip them).
         for field_name, annotation in cls.__annotations__.items():
-            if 'ndarray' in str(annotation):
+            if "ndarray" in str(annotation):
                 setattr(obj, field_name, cls._coerce_array(getattr(obj, field_name, None)))
 
         # Rebuild SecondaryProducer objects from their saved dict form.
-        obj.secondary_producers = cls._coerce_secondary_producers(
-            getattr(obj, 'secondary_producers', None)
-        )
+        obj.secondary_producers = cls._coerce_secondary_producers(getattr(obj, "secondary_producers", None))
 
         # Restore kpi_results
         if kpi_results is not None:

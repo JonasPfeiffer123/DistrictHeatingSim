@@ -22,9 +22,7 @@ OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 # out as ``Python-urllib/x.y`` — which overpass-api.de now rejects with HTTP 406
 # ("Not Acceptable"). A descriptive User-Agent fixes it. See the module-level
 # opener installed below.
-OVERPASS_USER_AGENT = (
-    "DistrictHeatingSim/1.0 (+https://github.com/JonasPfeiffer123/DistrictHeatingSim)"
-)
+OVERPASS_USER_AGENT = "DistrictHeatingSim/1.0 (+https://github.com/JonasPfeiffer123/DistrictHeatingSim)"
 
 
 def _install_user_agent_opener():
@@ -71,17 +69,18 @@ def build_query(city_name, tags, element_type="way"):
     if element_type == "way":
         for key, value in tags:
             query += f'way["{key}"="{value}"](area.searchArea);'
-    
+
     elif element_type == "building":
         query += 'relation["building"](area.searchArea);'
         query += 'way["building"](area.searchArea);'
-    
+
     query += """
     );
     (._;>;);
     out body;
     """
     return query
+
 
 def download_data(query, element_type):
     """
@@ -94,7 +93,7 @@ def download_data(query, element_type):
     :return: GeoJSON FeatureCollection with OSM data
     :rtype: geojson.FeatureCollection
     :raises OverpassError: If API query fails
-    
+
     .. note::
         Ways create LineString geometries, buildings create Polygon/MultiPolygon.
     """
@@ -110,7 +109,7 @@ def download_data(query, element_type):
             properties = way.tags
             feature = geojson.Feature(geometry=linestring, properties=properties)
             features.append(feature)
-    
+
     elif element_type == "building":  # for buildings
         for relation in result.relations:
             multipolygon = []
@@ -138,6 +137,7 @@ def download_data(query, element_type):
 
     return geojson.FeatureCollection(features)
 
+
 def json_serial(obj):
     """
     JSON serializer for non-standard objects.
@@ -152,6 +152,7 @@ def json_serial(obj):
         return float(obj)
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
+
 def save_to_file(geojson_data, filename):
     """
     Save GeoJSON data to file.
@@ -161,5 +162,5 @@ def save_to_file(geojson_data, filename):
     :param filename: Output file path
     :type filename: str
     """
-    with open(filename, 'w') as outfile:
+    with open(filename, "w") as outfile:
         json.dump(geojson_data, outfile, indent=2, default=json_serial)

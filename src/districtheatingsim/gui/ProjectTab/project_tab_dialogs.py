@@ -32,6 +32,7 @@ class RowInputDialog(QDialog):
     """
     Dialog for adding new table rows with input fields.
     """
+
     def __init__(self, headers, parent=None):
         """
         Initialize row input dialog.
@@ -69,11 +70,13 @@ class RowInputDialog(QDialog):
         :rtype: dict
         """
         return {header: field.text() for header, field in self.fields.items()}
-    
+
+
 class OSMImportDialog(QDialog):
     """
     Dialog for OSM data import with default building parameters.
     """
+
     def __init__(self, parent=None, sample_utm_coords=None, project_crs: str = "EPSG:25833"):
         """
         Initialize OSM import dialog.
@@ -106,7 +109,7 @@ class OSMImportDialog(QDialog):
             "VLT_max": "70",
             "Steigung_Heizkurve": "1.5",
             "RLT_max": "55",
-            "Normaußentemperatur": "-15"
+            "Normaußentemperatur": "-15",
         }
 
         # Add checkbox for auto-fill
@@ -163,40 +166,46 @@ class OSMImportDialog(QDialog):
 
         try:
             utm_x, utm_y = self.sample_utm_coords
-            
+
             # Transform project CRS to WGS84
             transformer = Transformer.from_crs(self.project_crs, "epsg:4326", always_xy=True)
             lon, lat = transformer.transform(utm_x, utm_y)
-            
+
             # Reverse geocode
             geolocator = Nominatim(user_agent="DistrictHeatingSim")
             location = geolocator.reverse(f"{lat}, {lon}", language="de")
-            
-            if location and location.raw.get('address'):
-                address = location.raw['address']
-                
+
+            if location and location.raw.get("address"):
+                address = location.raw["address"]
+
                 # Fill fields from geocoding result
-                if 'country' in address:
-                    self.fields["Land"].setText(address['country'])
-                
-                if 'state' in address:
-                    self.fields["Bundesland"].setText(address['state'])
-                
+                if "country" in address:
+                    self.fields["Land"].setText(address["country"])
+
+                if "state" in address:
+                    self.fields["Bundesland"].setText(address["state"])
+
                 # Try different keys for city
-                city = address.get('city') or address.get('town') or address.get('village') or address.get('municipality') or ""
+                city = (
+                    address.get("city")
+                    or address.get("town")
+                    or address.get("village")
+                    or address.get("municipality")
+                    or ""
+                )
                 if city:
                     self.fields["Stadt"].setText(city)
-                
+
                 # Build street address
                 street_parts = []
-                if 'road' in address:
-                    street_parts.append(address['road'])
-                if 'house_number' in address:
-                    street_parts.append(address['house_number'])
-                
+                if "road" in address:
+                    street_parts.append(address["road"])
+                if "house_number" in address:
+                    street_parts.append(address["house_number"])
+
                 if street_parts:
                     self.fields["Adresse"].setText(" ".join(street_parts))
-                
+
         except Exception:
             pass
 
@@ -208,11 +217,13 @@ class OSMImportDialog(QDialog):
         :rtype: dict
         """
         return {header: field.text() for header, field in self.fields.items()}
-    
+
+
 class ProcessDetailsDialog(QDialog):
     """
     Dialog displaying detailed project progress information.
     """
+
     def __init__(self, process_steps, parent=None):
         """
         Initialize process details dialog.
@@ -225,20 +236,20 @@ class ProcessDetailsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Projektfortschritt - Details")
         self.setMinimumSize(800, 800)
-        
+
         self.process_steps = process_steps
 
         # Main layout for the dialog
         main_layout = QVBoxLayout(self)
-        
+
         # Scrollable area for process steps
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
-        
+
         # Container widget and layout for process steps
         process_widget = QFrame()
         process_layout = QVBoxLayout(process_widget)
-        
+
         for step in self.process_steps:
             # Each process step will have its own section
             step_layout = QVBoxLayout()
@@ -257,17 +268,17 @@ class ProcessDetailsDialog(QDialog):
             step_layout.addWidget(description_label)
 
             # Show CSV creation and geocoding status for first step
-            if 'csv_creation_status' in step and 'geocoding_status' in step:
+            if "csv_creation_status" in step and "geocoding_status" in step:
                 # CSV Creation Status
-                csv_status_text = self.get_status_text(step['csv_creation_status'])
-                csv_status_color = self.get_status_color(step['csv_creation_status'])
+                csv_status_text = self.get_status_text(step["csv_creation_status"])
+                csv_status_color = self.get_status_color(step["csv_creation_status"])
                 csv_label = QLabel(f"CSV-Erstellung: {csv_status_text}")
                 csv_label.setStyleSheet(f"color: {csv_status_color}; font-weight: bold;")
                 step_layout.addWidget(csv_label)
-                
+
                 # Geocoding Status
-                geocoding_status_text = self.get_status_text(step['geocoding_status'])
-                geocoding_status_color = self.get_status_color(step['geocoding_status'])
+                geocoding_status_text = self.get_status_text(step["geocoding_status"])
+                geocoding_status_color = self.get_status_color(step["geocoding_status"])
                 geocoding_label = QLabel(f"Geocoding: {geocoding_status_text}")
                 geocoding_label.setStyleSheet(f"color: {geocoding_status_color}; font-weight: bold;")
                 step_layout.addWidget(geocoding_label)
@@ -293,7 +304,7 @@ class ProcessDetailsDialog(QDialog):
                 for _i, mod_time in enumerate(step["file_modification_times"]):
                     mod_time_label = QLabel(f"Zuletzt geändert: {mod_time}")
                     step_layout.addWidget(mod_time_label)
-            
+
             # Add the step layout to the process layout
             step_frame = QFrame()
             step_frame.setLayout(step_layout)
@@ -331,12 +342,12 @@ class ProcessDetailsDialog(QDialog):
         :rtype: str
         """
         status_mapping = {
-            'completed': 'Abgeschlossen',
-            'pending': 'Ausstehend',
-            'not_applicable': 'Nicht verfügbar',
-            'not_checked': 'Nicht geprüft'
+            "completed": "Abgeschlossen",
+            "pending": "Ausstehend",
+            "not_applicable": "Nicht verfügbar",
+            "not_checked": "Nicht geprüft",
         }
-        return status_mapping.get(status, 'Unbekannt')
+        return status_mapping.get(status, "Unbekannt")
 
     def get_status_color(self, status):
         """
@@ -347,18 +358,15 @@ class ProcessDetailsDialog(QDialog):
         :return: CSS color value.
         :rtype: str
         """
-        color_mapping = {
-            'completed': 'green',
-            'pending': 'orange',
-            'not_applicable': 'gray',
-            'not_checked': 'gray'
-        }
-        return color_mapping.get(status, 'black')
+        color_mapping = {"completed": "green", "pending": "orange", "not_applicable": "gray", "not_checked": "gray"}
+        return color_mapping.get(status, "black")
+
 
 class BuildingCSVDialog(QDialog):
     """
     Dialog for tabular input and editing of Quartier IST.csv building data.
     """
+
     def __init__(self, headers, data=None, parent=None):
         """
         Initialize dialog for building CSV creation/editing.
@@ -389,13 +397,13 @@ class BuildingCSVDialog(QDialog):
         self.table.setColumnCount(len(self.headers))
         self.table.setHorizontalHeaderLabels(self.headers)
         self.table.setRowCount(len(self.data))
-        
+
         # Enhanced table formatting
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
-        
+
         for row_idx, row_data in enumerate(self.data):
             for col_idx, value in enumerate(row_data):
                 item = QTableWidgetItem(str(value))

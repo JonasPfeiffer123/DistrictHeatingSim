@@ -60,15 +60,15 @@ def polygon_from_csv(csv_file, project_crs, buffer_m):
     import geopandas as gpd
     import pandas as pd
 
-    df = pd.read_csv(csv_file, delimiter=';')
-    if 'UTM_X' not in df.columns or 'UTM_Y' not in df.columns:
+    df = pd.read_csv(csv_file, delimiter=";")
+    if "UTM_X" not in df.columns or "UTM_Y" not in df.columns:
         raise ValueError("CSV muss 'UTM_X' und 'UTM_Y' Spalten enthalten.")
 
-    geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
+    geometry = gpd.points_from_xy(df["UTM_X"], df["UTM_Y"])
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
 
     # Convert to WGS84 and buffer in degrees (approximate, matches original code).
-    gdf_wgs84 = gdf.to_crs('EPSG:4326')
+    gdf_wgs84 = gdf.to_crs("EPSG:4326")
     buffer_deg = buffer_m / _METERS_PER_DEGREE
     return gdf_wgs84.unary_union.buffer(buffer_deg)
 
@@ -85,8 +85,8 @@ def polygon_from_geojson(geojson_file):
     import geopandas as gpd
 
     gdf = gpd.read_file(geojson_file)
-    if gdf.crs != 'EPSG:4326':
-        gdf = gdf.to_crs('EPSG:4326')
+    if gdf.crs != "EPSG:4326":
+        gdf = gdf.to_crs("EPSG:4326")
     return gdf.unary_union
 
 
@@ -108,17 +108,17 @@ def resolve_area_polygon(area_params, buffer_m):
     :rtype: shapely.geometry.base.BaseGeometry
     :raises ValueError: For the city-name or an unknown area type (no polygon).
     """
-    area_type = area_params['area_type']
+    area_type = area_params["area_type"]
 
     if area_type == AREA_CSV:
         return polygon_from_csv(
-            area_params['csv_file'],
-            area_params.get('project_crs', 'EPSG:25833'),
+            area_params["csv_file"],
+            area_params.get("project_crs", "EPSG:25833"),
             buffer_m,
         )
     if area_type == AREA_GEOJSON:
-        return polygon_from_geojson(area_params['polygon_file'])
+        return polygon_from_geojson(area_params["polygon_file"])
     if area_type == AREA_DRAWN:
-        return polygon_from_geojson(area_params['drawn_polygon_file'])
+        return polygon_from_geojson(area_params["drawn_polygon_file"])
 
     raise ValueError(f"Kein Polygon für Bereichstyp: {area_type}")

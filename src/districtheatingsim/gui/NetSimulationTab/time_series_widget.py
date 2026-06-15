@@ -76,7 +76,7 @@ class TimeSeriesWidget(QWidget):
                 item.widget().setParent(None)
         self._dropdown = None
 
-        if not self._network_data or not hasattr(self._network_data, 'plot_data'):
+        if not self._network_data or not hasattr(self._network_data, "plot_data"):
             return
 
         self._dropdown = CheckableComboBox(self)
@@ -84,9 +84,7 @@ class TimeSeriesWidget(QWidget):
         for label in self._network_data.plot_data.keys():
             self._dropdown.addItem(label)
             model_item = self._dropdown.model().item(self._dropdown.count() - 1, 0)
-            model_item.setCheckState(
-                Qt.CheckState.Checked if first else Qt.CheckState.Unchecked
-            )
+            model_item.setCheckState(Qt.CheckState.Checked if first else Qt.CheckState.Unchecked)
             first = False
 
         self._dropdown_layout.addWidget(self._dropdown)
@@ -98,19 +96,17 @@ class TimeSeriesWidget(QWidget):
 
         self._figure.clear()
 
-        gs = gridspec.GridSpec(
-            1, 3, width_ratios=[0.25, 0.50, 0.25], figure=self._figure
-        )
+        gs = gridspec.GridSpec(1, 3, width_ratios=[0.25, 0.50, 0.25], figure=self._figure)
         ax_leg_l = self._figure.add_subplot(gs[0, 0])
-        ax_main  = self._figure.add_subplot(gs[0, 1])
+        ax_main = self._figure.add_subplot(gs[0, 1])
         ax_leg_r = self._figure.add_subplot(gs[0, 2])
         ax_right = ax_main.twinx()
 
-        label_fs   = 16
-        legend_fs  = 12
+        label_fs = 16
+        legend_fs = 12
         line_width = 2
-        left_cmap  = plt.get_cmap('tab10')
-        right_cmap = plt.get_cmap('Set2')
+        left_cmap = plt.get_cmap("tab10")
+        right_cmap = plt.get_cmap("Set2")
 
         li = ri = 0
         lines_l, labels_l = [], []
@@ -122,7 +118,7 @@ class TimeSeriesWidget(QWidget):
             if not self._dropdown.itemChecked(i):
                 continue
 
-            key  = self._dropdown.itemText(i)
+            key = self._dropdown.itemText(i)
             info = self._network_data.plot_data[key]
             time_steps = info.get("time")
 
@@ -136,18 +132,15 @@ class TimeSeriesWidget(QWidget):
 
             if info["axis"] == "left":
                 color = left_cmap(li % 10)
-                line, = ax_main.plot(
-                    hours, info["data"], label=key, color=color, linewidth=line_width
-                )
+                (line,) = ax_main.plot(hours, info["data"], label=key, color=color, linewidth=line_width)
                 lines_l.append(line)
                 labels_l.append(key)
                 y_labels_l.add(info["label"])
                 li += 1
             elif info["axis"] == "right":
                 color = right_cmap(ri % 8)
-                line, = ax_right.plot(
-                    hours, info["data"], label=key, color=color,
-                    linewidth=line_width, linestyle='--'
+                (line,) = ax_right.plot(
+                    hours, info["data"], label=key, color=color, linewidth=line_width, linestyle="--"
                 )
                 lines_r.append(line)
                 labels_r.append(key)
@@ -163,14 +156,10 @@ class TimeSeriesWidget(QWidget):
 
         # Axis labels
         ax_main.set_xlabel("Jahresstunden [h]", fontsize=label_fs)
-        ax_main.set_ylabel(
-            self._wrap_label(", ".join(y_labels_l)), fontsize=label_fs - 1
-        )
-        ax_right.set_ylabel(
-            self._wrap_label(", ".join(y_labels_r)), fontsize=label_fs - 1
-        )
-        ax_main.tick_params(axis='both', labelsize=14)
-        ax_right.tick_params(axis='y', labelsize=14)
+        ax_main.set_ylabel(self._wrap_label(", ".join(y_labels_l)), fontsize=label_fs - 1)
+        ax_right.set_ylabel(self._wrap_label(", ".join(y_labels_r)), fontsize=label_fs - 1)
+        ax_main.tick_params(axis="both", labelsize=14)
+        ax_right.tick_params(axis="y", labelsize=14)
 
         if min_t is not None:
             ax_main.set_xlim(min_t, max_t)
@@ -178,29 +167,39 @@ class TimeSeriesWidget(QWidget):
             self._set_xticks(ax_main, max_t)
 
         # Side-panel legends
-        ax_leg_l.axis('off')
-        ax_leg_r.axis('off')
+        ax_leg_l.axis("off")
+        ax_leg_r.axis("off")
 
         if lines_l:
             ncol = 1 if len(lines_l) <= 10 else 2
             ax_leg_l.legend(
-                lines_l, labels_l, loc='upper left',
-                fontsize=legend_fs - 2, frameon=False, ncol=ncol,
-                columnspacing=0.2, handletextpad=0.3, handlelength=1.0,
+                lines_l,
+                labels_l,
+                loc="upper left",
+                fontsize=legend_fs - 2,
+                frameon=False,
+                ncol=ncol,
+                columnspacing=0.2,
+                handletextpad=0.3,
+                handlelength=1.0,
             )
         if lines_r:
             ncol = 1 if len(lines_r) <= 10 else 2
             ax_leg_r.legend(
-                lines_r, labels_r, loc='upper right',
-                fontsize=legend_fs - 2, frameon=False, ncol=ncol,
-                columnspacing=0.2, handletextpad=0.3, handlelength=1.0,
+                lines_r,
+                labels_r,
+                loc="upper right",
+                fontsize=legend_fs - 2,
+                frameon=False,
+                ncol=ncol,
+                columnspacing=0.2,
+                handletextpad=0.3,
+                handlelength=1.0,
             )
 
-        self._figure.suptitle('Zeitreihen-Simulation Wärmenetz', fontsize=18)
+        self._figure.suptitle("Zeitreihen-Simulation Wärmenetz", fontsize=18)
         ax_main.grid(True, alpha=0.3)
-        self._figure.subplots_adjust(
-            left=0.02, right=0.98, top=0.92, bottom=0.1, wspace=0.1
-        )
+        self._figure.subplots_adjust(left=0.02, right=0.98, top=0.92, bottom=0.1, wspace=0.1)
         self._canvas.draw()
 
     # ------------------------------------------------------------------
@@ -210,20 +209,13 @@ class TimeSeriesWidget(QWidget):
     @staticmethod
     def _to_hours(time_steps, data):
         """Convert time_steps to hours-of-year list."""
-        if not hasattr(time_steps, '__iter__') or len(time_steps) == 0:
+        if not hasattr(time_steps, "__iter__") or len(time_steps) == 0:
             return list(range(len(data)))
-        first = (
-            time_steps[0]
-            if hasattr(time_steps, '__getitem__')
-            else next(iter(time_steps))
-        )
-        if hasattr(first, 'timetuple') or 'datetime' in str(type(first)):
-            if hasattr(first, 'year'):
+        first = time_steps[0] if hasattr(time_steps, "__getitem__") else next(iter(time_steps))
+        if hasattr(first, "timetuple") or "datetime" in str(type(first)):
+            if hasattr(first, "year"):
                 start = pd.Timestamp(first.year, 1, 1)
-                return [
-                    (pd.Timestamp(t) - start).total_seconds() / 3600
-                    for t in time_steps
-                ]
+                return [(pd.Timestamp(t) - start).total_seconds() / 3600 for t in time_steps]
             return list(range(len(time_steps)))
         return list(time_steps)
 

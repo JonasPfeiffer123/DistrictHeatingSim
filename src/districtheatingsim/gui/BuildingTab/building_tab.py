@@ -62,7 +62,7 @@ class BuildingModel:
         :raises Exception: If CSV loading fails
         """
         try:
-            self.data = pd.read_csv(self.csv_path, delimiter=';', dtype={'Subtyp': str})
+            self.data = pd.read_csv(self.csv_path, delimiter=";", dtype={"Subtyp": str})
         except Exception as e:
             raise Exception(f"Fehler beim Laden der CSV-Datei: {e}") from e
 
@@ -74,7 +74,7 @@ class BuildingModel:
         """
         if self.data is not None:
             try:
-                self.data.to_csv(self.csv_path, index=False, sep=';', encoding='utf-8-sig')
+                self.data.to_csv(self.csv_path, index=False, sep=";", encoding="utf-8-sig")
             except Exception as e:
                 raise Exception(f"Fehler beim Speichern der CSV-Datei: {e}") from e
 
@@ -85,12 +85,12 @@ class BuildingModel:
         :raises Exception: If JSON loading fails
         """
         try:
-            with open(self.json_path, encoding='utf-8') as f:
+            with open(self.json_path, encoding="utf-8") as f:
                 loaded_data = json.load(f)
             check_version(loaded_data, "building_data")
             # Building entries are keyed by index; the _meta block (and any other
             # non-building key) is naturally skipped by the 'wärme' filter.
-            self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
+            self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
         except Exception as e:
             raise Exception(f"Fehler beim Laden der JSON-Datei: {e}") from e
 
@@ -103,15 +103,14 @@ class BuildingModel:
         :raises Exception: If JSON saving fails
         """
         try:
-            with open(self.json_path, 'w', encoding='utf-8') as f:
+            with open(self.json_path, "w", encoding="utf-8") as f:
                 json.dump(add_meta(combined_data, "building_data"), f, indent=4)
         except Exception as e:
             raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}") from e
 
     HeatDemandResult = namedtuple(
-        'HeatDemandResult',
-        ['time_steps', 'total_kw', 'heating_kw', 'warmwater_kw', 'max_kw',
-         'supply_temp', 'return_temp', 'air_temp']
+        "HeatDemandResult",
+        ["time_steps", "total_kw", "heating_kw", "warmwater_kw", "max_kw", "supply_temp", "return_temp", "air_temp"],
     )
 
     def calculate_heat_demand(self, data, try_filename, year: int = 2023):
@@ -127,7 +126,16 @@ class BuildingModel:
         :return: Calculated heat demand profiles in kW
         :rtype: HeatDemandResult
         """
-        yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz", year=year)
+        (
+            yearly_time_steps,
+            total_heat_W,
+            heating_heat_W,
+            warmwater_heat_W,
+            max_heat_requirement_W,
+            supply_temperature_curve,
+            return_temperature_curve,
+            hourly_air_temperatures,
+        ) = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz", year=year)
 
         # Convert from W to kW
         return self.HeatDemandResult(
@@ -140,6 +148,7 @@ class BuildingModel:
             return_temp=return_temperature_curve,
             air_temp=hourly_air_temperatures,
         )
+
 
 class BuildingPresenter:
     """
@@ -197,24 +206,54 @@ class BuildingPresenter:
         """
         if path:
             self.model.base_path = path
-            self.model.csv_path = os.path.join(self.model.base_path, self.config_manager.get_relative_path("current_building_data_path"))
-            self.model.json_path = os.path.join(self.model.base_path, self.config_manager.get_relative_path("building_load_profile_path"))
+            self.model.csv_path = os.path.join(
+                self.model.base_path, self.config_manager.get_relative_path("current_building_data_path")
+            )
+            self.model.json_path = os.path.join(
+                self.model.base_path, self.config_manager.get_relative_path("building_load_profile_path")
+            )
 
     # Column order must match what geocoding, heat-profile calc, and net generation expect.
     # Heizgrenztemperatur / Heizexponent / P_max are optional BDEW parameters; leave blank to use defaults.
     _TEMPLATE_COLUMNS = [
-        "Land", "Bundesland", "Stadt", "Adresse",
-        "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil",
-        "Typ_Heizflächen", "VLT_max", "Steigung_Heizkurve", "RLT_max",
-        "Normaußentemperatur", "Heizgrenztemperatur", "Heizexponent", "P_max",
-        "UTM_X", "UTM_Y",
+        "Land",
+        "Bundesland",
+        "Stadt",
+        "Adresse",
+        "Wärmebedarf",
+        "Gebäudetyp",
+        "Subtyp",
+        "WW_Anteil",
+        "Typ_Heizflächen",
+        "VLT_max",
+        "Steigung_Heizkurve",
+        "RLT_max",
+        "Normaußentemperatur",
+        "Heizgrenztemperatur",
+        "Heizexponent",
+        "P_max",
+        "UTM_X",
+        "UTM_Y",
     ]
     _TEMPLATE_EXAMPLE = [
-        "Deutschland", "Sachsen", "Leipzig", "Musterstraße 1",
-        "50000", "MFH", "", "0.15",
-        "HK", "70", "1.5", "50",
-        "-15", "", "", "",
-        "", "",
+        "Deutschland",
+        "Sachsen",
+        "Leipzig",
+        "Musterstraße 1",
+        "50000",
+        "MFH",
+        "",
+        "0.15",
+        "HK",
+        "70",
+        "1.5",
+        "50",
+        "-15",
+        "",
+        "",
+        "",
+        "",
+        "",
     ]
 
     def create_csv_template(self):
@@ -223,14 +262,12 @@ class BuildingPresenter:
         example row. The user picks the save location via file dialog.
         """
         default_path = os.path.join(self.model.base_path or "", "Quartier.csv")
-        fname, _ = QFileDialog.getSaveFileName(
-            self.view, "CSV-Vorlage speichern", default_path, "CSV Files (*.csv)"
-        )
+        fname, _ = QFileDialog.getSaveFileName(self.view, "CSV-Vorlage speichern", default_path, "CSV Files (*.csv)")
         if not fname:
             return
         try:
             template_df = pd.DataFrame([self._TEMPLATE_EXAMPLE], columns=self._TEMPLATE_COLUMNS)
-            template_df.to_csv(fname, index=False, sep=';', encoding='utf-8-sig')
+            template_df.to_csv(fname, index=False, sep=";", encoding="utf-8-sig")
             self.view.populate_table(template_df)
             self.model.csv_path = fname
             self.model.data = template_df
@@ -243,7 +280,7 @@ class BuildingPresenter:
                 "  Heizgrenztemperatur – Temperatur ab der geheizt wird (Standard ~15 °C)\n"
                 "  Heizexponent – Formparameter der Heizkurve (Standard 1.0)\n"
                 "  P_max – maximale Wärmeleistung in kW (begrenzt Lastspitzen)\n\n"
-                "UTM_X/UTM_Y werden beim Geocoding automatisch befüllt."
+                "UTM_X/UTM_Y werden beim Geocoding automatisch befüllt.",
             )
         except Exception as e:
             self.view.show_error_message("Fehler", f"Vorlage konnte nicht gespeichert werden: {e}")
@@ -260,7 +297,9 @@ class BuildingPresenter:
             Whether to show success/error dialogs. Default is True.
         """
         if fname is None or fname == "":
-            fname, _ = QFileDialog.getOpenFileName(self.view, 'Select CSV File', self.model.csv_path, 'CSV Files (*.csv);;All Files (*)')
+            fname, _ = QFileDialog.getOpenFileName(
+                self.view, "Select CSV File", self.model.csv_path, "CSV Files (*.csv);;All Files (*)"
+            )
         if fname:
             try:
                 self.model.csv_path = fname
@@ -283,7 +322,9 @@ class BuildingPresenter:
         """
         if fname is None or fname == "":
             if show_dialog:
-                fname, _ = QFileDialog.getSaveFileName(self.view, 'Save CSV File', self.model.csv_path, 'CSV Files (*.csv);;All Files (*)')
+                fname, _ = QFileDialog.getSaveFileName(
+                    self.view, "Save CSV File", self.model.csv_path, "CSV Files (*.csv);;All Files (*)"
+                )
             else:
                 fname = self.model.csv_path
         if fname:
@@ -309,7 +350,9 @@ class BuildingPresenter:
         """
         if fname is None or fname == "":
             if show_dialog:
-                fname, _ = QFileDialog.getOpenFileName(self.view, 'Select JSON File', self.model.json_path, 'JSON Files (*.json);;All Files (*)')
+                fname, _ = QFileDialog.getOpenFileName(
+                    self.view, "Select JSON File", self.model.json_path, "JSON Files (*.json);;All Files (*)"
+                )
             else:
                 return
         if fname:
@@ -333,10 +376,12 @@ class BuildingPresenter:
         if self.combined_data is None:
             self.view.show_error_message("Fehler", "Es sind keine Daten zum Speichern vorhanden.")
             return
-        
+
         if fname is None or fname == "":
             if show_dialog:
-                fname, _ = QFileDialog.getSaveFileName(self.view, 'Save JSON File', self.model.json_path, 'JSON Files (*.json);;All Files (*)')
+                fname, _ = QFileDialog.getSaveFileName(
+                    self.view, "Save JSON File", self.model.json_path, "JSON Files (*.json);;All Files (*)"
+                )
             else:
                 fname = self.model.json_path
         if fname:
@@ -358,7 +403,7 @@ class BuildingPresenter:
 
         try:
             try_filename = self.folder_manager.try_filename
-            year = getattr(self.folder_manager, 'calculation_year', 2023)
+            year = getattr(self.folder_manager, "calculation_year", 2023)
             results = self.model.calculate_heat_demand(self.model.data, try_filename, year=year)
             self.model.results = self.format_results(results, self.model.data)
 
@@ -368,9 +413,11 @@ class BuildingPresenter:
             self.combined_data = self.combine_data_with_results(self.model.data, self.model.results)
             self.model.save_json(self.combined_data)
 
-            self.view.show_message("Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {self.model.json_path} gespeichert.")
+            self.view.show_message(
+                "Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {self.model.json_path} gespeichert."
+            )
         except Exception as e:
-            tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+            tb_str = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             self.view.show_error_message("Fehler", f"Es ist ein Fehler aufgetreten: {str(e)}\n\nDetails:\n{tb_str}")
 
     def format_results(self, results, data):
@@ -413,13 +460,14 @@ class BuildingPresenter:
         :rtype: dict
         """
         data.reset_index(drop=True, inplace=True)
-        data_dict = data.map(convert_to_serializable).to_dict(orient='index')
+        data_dict = data.map(convert_to_serializable).to_dict(orient="index")
         combined_data = {str(idx): {**data_dict[idx], **results[str(idx)]} for idx in range(len(data))}
         return combined_data
 
     def on_combobox_selection_changed(self):
         """Update plot when combobox selection changes."""
         self.view.plot(self.model.results)
+
 
 class BuildingTabView(QWidget):
     """
@@ -494,7 +542,7 @@ class BuildingTabView(QWidget):
 
     def initPlotAndComboboxes(self):
         """Initialize plot area and data selection controls."""
-        plt.style.use('seaborn-v0_8-darkgrid')
+        plt.style.use("seaborn-v0_8-darkgrid")
 
         # Plot area oben
         plot_layout = QVBoxLayout()
@@ -511,7 +559,6 @@ class BuildingTabView(QWidget):
         plot_layout.addLayout(toolbar_layout)
         self.main_layout.addLayout(plot_layout)
 
-        
         combobox_group = QGroupBox()
         combobox_group.setTitle("Auswahl")
         combobox_group_layout = QHBoxLayout()
@@ -520,7 +567,13 @@ class BuildingTabView(QWidget):
         data_label = QLabel("<b>Daten auswählen:</b>")
         data_label.setStyleSheet("font-size: 15px; margin-right: 10px;")
         self.data_type_combobox = CheckableComboBox(self)
-        for data_type in ["Wärmebedarf", "Heizwärmebedarf", "Warmwasserbedarf", "Vorlauftemperatur", "Rücklauftemperatur"]:
+        for data_type in [
+            "Wärmebedarf",
+            "Heizwärmebedarf",
+            "Warmwasserbedarf",
+            "Vorlauftemperatur",
+            "Rücklauftemperatur",
+        ]:
             self.data_type_combobox.addItem(data_type)
         self.data_type_combobox.model().item(0).setCheckState(Qt.CheckState.Checked)
         combobox_group_layout.addWidget(data_label)
@@ -608,8 +661,8 @@ class BuildingTabView(QWidget):
 
         df = pd.DataFrame(data, columns=[self.table_widget.horizontalHeaderItem(i).text() for i in range(columns)])
 
-        if 'Subtyp' in df.columns:
-            df['Subtyp'] = df['Subtyp'].astype(str)
+        if "Subtyp" in df.columns:
+            df["Subtyp"] = df["Subtyp"].astype(str)
 
         return df
 
@@ -622,15 +675,14 @@ class BuildingTabView(QWidget):
         """
         self.building_combobox.clear()
         for key in results.keys():
-            self.building_combobox.addItem(f'Gebäude {key}')
+            self.building_combobox.addItem(f"Gebäude {key}")
             item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
             item.setCheckState(Qt.CheckState.Checked)
-
 
     def plot(self, results=None):
         """
         Plot heat demand profiles for selected buildings and data types.
-        
+
         :param results: Heat demand calculation results
         :type results: dict
         """
@@ -638,7 +690,7 @@ class BuildingTabView(QWidget):
             return
 
         self.figure.clear()
-        
+
         gs = gridspec.GridSpec(1, 3, width_ratios=[0.18, 0.64, 0.18], figure=self.figure)
         ax_legend_left = self.figure.add_subplot(gs[0, 0])
         ax_main = self.figure.add_subplot(gs[0, 1])
@@ -652,8 +704,8 @@ class BuildingTabView(QWidget):
         legend_fontsize = 12
         line_width = 2
 
-        color_map = plt.get_cmap('tab10')
-        temp_color_map = plt.get_cmap('Set2')
+        color_map = plt.get_cmap("tab10")
+        temp_color_map = plt.get_cmap("Set2")
         color_idx = 0
         temp_color_idx = 0
 
@@ -668,51 +720,89 @@ class BuildingTabView(QWidget):
             x = list(range(len(value["wärme"])))
 
             if "Wärmebedarf" in selected_data_types:
-                line, = ax_main.plot(x, value["wärme"], label=f'Wärmebedarf Gebäude {key}', color=color_map(color_idx % 10), linewidth=line_width)
+                (line,) = ax_main.plot(
+                    x,
+                    value["wärme"],
+                    label=f"Wärmebedarf Gebäude {key}",
+                    color=color_map(color_idx % 10),
+                    linewidth=line_width,
+                )
                 lines_ax1.append(line)
-                labels_ax1.append(f'Wärmebedarf Gebäude {key}')
+                labels_ax1.append(f"Wärmebedarf Gebäude {key}")
                 color_idx += 1
             if "Heizwärmebedarf" in selected_data_types:
-                line, = ax_main.plot(x, value["heizwärme"], label=f'Heizwärmebedarf Gebäude {key}', color=color_map(color_idx % 10), linestyle='--', linewidth=line_width)
+                (line,) = ax_main.plot(
+                    x,
+                    value["heizwärme"],
+                    label=f"Heizwärmebedarf Gebäude {key}",
+                    color=color_map(color_idx % 10),
+                    linestyle="--",
+                    linewidth=line_width,
+                )
                 lines_ax1.append(line)
-                labels_ax1.append(f'Heizwärmebedarf Gebäude {key}')
+                labels_ax1.append(f"Heizwärmebedarf Gebäude {key}")
                 color_idx += 1
             if "Warmwasserbedarf" in selected_data_types:
-                line, = ax_main.plot(x, value["warmwasserwärme"], label=f'Warmwasserbedarf Gebäude {key}', color=color_map(color_idx % 10), linestyle=':', linewidth=line_width)
+                (line,) = ax_main.plot(
+                    x,
+                    value["warmwasserwärme"],
+                    label=f"Warmwasserbedarf Gebäude {key}",
+                    color=color_map(color_idx % 10),
+                    linestyle=":",
+                    linewidth=line_width,
+                )
                 lines_ax1.append(line)
-                labels_ax1.append(f'Warmwasserbedarf Gebäude {key}')
+                labels_ax1.append(f"Warmwasserbedarf Gebäude {key}")
                 color_idx += 1
             if "Vorlauftemperatur" in selected_data_types:
-                line, = ax2.plot(x, value["vorlauftemperatur"], label=f'Vorlauftemperatur Gebäude {key}', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
+                (line,) = ax2.plot(
+                    x,
+                    value["vorlauftemperatur"],
+                    label=f"Vorlauftemperatur Gebäude {key}",
+                    color=temp_color_map(temp_color_idx % 8),
+                    linestyle="-.",
+                    linewidth=line_width,
+                )
                 lines_ax2.append(line)
-                labels_ax2.append(f'Vorlauftemperatur Gebäude {key}')
+                labels_ax2.append(f"Vorlauftemperatur Gebäude {key}")
                 temp_color_idx += 1
             if "Rücklauftemperatur" in selected_data_types:
-                line, = ax2.plot(x, value["rücklauftemperatur"], label=f'Rücklauftemperatur Gebäude {key}', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
+                (line,) = ax2.plot(
+                    x,
+                    value["rücklauftemperatur"],
+                    label=f"Rücklauftemperatur Gebäude {key}",
+                    color=temp_color_map(temp_color_idx % 8),
+                    linestyle="-.",
+                    linewidth=line_width,
+                )
                 lines_ax2.append(line)
-                labels_ax2.append(f'Rücklauftemperatur Gebäude {key}')
+                labels_ax2.append(f"Rücklauftemperatur Gebäude {key}")
                 temp_color_idx += 1
 
-        ax_main.set_xlabel('Jahresstunden', fontsize=label_fontsize)
-        ax_main.set_ylabel('Wärmebedarf (kW)', fontsize=label_fontsize)
-        ax2.set_ylabel('Temperatur (°C)', fontsize=label_fontsize)
+        ax_main.set_xlabel("Jahresstunden", fontsize=label_fontsize)
+        ax_main.set_ylabel("Wärmebedarf (kW)", fontsize=label_fontsize)
+        ax2.set_ylabel("Temperatur (°C)", fontsize=label_fontsize)
 
-        ax_main.tick_params(axis='both', labelsize=14)
-        ax2.tick_params(axis='y', labelsize=14)
+        ax_main.tick_params(axis="both", labelsize=14)
+        ax2.tick_params(axis="y", labelsize=14)
 
         # Legenden als eigene Achsen
-        ax_legend_left.axis('off')
-        ax_legend_right.axis('off')
+        ax_legend_left.axis("off")
+        ax_legend_right.axis("off")
 
         if lines_ax1:
             ncol_left = 2 if len(lines_ax1) > 18 else 1
-            ax_legend_left.legend(lines_ax1, labels_ax1, loc='center', fontsize=legend_fontsize, frameon=False, ncol=ncol_left)
+            ax_legend_left.legend(
+                lines_ax1, labels_ax1, loc="center", fontsize=legend_fontsize, frameon=False, ncol=ncol_left
+            )
 
         if lines_ax2:
             ncol_right = 2 if len(lines_ax2) > 18 else 1
-            ax_legend_right.legend(lines_ax2, labels_ax2, loc='center', fontsize=legend_fontsize, frameon=False, ncol=ncol_right)
+            ax_legend_right.legend(
+                lines_ax2, labels_ax2, loc="center", fontsize=legend_fontsize, frameon=False, ncol=ncol_right
+            )
 
-        self.figure.suptitle('Gebäude Wärmebedarf & Temperaturen', fontsize=18)
+        self.figure.suptitle("Gebäude Wärmebedarf & Temperaturen", fontsize=18)
         ax_main.grid(True, alpha=0.3)
         self.canvas.draw()
 
@@ -737,6 +827,7 @@ class BuildingTabView(QWidget):
         :type message: str
         """
         QMessageBox.information(self, title, message)
+
 
 class BuildingTab(QWidget):
     """
@@ -767,7 +858,8 @@ class BuildingTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
-        
+
+
 if __name__ == "__main__":
     import sys
 
@@ -779,13 +871,23 @@ if __name__ == "__main__":
     window.show()
 
     # Simuliere das Laden einer JSON wie im Model/Presenter
-    json_path = os.path.join(os.path.dirname(__file__), "..", "..", "project_data", "Görlitz", "Variante 1", "Lastgang", "Gebäude Lastgang.json")
+    json_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "project_data",
+        "Görlitz",
+        "Variante 1",
+        "Lastgang",
+        "Gebäude Lastgang.json",
+    )
     json_path = os.path.abspath(json_path)
     import json
+
     with open(json_path, encoding="utf-8") as f:
         loaded_data = json.load(f)
         # Filter wie im Model: nur dicts mit 'wärme'
-        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
+        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
 
     # Simuliere Presenter: populate_building_combobox und plot
     window.populate_building_combobox(results)

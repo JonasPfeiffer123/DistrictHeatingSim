@@ -211,8 +211,7 @@ class SchemaDialog(QWidget):
         """Collect the field values into a ``tech_data`` dict."""
         inputs = {item.key: self._read(item) for item in self._main_items()}
 
-        if self.storage_schema is not None and \
-                self._widgets[self.storage_toggle_key].isChecked():
+        if self.storage_schema is not None and self._widgets[self.storage_toggle_key].isChecked():
             for item in self.storage_schema:
                 inputs[item.key] = self._read(item)
 

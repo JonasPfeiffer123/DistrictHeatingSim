@@ -81,8 +81,7 @@ def validate_net_results(net, *, context: str = "") -> None:
         )
 
 
-def validate_pressure_plausibility(net, *, min_pressure_bar: float = 0.0,
-                                   context: str = "") -> list[int]:
+def validate_pressure_plausibility(net, *, min_pressure_bar: float = 0.0, context: str = "") -> list[int]:
     """
     Warn (do **not** raise) if a solved net has implausibly low absolute pressures.
 
@@ -124,7 +123,11 @@ def validate_pressure_plausibility(net, *, min_pressure_bar: float = 0.0,
             "for the network's pressure losses (under-dimensioned pump or pipes "
             "above the velocity limit). Raise the pump pressure or enable diameter "
             "optimization.",
-            prefix, len(bad_indices), min_pressure_bar, float(pressures[worst]), worst,
+            prefix,
+            len(bad_indices),
+            min_pressure_bar,
+            float(pressures[worst]),
+            worst,
         )
     return bad_indices
 

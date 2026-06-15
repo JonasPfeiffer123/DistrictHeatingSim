@@ -10,7 +10,6 @@ storage-cost default of ``"0.8"`` (Biomass uses ``"750"``).
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (
     CheckField,
     ComboField,
@@ -42,8 +41,8 @@ WASTE_HEAT_PUMP: list = [
 
 # ── Shared storage block (Biomass / CHP / HolzgasCHP) ─────────────────────────
 
-def storage_fields(volume_key: str, opt_min_key: str, opt_max_key: str,
-                   spez_cost_default: str) -> list[Field]:
+
+def storage_fields(volume_key: str, opt_min_key: str, opt_max_key: str, spez_cost_default: str) -> list[Field]:
     """Return the 9-field generator buffer-storage block.
 
     Six fields are identical across the three combustion dialogs; the volume key,
@@ -133,31 +132,40 @@ GEOTHERMAL: list = [
 # Grouped into the same three group boxes as the original dialog.
 
 SOLAR_SECTIONS: list[Section] = [
-    Section("Technische Daten", [
-        Field("bruttofläche_STA", "Kollektorbruttofläche in m²", "200"),
-        Field("vs", "Solarspeichervolumen in m³", "20"),
-        ComboField("Typ", "Kollektortyp", ["Vakuumröhrenkollektor", "Flachkollektor"], "Vakuumröhrenkollektor"),
-        Field("Tsmax", "Maximale Speichertemperatur in °C", "90"),
-        Field("Longitude", "Longitude des Erzeugerstandortes", "-14.4222"),
-        Field("STD_Longitude", "STD_Longitude des Erzeugerstandortes", "15", cast=int),
-        Field("Latitude", "Latitude des Erzeugerstandortes", "51.1676"),
-        Field("East_West_collector_azimuth_angle", "Azimuth-Ausrichtung des Kollektors in °", "0"),
-        Field("Collector_tilt_angle", "Neigungswinkel des Kollektors in ° (0-90)", "36"),
-        Field("Tm_rl", "Startwert Rücklauftemperatur in Speicher in °C", "60"),
-        Field("Qsa", "Startwert Speicherfüllstand", "0"),
-        Field("Vorwärmung_K", "Mögliche Abweichung von Solltemperatur bei Vorwärmung", "8"),
-        Field("DT_WT_Solar_K", "Grädigkeit Wärmeübertrager Kollektor/Speicher", "5"),
-        Field("DT_WT_Netz_K", "Grädigkeit Wärmeübertrager Speicher/Netz", "5"),
-    ]),
-    Section("Kosten", [
-        Field("kosten_speicher_spez", "spez. Kosten Solarspeicher in €/m³", "750"),
-        Field("kosten_fk_spez", "spez. Kosten Flachkollektor in €/m²", "430"),
-        Field("kosten_vrk_spez", "spez. Kosten Vakuumröhrenkollektor in €/m²", "590"),
-    ]),
-    Section("Optimierungsparameter", [
-        Field("opt_volume_min", "Untere Grenze Speichervolumen Optimierung", "1"),
-        Field("opt_volume_max", "Obere Grenze Speichervolumen Optimierung", "200"),
-        Field("opt_area_min", "Untere Grenze Kollektorfläche Optimierung", "1"),
-        Field("opt_area_max", "Obere Grenze Kollektorfläche Optimierung", "2000"),
-    ]),
+    Section(
+        "Technische Daten",
+        [
+            Field("bruttofläche_STA", "Kollektorbruttofläche in m²", "200"),
+            Field("vs", "Solarspeichervolumen in m³", "20"),
+            ComboField("Typ", "Kollektortyp", ["Vakuumröhrenkollektor", "Flachkollektor"], "Vakuumröhrenkollektor"),
+            Field("Tsmax", "Maximale Speichertemperatur in °C", "90"),
+            Field("Longitude", "Longitude des Erzeugerstandortes", "-14.4222"),
+            Field("STD_Longitude", "STD_Longitude des Erzeugerstandortes", "15", cast=int),
+            Field("Latitude", "Latitude des Erzeugerstandortes", "51.1676"),
+            Field("East_West_collector_azimuth_angle", "Azimuth-Ausrichtung des Kollektors in °", "0"),
+            Field("Collector_tilt_angle", "Neigungswinkel des Kollektors in ° (0-90)", "36"),
+            Field("Tm_rl", "Startwert Rücklauftemperatur in Speicher in °C", "60"),
+            Field("Qsa", "Startwert Speicherfüllstand", "0"),
+            Field("Vorwärmung_K", "Mögliche Abweichung von Solltemperatur bei Vorwärmung", "8"),
+            Field("DT_WT_Solar_K", "Grädigkeit Wärmeübertrager Kollektor/Speicher", "5"),
+            Field("DT_WT_Netz_K", "Grädigkeit Wärmeübertrager Speicher/Netz", "5"),
+        ],
+    ),
+    Section(
+        "Kosten",
+        [
+            Field("kosten_speicher_spez", "spez. Kosten Solarspeicher in €/m³", "750"),
+            Field("kosten_fk_spez", "spez. Kosten Flachkollektor in €/m²", "430"),
+            Field("kosten_vrk_spez", "spez. Kosten Vakuumröhrenkollektor in €/m²", "590"),
+        ],
+    ),
+    Section(
+        "Optimierungsparameter",
+        [
+            Field("opt_volume_min", "Untere Grenze Speichervolumen Optimierung", "1"),
+            Field("opt_volume_max", "Obere Grenze Speichervolumen Optimierung", "200"),
+            Field("opt_area_min", "Untere Grenze Kollektorfläche Optimierung", "1"),
+            Field("opt_area_max", "Obere Grenze Kollektorfläche Optimierung", "2000"),
+        ],
+    ),
 ]

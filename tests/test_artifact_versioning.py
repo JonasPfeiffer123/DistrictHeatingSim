@@ -18,6 +18,7 @@ class TestBuildingDataVersioning:
     @staticmethod
     def _model(json_path):
         from districtheatingsim.gui.BuildingTab.building_tab import BuildingModel
+
         m = BuildingModel()
         m.json_path = str(json_path)
         return m
@@ -57,6 +58,7 @@ class TestDialogConfigVersioning:
             load_dialog_config,
             save_dialog_config,
         )
+
         path = str(tmp_path / "dialog_config.json")  # absolute → skips get_resource_path
         config = {"some_setting": 42, "nested": {"a": 1}}
         save_dialog_config(config, path)
@@ -70,6 +72,7 @@ class TestDialogConfigVersioning:
 
     def test_legacy_dialog_config_without_meta_loads(self, tmp_path):
         from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import load_dialog_config
+
         path = tmp_path / "dialog_config.json"
         path.write_text(json.dumps({"some_setting": 7}), encoding="utf-8")  # no _meta
         loaded = load_dialog_config(str(path))  # must not raise

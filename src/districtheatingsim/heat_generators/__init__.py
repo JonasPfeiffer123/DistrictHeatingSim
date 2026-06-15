@@ -6,6 +6,7 @@ This file is used to import all heat generators and to provide a registry for th
 
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
+
 from .aqvaheat_heat_pump import AqvaHeat
 from .base_heat_generator import BaseHeatGenerator, BaseStrategy
 from .base_heat_pumps import HeatPump
@@ -22,24 +23,36 @@ from .waste_heat_pump import WasteHeatPump
 # Public API re-exported from this package (also marks the base classes /
 # BufferStorage as intentional re-exports for linting).
 __all__ = [
-    "AqvaHeat", "BaseHeatGenerator", "BaseStrategy", "HeatPump", "BiomassBoiler",
-    "CHP", "GasBoiler", "Geothermal", "PowerToHeat", "RiverHeatPump", "SolarThermal",
-    "BufferStorage", "ThermalStorageAdapter", "WasteHeatPump",
-    "TECH_CLASS_REGISTRY", "TECH_CLASS_BY_TYPE",
+    "AqvaHeat",
+    "BaseHeatGenerator",
+    "BaseStrategy",
+    "HeatPump",
+    "BiomassBoiler",
+    "CHP",
+    "GasBoiler",
+    "Geothermal",
+    "PowerToHeat",
+    "RiverHeatPump",
+    "SolarThermal",
+    "BufferStorage",
+    "ThermalStorageAdapter",
+    "WasteHeatPump",
+    "TECH_CLASS_REGISTRY",
+    "TECH_CLASS_BY_TYPE",
 ]
 
 TECH_CLASS_REGISTRY = {
-    'BHKW': CHP,
+    "BHKW": CHP,
     "Holzgas-BHKW": CHP,
-    'Flusswärmepumpe': RiverHeatPump,
-    'Abwärmepumpe': WasteHeatPump,
-    'Geothermie': Geothermal,
-    'Biomassekessel': BiomassBoiler,
-    'Gaskessel': GasBoiler,
-    'Solarthermie': SolarThermal,
-    'AqvaHeat': AqvaHeat,
-    'Power-to-Heat': PowerToHeat,
-    'Thermischer Netzspeicher': ThermalStorageAdapter,
+    "Flusswärmepumpe": RiverHeatPump,
+    "Abwärmepumpe": WasteHeatPump,
+    "Geothermie": Geothermal,
+    "Biomassekessel": BiomassBoiler,
+    "Gaskessel": GasBoiler,
+    "Solarthermie": SolarThermal,
+    "AqvaHeat": AqvaHeat,
+    "Power-to-Heat": PowerToHeat,
+    "Thermischer Netzspeicher": ThermalStorageAdapter,
 }
 
 # Lookup by Python class name (stored as tech_type in to_dict).

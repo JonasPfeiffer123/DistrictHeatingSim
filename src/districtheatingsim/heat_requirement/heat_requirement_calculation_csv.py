@@ -7,7 +7,6 @@ of building portfolios with temperature curves for district heating design.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-
 import numpy as np
 import pandas as pd
 from pyslpheat import bdew_calculate, vdi4655_calculate
@@ -51,24 +50,22 @@ def _german_national_holidays(year: int) -> np.ndarray:
     """
     easter = _easter_sunday(year)
     dates = [
-        pd.Timestamp(year, 1, 1),          # Neujahr
-        easter - pd.Timedelta(days=2),      # Karfreitag
-        easter + pd.Timedelta(days=1),      # Ostermontag
-        pd.Timestamp(year, 5, 1),           # Tag der Arbeit
-        easter + pd.Timedelta(days=39),     # Christi Himmelfahrt
-        easter + pd.Timedelta(days=50),     # Pfingstmontag
-        pd.Timestamp(year, 10, 3),          # Tag der Deutschen Einheit
-        pd.Timestamp(year, 12, 25),         # 1. Weihnachtstag
-        pd.Timestamp(year, 12, 26),         # 2. Weihnachtstag
+        pd.Timestamp(year, 1, 1),  # Neujahr
+        easter - pd.Timedelta(days=2),  # Karfreitag
+        easter + pd.Timedelta(days=1),  # Ostermontag
+        pd.Timestamp(year, 5, 1),  # Tag der Arbeit
+        easter + pd.Timedelta(days=39),  # Christi Himmelfahrt
+        easter + pd.Timedelta(days=50),  # Pfingstmontag
+        pd.Timestamp(year, 10, 3),  # Tag der Deutschen Einheit
+        pd.Timestamp(year, 12, 25),  # 1. Weihnachtstag
+        pd.Timestamp(year, 12, 26),  # 2. Weihnachtstag
     ]
-    return np.array([d.date() for d in dates], dtype='datetime64[D]')
+    return np.array([d.date() for d in dates], dtype="datetime64[D]")
 
 
-def generate_profiles_from_csv(data: pd.DataFrame,
-                               TRY: str,
-                               calc_method: str,
-                               year: int = 2023) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                                          np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def generate_profiles_from_csv(
+    data: pd.DataFrame, TRY: str, calc_method: str, year: int = 2023
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Generate heat demand profiles from CSV building data.
 
@@ -125,22 +122,22 @@ def generate_profiles_from_csv(data: pd.DataFrame,
 
     # Mapping of building types to calculation methods
     building_type_to_method = {
-        "EFH": "VDI4655",   # Single family house
-        "MFH": "VDI4655",   # Multi-family house
-        "HEF": "BDEW",      # Commercial single family
-        "HMF": "BDEW",      # Commercial multi-family
-        "GKO": "BDEW",      # Office building
-        "GHA": "BDEW",      # Retail building
-        "GMK": "BDEW",      # School building
-        "GBD": "BDEW",      # Hotel building
-        "GBH": "BDEW",      # Restaurant building
-        "GWA": "BDEW",      # Hospital building
-        "GGA": "BDEW",      # Sports facility
-        "GBA": "BDEW",      # Cultural building
-        "GGB": "BDEW",      # Public building
-        "GPD": "BDEW",      # Production building
-        "GMF": "BDEW",      # Mixed-use building
-        "GHD": "BDEW",      # Service building
+        "EFH": "VDI4655",  # Single family house
+        "MFH": "VDI4655",  # Multi-family house
+        "HEF": "BDEW",  # Commercial single family
+        "HMF": "BDEW",  # Commercial multi-family
+        "GKO": "BDEW",  # Office building
+        "GHA": "BDEW",  # Retail building
+        "GMK": "BDEW",  # School building
+        "GBD": "BDEW",  # Hotel building
+        "GBH": "BDEW",  # Restaurant building
+        "GWA": "BDEW",  # Hospital building
+        "GGA": "BDEW",  # Sports facility
+        "GBA": "BDEW",  # Cultural building
+        "GGB": "BDEW",  # Public building
+        "GPD": "BDEW",  # Production building
+        "GMF": "BDEW",  # Mixed-use building
+        "GHD": "BDEW",  # Service building
     }
 
     # Process each building in the dataset
@@ -148,7 +145,7 @@ def generate_profiles_from_csv(data: pd.DataFrame,
         current_building_type = str(data.at[idx, "Gebäudetyp"])
         current_subtype = str(data.at[idx, "Subtyp"])
         current_ww_demand = float(data.at[idx, "WW_Anteil"])
-        
+
         # Determine calculation method
         if calc_method == "Datensatz":
             try:
@@ -200,8 +197,9 @@ def generate_profiles_from_csv(data: pd.DataFrame,
             )
             peak_design_kw = (
                 float(data.at[idx, "P_max"])
-                if "P_max" in data.columns and pd.notna(data.at[idx, "P_max"])
-                   and str(data.at[idx, "P_max"]).strip() not in ("", "None")
+                if "P_max" in data.columns
+                and pd.notna(data.at[idx, "P_max"])
+                and str(data.at[idx, "P_max"]).strip() not in ("", "None")
                 else None
             )
 
@@ -243,11 +241,21 @@ def generate_profiles_from_csv(data: pd.DataFrame,
     # Calculate supply and return temperature curves
     supply_temperature_curve, return_temperature_curve = calculate_temperature_curves(data, hourly_air_temperatures)
 
-    return (yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, 
-            max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures)
+    return (
+        yearly_time_steps,
+        total_heat_W,
+        heating_heat_W,
+        warmwater_heat_W,
+        max_heat_requirement_W,
+        supply_temperature_curve,
+        return_temperature_curve,
+        hourly_air_temperatures,
+    )
 
-def calculate_temperature_curves(data: pd.DataFrame, 
-                               hourly_air_temperatures: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+
+def calculate_temperature_curves(
+    data: pd.DataFrame, hourly_air_temperatures: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate supply and return temperature curves for district heating systems.
 
@@ -257,7 +265,7 @@ def calculate_temperature_curves(data: pd.DataFrame,
     :type hourly_air_temperatures: np.ndarray
     :return: Tuple of (supply_temperature_curve, return_temperature_curve)
     :rtype: Tuple[np.ndarray, np.ndarray]
-    
+
     .. note::
         Weather-compensated curves: T_supply = T_max + slope × (T_outdoor - T_design)
     """
@@ -280,13 +288,13 @@ def calculate_temperature_curves(data: pd.DataFrame,
         st_curve = np.where(
             hourly_air_temperatures <= min_air_temperature,
             st,  # Maximum temperature at/below design conditions
-            st + (s * (hourly_air_temperatures - min_air_temperature))  # Modulated temperature above design
+            st + (s * (hourly_air_temperatures - min_air_temperature)),  # Modulated temperature above design
         )
         supply_temperature_curve.append(st_curve)
 
     # Convert to numpy arrays for efficient operations
     supply_temperature_curve = np.array(supply_temperature_curve)
-    
+
     # Calculate return temperature curves (constant spread from supply)
     return_temperature_curve = supply_temperature_curve - dT
 

@@ -78,7 +78,7 @@ class HeatSystemPresenter:
         # Validate input parameters
         if not folder_path or not project_name:
             return False
-            
+
         try:
             # Create the project folder with the standardized structure
             full_path = os.path.join(folder_path, project_name)
@@ -97,13 +97,13 @@ class HeatSystemPresenter:
 
             # Create initial CSV file for building data in project tab
             csv_path = os.path.join(
-                self.folder_manager.get_variant_folder(), 
-                self.config_manager.get_relative_path("current_building_data_path")
+                self.folder_manager.get_variant_folder(),
+                self.config_manager.get_relative_path("current_building_data_path"),
             )
             self.view.projectTab.presenter.create_csv(csv_path)
-            
+
             return True
-            
+
         except Exception as e:
             # Provide user-friendly error feedback
             self.view.show_error_message(f"Ein Fehler ist aufgetreten: {e}")
@@ -139,18 +139,15 @@ class HeatSystemPresenter:
         # Show interactive dialog for new project name input
         current_project_name = os.path.basename(self.folder_manager.project_folder)
         default_name = f"{current_project_name} - Kopie"
-        
+
         new_project_name, ok = QInputDialog.getText(
-            self.view, 
-            'Projektkopie erstellen', 
-            'Geben Sie einen neuen Namen für das Projekt ein:', 
-            text=default_name
+            self.view, "Projektkopie erstellen", "Geben Sie einen neuen Namen für das Projekt ein:", text=default_name
         )
 
         # Process user input and create project copy
         if ok and new_project_name:
             new_project_path = os.path.join(base_dir, new_project_name)
-            
+
             # Check for naming conflicts
             if not os.path.exists(new_project_path):
                 try:
@@ -159,7 +156,7 @@ class HeatSystemPresenter:
 
                     # Register copied project as active project
                     self.folder_manager.set_project_folder(new_project_path)
-                    
+
                     # Search for variants in copied project
                     variants = discover_variants(new_project_path)
 
@@ -176,16 +173,14 @@ class HeatSystemPresenter:
                             self.folder_manager.set_project_folder(new_project_path)
 
                     return True
-                    
+
                 except Exception as e:
                     # Provide detailed error feedback
                     self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
                     return False
             else:
                 # Handle naming conflicts
-                self.view.show_error_message(
-                    f"Ein Projekt mit dem Namen '{new_project_name}' existiert bereits."
-                )
+                self.view.show_error_message(f"Ein Projekt mit dem Namen '{new_project_name}' existiert bereits.")
                 return False
         else:
             return False  # User cancelled — no error message needed
@@ -201,7 +196,7 @@ class HeatSystemPresenter:
         :return: True if successful, False if failed
         :rtype: bool
         """
-        
+
         # Get base project directory for variant creation
         base_dir = self.folder_manager.project_folder
         variant_num = 1
@@ -221,7 +216,7 @@ class HeatSystemPresenter:
             # Activate newly created variant
             self.folder_manager.set_variant_folder(new_variant_name)
             return True
-            
+
         except Exception as e:
             # Provide detailed error feedback
             self.view.show_error_message(f"Fehler beim Erstellen der Variante: {e}")
@@ -252,11 +247,11 @@ class HeatSystemPresenter:
         try:
             # Create complete copy of current variant directory
             shutil.copytree(self.folder_manager.get_variant_folder(), new_variant_path)
-            
+
             # Activate newly created variant copy
             self.folder_manager.set_variant_folder(new_variant_name)
             return True
-            
+
         except Exception as e:
             # Provide detailed error feedback
             self.view.show_error_message(f"Fehler beim Kopieren der Variante: {e}")

@@ -35,7 +35,7 @@ class CustomJSONEncoder(json.JSONEncoder):
                 return float(obj)
             if isinstance(obj, pd.DataFrame):
                 # Use 'split' format for DataFrame serialization
-                return obj.to_dict(orient='split')
+                return obj.to_dict(orient="split")
             if isinstance(obj, (BaseHeatGenerator, BaseStrategy, ThermalStorageAdapter)):
                 return obj.to_dict()
             return super().default(obj)

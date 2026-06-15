@@ -7,7 +7,6 @@ Biomass boiler system with storage integration, economic analysis and BEW subsid
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-
 import numpy as np
 
 from districtheatingsim.constants import BEW_SUBSIDY_SHARE, CO2_FACTOR_WOOD, PRIMARY_ENERGY_FACTOR_WOOD
@@ -37,16 +36,30 @@ class BiomassBoiler(BaseHeatGenerator):
     .. note::
        Supports BEW subsidy calculation and part-load operation constraints.
     """
-    
-    def __init__(self, name: str, thermal_capacity_kW: float, Größe_Holzlager: float = 40, 
-                 spez_Investitionskosten: float = 200, spez_Investitionskosten_Holzlager: float = 400, 
-                 Nutzungsgrad_BMK: float = 0.8, min_Teillast: float = 0.3,
-                 speicher_aktiv: bool = False, Speicher_Volumen: float = 20, 
-                 T_vorlauf: float = 90, T_ruecklauf: float = 60, 
-                 initial_fill: float = 0.0, min_fill: float = 0.2, max_fill: float = 0.8, 
-                 spez_Investitionskosten_Speicher: float = 750, active: bool = True, 
-                 opt_BMK_min: float = 0, opt_BMK_max: float = 1000, 
-                 opt_Speicher_min: float = 0, opt_Speicher_max: float = 100):
+
+    def __init__(
+        self,
+        name: str,
+        thermal_capacity_kW: float,
+        Größe_Holzlager: float = 40,
+        spez_Investitionskosten: float = 200,
+        spez_Investitionskosten_Holzlager: float = 400,
+        Nutzungsgrad_BMK: float = 0.8,
+        min_Teillast: float = 0.3,
+        speicher_aktiv: bool = False,
+        Speicher_Volumen: float = 20,
+        T_vorlauf: float = 90,
+        T_ruecklauf: float = 60,
+        initial_fill: float = 0.0,
+        min_fill: float = 0.2,
+        max_fill: float = 0.8,
+        spez_Investitionskosten_Speicher: float = 750,
+        active: bool = True,
+        opt_BMK_min: float = 0,
+        opt_BMK_max: float = 1000,
+        opt_Speicher_min: float = 0,
+        opt_Speicher_max: float = 100,
+    ):
         super().__init__(name)
         self.thermal_capacity_kW = thermal_capacity_kW
         self.Größe_Holzlager = Größe_Holzlager
@@ -67,7 +80,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.opt_BMK_max = opt_BMK_max
         self.opt_Speicher_min = opt_Speicher_min
         self.opt_Speicher_max = opt_Speicher_max
-        
+
         # System specifications based on biomass boiler standards
         self.Nutzungsdauer = 15  # Operational lifespan [years]
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 3, 3, 0  # Installation and maintenance factors
@@ -85,7 +98,8 @@ class BiomassBoiler(BaseHeatGenerator):
                 T_flow=self.T_vorlauf,
                 T_return=self.T_ruecklauf,
             )
-            if self.speicher_aktiv else None
+            if self.speicher_aktiv
+            else None
         )
 
         # Initialize operational arrays
@@ -111,7 +125,7 @@ class BiomassBoiler(BaseHeatGenerator):
         if self.speicher_aktiv:
             self.Wärmeleistung_Speicher_kW = np.zeros(hours, dtype=float)
             self.Speicher_Fuellstand = np.zeros(hours, dtype=float)
-        
+
         self.calculated = False  # Flag to indicate if calculation is complete
 
     def simulate_operation(self, Last_L: np.ndarray) -> None:
@@ -126,12 +140,9 @@ class BiomassBoiler(BaseHeatGenerator):
         """
         # Determine operational periods based on minimum part-load constraint
         self.betrieb_mask = Last_L >= self.thermal_capacity_kW * self.min_Teillast
-        
+
         # Calculate heat output limited by boiler capacity
-        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(
-            Last_L[self.betrieb_mask], 
-            self.thermal_capacity_kW
-        )
+        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.thermal_capacity_kW)
 
     def simulate_storage(self, Last_L: np.ndarray, duration: float) -> None:
         """
@@ -205,7 +216,7 @@ class BiomassBoiler(BaseHeatGenerator):
             self.Wärmeleistung_kW[t] = 0
 
         return self.Wärmeleistung_kW[t], 0  # Heat output, electricity output
-    
+
     def calculate_results(self, duration: float) -> None:
         """
         Calculate operational metrics.
@@ -221,8 +232,7 @@ class BiomassBoiler(BaseHeatGenerator):
         starts = np.diff(self.betrieb_mask.astype(int)) > 0
         self.Anzahl_Starts = np.sum(starts)
         self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
-                                         if self.Anzahl_Starts > 0 else 0)
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
     def calculate_heat_generation_costs(self, economic_parameters: dict) -> float:
         """
@@ -240,7 +250,7 @@ class BiomassBoiler(BaseHeatGenerator):
 
         if self.Wärmemenge_MWh == 0:
             return 0
-        
+
         # Calculate component investment costs
         self.Investitionskosten_Kessel = self.spez_Investitionskosten * self.thermal_capacity_kW
         self.Investitionskosten_Holzlager = self.spez_Investitionskosten_Holzlager * self.Größe_Holzlager
@@ -248,9 +258,9 @@ class BiomassBoiler(BaseHeatGenerator):
             self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
         else:
             self.Investitionskosten_Speicher = 0
-        self.Investitionskosten = (self.Investitionskosten_Kessel + 
-                                  self.Investitionskosten_Holzlager + 
-                                  self.Investitionskosten_Speicher)
+        self.Investitionskosten = (
+            self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
+        )
 
         # Calculate standard annuity without subsidies
         self.A_N = self.annuity(
@@ -261,19 +271,19 @@ class BiomassBoiler(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=self.Brennstoffbedarf_MWh,
             energy_cost_per_unit=self.Holzpreis,
             annual_revenue=0,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
-        
+
         self.WGK = self.A_N / self.Wärmemenge_MWh
 
         # Calculate BEW subsidy scenario
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
-        
+
         self.Annuität_BEW = self.annuity(
             initial_investment_cost=self.Investitionskosten_Gesamt_BEW,
             asset_lifespan_years=self.Nutzungsdauer,
@@ -282,13 +292,13 @@ class BiomassBoiler(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=self.Brennstoffbedarf_MWh,
             energy_cost_per_unit=self.Holzpreis,
             annual_revenue=0,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
-        
+
         self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
 
         # Return appropriate cost based on subsidy eligibility
@@ -306,17 +316,16 @@ class BiomassBoiler(BaseHeatGenerator):
         """
         # Calculate CO2 emissions from biomass fuel consumption
         self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel  # tCO2
-        
+
         # Calculate specific CO2 emissions per unit heat generated
-        self.spec_co2_total = (self.co2_emissions / self.Wärmemenge_MWh 
-                              if self.Wärmemenge_MWh > 0 else 0)  # tCO2/MWh_heat
+        self.spec_co2_total = (
+            self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0
+        )  # tCO2/MWh_heat
 
         # Calculate primary energy consumption
         self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
-        
 
-    def calculate(self, economic_parameters: dict, duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> dict:
+    def calculate(self, economic_parameters: dict, duration: float, load_profile: np.ndarray, **kwargs) -> dict:
         """
         Comprehensive system analysis.
 
@@ -338,36 +347,36 @@ class BiomassBoiler(BaseHeatGenerator):
                 self.simulate_storage(load_profile, duration)
             else:
                 self.simulate_operation(load_profile)
-            
+
         # Calculate performance metrics
         self.calculate_results(duration)
-        
+
         # Perform economic and environmental analysis
         WGK = self.calculate_heat_generation_costs(economic_parameters)
         self.calculate_environmental_impact()
 
         # Compile comprehensive results
         results = {
-            'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_MWh,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
-            'WGK': WGK,
-            'Anzahl_Starts': self.Anzahl_Starts,
-            'Betriebsstunden': self.Betriebsstunden,
-            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie,
-            'color': "green"  # Green color for renewable biomass
+            "tech_name": self.name,
+            "Wärmemenge": self.Wärmemenge_MWh,
+            "Wärmeleistung_L": self.Wärmeleistung_kW,
+            "Brennstoffbedarf": self.Brennstoffbedarf_MWh,
+            "WGK": WGK,
+            "Anzahl_Starts": self.Anzahl_Starts,
+            "Betriebsstunden": self.Betriebsstunden,
+            "Betriebsstunden_pro_Start": self.Betriebsstunden_pro_Start,
+            "spec_co2_total": self.spec_co2_total,
+            "primärenergie": self.primärenergie,
+            "color": "green",  # Green color for renewable biomass
         }
 
         # Add storage-specific results if thermal storage is active
         if self.speicher_aktiv:
-            results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
-            results['Speicherfüllstand_L'] = self.Speicher_Fuellstand
+            results["Wärmeleistung_Speicher_L"] = self.Wärmeleistung_Speicher_kW
+            results["Speicherfüllstand_L"] = self.Speicher_Fuellstand
 
         return results
-    
+
     def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters.
@@ -416,11 +425,13 @@ class BiomassBoiler(BaseHeatGenerator):
         :return: Formatted system configuration text
         :rtype: str
         """
-        return (f"{self.name}: th. Leistung: {self.thermal_capacity_kW:.1f}, "
-                f"Größe Holzlager: {self.Größe_Holzlager:.1f} t, "
-                f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten:.1f} €/kW, "
-                f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager:.1f} €/t")
-    
+        return (
+            f"{self.name}: th. Leistung: {self.thermal_capacity_kW:.1f}, "
+            f"Größe Holzlager: {self.Größe_Holzlager:.1f} t, "
+            f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten:.1f} €/kW, "
+            f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager:.1f} €/t"
+        )
+
     def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
@@ -429,10 +440,13 @@ class BiomassBoiler(BaseHeatGenerator):
         :rtype: tuple
         """
         dimensions = f"th. Leistung: {self.thermal_capacity_kW:.1f} kW, Größe Holzlager: {self.Größe_Holzlager:.1f} t"
-        costs = (f"Investitionskosten Kessel: {self.Investitionskosten_Kessel:.1f} €, "
-                f"Investitionskosten Holzlager: {self.Investitionskosten_Holzlager:.1f} €")
+        costs = (
+            f"Investitionskosten Kessel: {self.Investitionskosten_Kessel:.1f} €, "
+            f"Investitionskosten Holzlager: {self.Investitionskosten_Holzlager:.1f} €"
+        )
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
+
 
 class BiomassBoilerStrategy(BaseStrategy):
     """
@@ -443,7 +457,7 @@ class BiomassBoilerStrategy(BaseStrategy):
     :param charge_off: Temperature threshold for deactivation [°C]
     :type charge_off: float
     """
-    
+
     def __init__(self, charge_on: float, charge_off: float):
         """
         Initialize control strategy.

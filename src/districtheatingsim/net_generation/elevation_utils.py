@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _transform_utm_to_wgs84(points_utm: list[tuple[float, float]],
-                              crs_utm: str) -> list[tuple[float, float]]:
+
+def _transform_utm_to_wgs84(points_utm: list[tuple[float, float]], crs_utm: str) -> list[tuple[float, float]]:
     """Transform UTM points to (lon, lat) WGS84 tuples.
 
     :param points_utm: List of (x, y) coordinate pairs in *crs_utm*
@@ -40,9 +40,10 @@ def _transform_utm_to_wgs84(points_utm: list[tuple[float, float]],
 # Public API
 # ---------------------------------------------------------------------------
 
-def query_elevation_from_geotiff(points_utm: list[tuple[float, float]],
-                                  dem_path: str,
-                                  crs_utm: str = "EPSG:25833") -> list[float]:
+
+def query_elevation_from_geotiff(
+    points_utm: list[tuple[float, float]], dem_path: str, crs_utm: str = "EPSG:25833"
+) -> list[float]:
     """Read terrain elevations from a local GeoTIFF digital elevation model.
 
     Uses ``rasterio`` to sample the raster at the given projected coordinates.
@@ -66,8 +67,7 @@ def query_elevation_from_geotiff(points_utm: list[tuple[float, float]],
         from rasterio.crs import CRS as RasterioCRS
     except ImportError as exc:
         raise ImportError(
-            "rasterio is required for GeoTIFF elevation lookup. "
-            "Install it with: pip install rasterio"
+            "rasterio is required for GeoTIFF elevation lookup. Install it with: pip install rasterio"
         ) from exc
 
     with rasterio.open(dem_path) as src:
@@ -99,9 +99,9 @@ def query_elevation_from_geotiff(points_utm: list[tuple[float, float]],
     return elevations
 
 
-def query_elevation_from_api(points_utm: list[tuple[float, float]],
-                              crs_utm: str = "EPSG:25833",
-                              dataset: str = "eudem25m") -> list[float]:
+def query_elevation_from_api(
+    points_utm: list[tuple[float, float]], crs_utm: str = "EPSG:25833", dataset: str = "eudem25m"
+) -> list[float]:
     """Query terrain elevations from the OpenTopoData REST API (online fallback).
 
     Transforms UTM coordinates to WGS84, then queries
@@ -130,7 +130,7 @@ def query_elevation_from_api(points_utm: list[tuple[float, float]],
     url = f"https://api.opentopodata.org/v1/{dataset}"
 
     for start in range(0, len(wgs84_pts), batch_size):
-        batch = wgs84_pts[start:start + batch_size]
+        batch = wgs84_pts[start : start + batch_size]
         locations = "|".join(f"{lat},{lon}" for lon, lat in batch)
 
         try:
@@ -143,17 +143,16 @@ def query_elevation_from_api(points_utm: list[tuple[float, float]],
                 if elev is not None:
                     elevations[start + j] = float(elev)
                 else:
-                    logger.warning("No elevation returned for point %d — using 0.0 m",
-                                   start + j)
+                    logger.warning("No elevation returned for point %d — using 0.0 m", start + j)
         except Exception as exc:
             logger.error("OpenTopoData API error for batch starting at %d: %s", start, exc)
 
     return elevations
 
 
-def build_elevation_lookup(points_utm: list[tuple[float, float]],
-                            dem_path: str | None,
-                            crs_utm: str = "EPSG:25833") -> dict[tuple[float, float], float]:
+def build_elevation_lookup(
+    points_utm: list[tuple[float, float]], dem_path: str | None, crs_utm: str = "EPSG:25833"
+) -> dict[tuple[float, float], float]:
     """Build a ``{(x, y): z_m}`` dictionary for a list of UTM points.
 
     Uses the local GeoTIFF if *dem_path* is provided and ``rasterio`` is
@@ -193,9 +192,9 @@ def build_elevation_lookup(points_utm: list[tuple[float, float]],
     return dict(zip(points_utm, elevations, strict=False))
 
 
-def assign_elevation_to_geodataframe(gdf: gpd.GeoDataFrame,
-                                      elevation_lookup: dict[tuple[float, float], float],
-                                      default_z: float = 0.0) -> gpd.GeoDataFrame:
+def assign_elevation_to_geodataframe(
+    gdf: gpd.GeoDataFrame, elevation_lookup: dict[tuple[float, float], float], default_z: float = 0.0
+) -> gpd.GeoDataFrame:
     """Write Z-coordinates from *elevation_lookup* into a GeoDataFrame's geometries.
 
     Supports ``Point`` and ``LineString`` geometry types.  For each vertex
@@ -224,8 +223,7 @@ def assign_elevation_to_geodataframe(gdf: gpd.GeoDataFrame,
         if geom.geom_type == "LineString":
             return LineString([(x, y, _z(x, y)) for x, y in geom.coords])
         # Unsupported geometry type — return unchanged with a warning
-        logger.warning("assign_elevation_to_geodataframe: unsupported geometry type '%s'",
-                       geom.geom_type)
+        logger.warning("assign_elevation_to_geodataframe: unsupported geometry type '%s'", geom.geom_type)
         return geom
 
     gdf_3d = gdf.copy()

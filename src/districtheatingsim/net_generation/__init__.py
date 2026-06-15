@@ -1,4 +1,4 @@
-﻿"""
+"""
 Network Generation Module
 ==========================
 
@@ -35,7 +35,7 @@ Generate network using OSMnx:
 
 >>> from districtheatingsim.net_generation.osmnx_steiner_network import generate_osmnx_network
 >>> import geopandas as gpd
->>> 
+>>>
 >>> buildings = gpd.read_file('buildings.csv')
 >>> result = generate_osmnx_network(
 ...     buildings=buildings,
@@ -66,17 +66,16 @@ from .osmnx_steiner_network import (
 
 __all__ = [
     # Main generation functions
-    'generate_osmnx_network',
-    'generate_and_export_osmnx_layers',
-    
+    "generate_osmnx_network",
+    "generate_and_export_osmnx_layers",
     # Step-by-step functions
-    'download_street_graph',
-    'create_steiner_tree',
-    'connect_terminals_with_edge_splitting',
-    'build_network_from_split_edges',
-    'remove_dead_ends',
-    'create_connection_lines',
-    'create_return_network',
-    'create_hast_connections',
-    'create_generator_connection',
+    "download_street_graph",
+    "create_steiner_tree",
+    "connect_terminals_with_edge_splitting",
+    "build_network_from_split_edges",
+    "remove_dead_ends",
+    "create_connection_lines",
+    "create_return_network",
+    "create_hast_connections",
+    "create_generator_connection",
 ]

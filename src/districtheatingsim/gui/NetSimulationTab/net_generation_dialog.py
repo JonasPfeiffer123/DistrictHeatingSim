@@ -32,11 +32,12 @@ def load_dialog_config(config_path="dialog_config.json"):
     """
     if not os.path.isabs(config_path):
         # Use get_resource_path for PyInstaller compatibility
-        config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
+        config_path = get_resource_path(os.path.join("gui", "NetSimulationTab", config_path))
     with open(config_path, encoding="utf-8") as f:
         config = json.load(f)
     check_version(config, "dialog_config")
     return config
+
 
 def save_dialog_config(config, config_path="dialog_config.json"):
     """
@@ -49,15 +50,16 @@ def save_dialog_config(config, config_path="dialog_config.json"):
     """
     if not os.path.isabs(config_path):
         # Use get_resource_path for PyInstaller compatibility
-        config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
+        config_path = get_resource_path(os.path.join("gui", "NetSimulationTab", config_path))
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(add_meta(config, "dialog_config"), f, indent=4)
-    
+
+
 class NetGenerationDialog(QDialog):
     """
     Dialog for network generation configuration with multiple tabs.
     """
-    
+
     def __init__(self, generate_callback, base_path, parent=None, config_path="dialog_config.json"):
         """
         Initialize network generation dialog.
@@ -120,31 +122,37 @@ class NetGenerationDialog(QDialog):
             k_mm = float(self.diameter_optimization_tab.k_mm_Input.text())
 
         self.network_config_tab.getSupplyTemperatureHeatGenerator()
-        
+
         flow_pressure_pump = float(self.network_config_tab.parameter_rows_net[4].itemAt(1).widget().text())
         lift_pressure_pump = float(self.network_config_tab.parameter_rows_net[5].itemAt(1).widget().text())
 
         min_supply_temperature_building = (
             float(self.network_config_tab.parameter_rows_heat_consumer[0].itemAt(1).widget().text())
-            if self.network_config_tab.min_supply_temperature_building_checked else None
+            if self.network_config_tab.min_supply_temperature_building_checked
+            else None
         )
         fixed_return_temperature_heat_consumer = (
             float(self.network_config_tab.parameter_rows_heat_consumer[1].itemAt(1).widget().text())
-            if self.network_config_tab.return_temp_checked else None
+            if self.network_config_tab.return_temp_checked
+            else None
         )
 
         dT_RL = float(self.network_config_tab.parameter_rows_heat_consumer[2].itemAt(1).widget().text())
 
         # Determine main producer index and secondary producer order
         if self.producer_order_tab.producer_order_list_widget.count() > 0:
-            main_producer_location_index = self.producer_order_tab.producer_order_list_widget.item(0).data(Qt.ItemDataRole.UserRole)['index']
-            
+            main_producer_location_index = self.producer_order_tab.producer_order_list_widget.item(0).data(
+                Qt.ItemDataRole.UserRole
+            )["index"]
+
             secondary_producers = [
-            {
-                'index': self.producer_order_tab.producer_order_list_widget.item(i).data(Qt.ItemDataRole.UserRole)['index'],
-                'load_percentage': float(self.producer_order_tab.percentage_inputs[i-1].text())
-            }
-            for i in range(1, self.producer_order_tab.producer_order_list_widget.count())
+                {
+                    "index": self.producer_order_tab.producer_order_list_widget.item(i).data(Qt.ItemDataRole.UserRole)[
+                        "index"
+                    ],
+                    "load_percentage": float(self.producer_order_tab.percentage_inputs[i - 1].text()),
+                }
+                for i in range(1, self.producer_order_tab.producer_order_list_widget.count())
             ]
         else:
             main_producer_location_index = 0
@@ -154,7 +162,6 @@ class NetGenerationDialog(QDialog):
             import_type=self.network_data_tab.importTypeComboBox.currentText(),
             network_geojson_path=network_path,
             heat_demand_json_path=json_path,
-
             netconfiguration=self.network_config_tab.netconfiguration,
             supply_temperature_control=self.network_config_tab.supplyTemperatureControlInput.currentText(),
             max_supply_temperature_heat_generator=self.network_config_tab.max_supply_temperature,
@@ -170,16 +177,14 @@ class NetGenerationDialog(QDialog):
             dT_RL=dT_RL,
             building_temperature_checked=self.network_config_tab.building_temp_checked,
             pipetype=pipetype,
-
             diameter_optimization_pipe_checked=self.diameter_optimization_tab.DiameterOpt_ckecked,
             max_velocity_pipe=v_max_pipe,
             material_filter_pipe=material_filter,
             k_mm_pipe=k_mm,
-
             main_producer_location_index=main_producer_location_index,
             secondary_producers=[SecondaryProducer(**sp) for sp in secondary_producers],
         )
-        
+
         if self.generate_callback:
             self.generate_callback(data)
 

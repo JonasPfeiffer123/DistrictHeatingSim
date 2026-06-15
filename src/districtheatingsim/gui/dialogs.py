@@ -29,7 +29,7 @@ def _extract_try_location(path: str) -> str:
     :rtype: str
     """
     # 1. Filename-based extraction
-    m = re.search(r'_(\d{6})(\d{6})_', os.path.basename(path))
+    m = re.search(r"_(\d{6})(\d{6})_", os.path.basename(path))
     if m:
         lat = int(m.group(1)) / 10000
         lon = int(m.group(2)) / 10000
@@ -48,6 +48,7 @@ def _extract_try_location(path: str) -> str:
                     break
         if rw is not None and hw is not None:
             from pyproj import Transformer
+
             t = Transformer.from_crs("EPSG:3034", "EPSG:4326", always_xy=True)
             lon, lat = t.transform(rw, hw)
             return f"{lat:.4f} °N, {lon:.4f} °E"
@@ -55,6 +56,7 @@ def _extract_try_location(path: str) -> str:
         pass
 
     return ""
+
 
 class TemperatureDataDialog(QDialog):
     """
@@ -91,7 +93,9 @@ class TemperatureDataDialog(QDialog):
             "Bitte wählen Sie die Datei des Testreferenzjahres (TRY) aus, die Sie verwenden möchten.<br>"
             "Testreferenzjahre können unter <a href='https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html'>"
             "https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html</a> bezogen werden.<br>"
-            "Es ist jedoch eine Registrierung beim DWD notwendig", self)
+            "Es ist jedoch eine Registrierung beim DWD notwendig",
+            self,
+        )
         self.descriptionLabel.setWordWrap(True)
         self.descriptionLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.descriptionLabel)
@@ -104,7 +108,7 @@ class TemperatureDataDialog(QDialog):
         self.temperatureDataFileInput.setText(
             get_resource_path(os.path.join("data", "TRY", "TRY_511676144222", "TRY2015_511676144222_Jahr.dat"))
         )
-        self.selectTRYFileButton = QPushButton('TRY-Datei auswählen')
+        self.selectTRYFileButton = QPushButton("TRY-Datei auswählen")
         self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.temperatureDataFileInput))
 
         self.input_layout.addWidget(self.temperatureDataFileLabel)
@@ -124,10 +128,10 @@ class TemperatureDataDialog(QDialog):
         self.buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
-        
+
         okButton.clicked.connect(self.accept)
         cancelButton.clicked.connect(self.reject)
-        
+
         self.buttonLayout.addWidget(okButton)
         self.buttonLayout.addWidget(cancelButton)
 
@@ -159,9 +163,8 @@ class TemperatureDataDialog(QDialog):
         :return: Dictionary with TRY filename
         :rtype: dict
         """
-        return {
-            'TRY-filename': self.temperatureDataFileInput.text()
-        }
+        return {"TRY-filename": self.temperatureDataFileInput.text()}
+
 
 class HeatPumpDataDialog(QDialog):
     """
@@ -233,6 +236,7 @@ class HeatPumpDataDialog(QDialog):
         self._ax.clear()
         try:
             import pandas as pd
+
             df = pd.read_csv(path, sep=";", header=0, index_col=0)
             df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
 
@@ -244,8 +248,12 @@ class HeatPumpDataDialog(QDialog):
             masked = np.ma.masked_where(data == 0, data)
 
             im = self._ax.imshow(
-                masked, aspect="auto", origin="lower",
-                cmap="RdYlGn", vmin=1.0, vmax=7.0,
+                masked,
+                aspect="auto",
+                origin="lower",
+                cmap="RdYlGn",
+                vmin=1.0,
+                vmax=7.0,
             )
 
             # Annotate each cell
@@ -253,8 +261,7 @@ class HeatPumpDataDialog(QDialog):
                 for c in range(data.shape[1]):
                     val = data[r, c]
                     if val > 0:
-                        self._ax.text(c, r, f"{val:.1f}", ha="center", va="center",
-                                      fontsize=7, color="black")
+                        self._ax.text(c, r, f"{val:.1f}", ha="center", va="center", fontsize=7, color="black")
 
             self._ax.set_xticks(range(len(supply_temps)))
             self._ax.set_xticklabels(supply_temps, fontsize=8)
@@ -293,6 +300,4 @@ class HeatPumpDataDialog(QDialog):
         :return: Dictionary with COP filename
         :rtype: dict
         """
-        return {
-            'COP-filename': self.heatPumpDataFileInput.text()
-        }
+        return {"COP-filename": self.heatPumpDataFileInput.text()}

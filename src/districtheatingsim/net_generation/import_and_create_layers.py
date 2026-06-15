@@ -26,7 +26,7 @@ from districtheatingsim.utilities.csv_schemas import validate_csv_columns
 # Suppress pyogrio warnings about the GeoJSON driver not supporting the DRIVER open
 # option — emitted at GeoJSON I/O time, so set after the imports (module load is still
 # before any read/write call).
-warnings.filterwarnings('ignore', message='.*driver GeoJSON does not support open option.*', category=RuntimeWarning)
+warnings.filterwarnings("ignore", message=".*driver GeoJSON does not support open option.*", category=RuntimeWarning)
 
 
 def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFrame | None:
@@ -39,7 +39,7 @@ def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFr
     :rtype: Optional[gpd.GeoDataFrame]
     :raises FileNotFoundError: If GeoJSON file missing
     :raises ValueError: If invalid GeoJSON format
-    
+
     .. note::
         Returns None on error to prevent cascading failures. Prints diagnostic messages.
     """
@@ -47,11 +47,11 @@ def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFr
         layer = gpd.read_file(osm_street_layer_geojson_file)
         print(f"Street layer successfully loaded from {osm_street_layer_geojson_file}")
         print(f"Loaded {len(layer)} street segments")
-        
+
         # Basic validation
         if layer.empty:
             print("Warning: Loaded street layer is empty")
-        
+
         return layer
     except FileNotFoundError:
         print(f"Error: File not found - {osm_street_layer_geojson_file}")
@@ -61,14 +61,14 @@ def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFr
         traceback.print_exc()
         return None
 
-def load_layers(osm_street_layer_geojson_file: str,
-                data_csv_file_name: str,
-                coordinates: list[tuple[float, float]],
-                dem_path: str | None = None,
-                crs: str = "EPSG:25833") -> tuple[gpd.GeoDataFrame | None,
-                                                   gpd.GeoDataFrame | None,
-                                                   gpd.GeoDataFrame | None,
-                                                   pd.DataFrame | None]:
+
+def load_layers(
+    osm_street_layer_geojson_file: str,
+    data_csv_file_name: str,
+    coordinates: list[tuple[float, float]],
+    dem_path: str | None = None,
+    crs: str = "EPSG:25833",
+) -> tuple[gpd.GeoDataFrame | None, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None, pd.DataFrame | None]:
     """
     Load all spatial layers for network generation.
 
@@ -106,7 +106,7 @@ def load_layers(osm_street_layer_geojson_file: str,
         print(f"Street layer successfully loaded: {len(osm_street_layer)} segments")
 
         # Load the heat consumer data as a DataFrame
-        heat_consumer_df = pd.read_csv(data_csv_file_name, sep=';')
+        heat_consumer_df = pd.read_csv(data_csv_file_name, sep=";")
         print(f"Heat consumer data successfully loaded: {len(heat_consumer_df)} buildings")
 
         # Validate required columns (clear up-front error naming any missing column)
@@ -114,18 +114,13 @@ def load_layers(osm_street_layer_geojson_file: str,
 
         # Convert the DataFrame into a GeoDataFrame (2D first)
         heat_consumer_layer = gpd.GeoDataFrame(
-            heat_consumer_df,
-            geometry=gpd.points_from_xy(heat_consumer_df.UTM_X, heat_consumer_df.UTM_Y),
-            crs=crs
+            heat_consumer_df, geometry=gpd.points_from_xy(heat_consumer_df.UTM_X, heat_consumer_df.UTM_Y), crs=crs
         )
         print(f"Heat consumer layer successfully created: {len(heat_consumer_layer)} points")
 
         # Create the heat generator locations as a GeoDataFrame (2D first)
         heat_generator_locations = [Point(x, y) for x, y in coordinates]
-        heat_generator_layer = gpd.GeoDataFrame(
-            geometry=heat_generator_locations,
-            crs=crs
-        )
+        heat_generator_layer = gpd.GeoDataFrame(geometry=heat_generator_locations, crs=crs)
         print(f"Heat generator layer successfully created: {len(heat_generator_layer)} generators")
 
         # Validate data consistency
@@ -137,19 +132,25 @@ def load_layers(osm_street_layer_geojson_file: str,
         # --- Elevation enrichment ------------------------------------------------
         all_points = collect_unique_points_from_gdfs(heat_consumer_layer, heat_generator_layer)
         if all_points:
-            print(f"Querying elevation for {len(all_points)} unique points "
-                  f"({'GeoTIFF: ' + dem_path if dem_path else 'OpenTopoData API'})...")
+            print(
+                f"Querying elevation for {len(all_points)} unique points "
+                f"({'GeoTIFF: ' + dem_path if dem_path else 'OpenTopoData API'})..."
+            )
             elev_lookup = build_elevation_lookup(all_points, dem_path, crs_utm=crs)
             heat_consumer_layer = assign_elevation_to_geodataframe(heat_consumer_layer, elev_lookup)
             heat_generator_layer = assign_elevation_to_geodataframe(heat_generator_layer, elev_lookup)
 
             z_values = list(elev_lookup.values())
             if any(z != 0.0 for z in z_values):
-                print(f"Elevation range: {min(z_values):.1f} m – {max(z_values):.1f} m "
-                      f"(Δh = {max(z_values) - min(z_values):.1f} m)")
+                print(
+                    f"Elevation range: {min(z_values):.1f} m – {max(z_values):.1f} m "
+                    f"(Δh = {max(z_values) - min(z_values):.1f} m)"
+                )
             else:
-                print("Warning: All elevations are 0.0 m — no DEM data available. "
-                      "Hydraulic pressure calculations will ignore terrain height.")
+                print(
+                    "Warning: All elevations are 0.0 m — no DEM data available. "
+                    "Hydraulic pressure calculations will ignore terrain height."
+                )
         # -------------------------------------------------------------------------
 
         return osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df
@@ -167,15 +168,18 @@ def load_layers(osm_street_layer_geojson_file: str,
         traceback.print_exc()
         return None, None, None, None
 
-def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
-                              data_csv_file_name: str,
-                              coordinates: list[tuple[float, float]],
-                              base_path: str,
-                              algorithm: str = "MST",
-                              offset_angle: float = 0,
-                              offset_distance: float = 0.5,
-                              crs: str = "EPSG:25833",
-                              dem_path: str | None = None) -> None:
+
+def generate_and_export_layers(
+    osm_street_layer_geojson_file_name: str,
+    data_csv_file_name: str,
+    coordinates: list[tuple[float, float]],
+    base_path: str,
+    algorithm: str = "MST",
+    offset_angle: float = 0,
+    offset_distance: float = 0.5,
+    crs: str = "EPSG:25833",
+    dem_path: str | None = None,
+) -> None:
     """
     Generate district heating network and export as GeoJSON.
 
@@ -216,36 +220,27 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
         dem_path=dem_path,
         crs=crs,
     )
-    
+
     # Validate data loading success
     if any(layer is None for layer in [osm_street_layer, heat_consumer_layer, heat_generator_layer]):
         print("Error: Failed to load required data layers. Export cancelled.")
         return
-    
+
     # Generate optimized network backbone using specified algorithm
     print(f"Generating network using {algorithm} algorithm...")
     flow_lines_gdf, return_lines_gdf = generate_network(
-        heat_consumer_layer, 
-        heat_generator_layer, 
-        osm_street_layer, 
-        algorithm=algorithm, 
-        offset_distance=offset_distance, 
-        offset_angle=offset_angle
+        heat_consumer_layer,
+        heat_generator_layer,
+        osm_street_layer,
+        algorithm=algorithm,
+        offset_distance=offset_distance,
+        offset_angle=offset_angle,
     )
 
     # Generate service connections for heat consumers and producers
     print("Generating service connections...")
-    heat_consumer_gdf = generate_connection_lines(
-        heat_consumer_layer, 
-        offset_distance, 
-        offset_angle, 
-        heat_consumer_df
-    )
-    heat_producer_gdf = generate_connection_lines(
-        heat_generator_layer, 
-        offset_distance, 
-        offset_angle
-    )
+    heat_consumer_gdf = generate_connection_lines(heat_consumer_layer, offset_distance, offset_angle, heat_consumer_df)
+    heat_producer_gdf = generate_connection_lines(heat_generator_layer, offset_distance, offset_angle)
 
     # Standardize coordinate reference system
     print(f"Standardizing coordinate reference systems to {crs}...")
@@ -265,8 +260,8 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
         line_elev_lookup = build_elevation_lookup(all_line_points, dem_path, crs_utm=crs)
 
         if any(z != 0.0 for z in line_elev_lookup.values()):
-            flow_lines_gdf    = assign_elevation_to_geodataframe(flow_lines_gdf,    line_elev_lookup)
-            return_lines_gdf  = assign_elevation_to_geodataframe(return_lines_gdf,  line_elev_lookup)
+            flow_lines_gdf = assign_elevation_to_geodataframe(flow_lines_gdf, line_elev_lookup)
+            return_lines_gdf = assign_elevation_to_geodataframe(return_lines_gdf, line_elev_lookup)
             heat_consumer_gdf = assign_elevation_to_geodataframe(heat_consumer_gdf, line_elev_lookup)
             heat_producer_gdf = assign_elevation_to_geodataframe(heat_producer_gdf, line_elev_lookup)
             print("3-D coordinates assigned to all network line geometries.")
@@ -276,12 +271,13 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
 
     # Create output directory structure
     import os
+
     output_dir = os.path.join(base_path, "Wärmenetz")
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Export all network components as GeoJSON files
     print(f"Exporting network layers to {output_dir}...")
-    
+
     # Export in unified format
     try:
         unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
@@ -290,13 +286,15 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
             building_connections=heat_consumer_gdf,
             generator_connections=heat_producer_gdf,
             state="designed",
-            crs=crs
+            crs=crs,
         )
         # Use default filename for unified network
         unified_filename = "Wärmenetz.geojson"
         unified_path = os.path.join(output_dir, unified_filename)
         NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
-        print(f"✓ Exported unified network: {unified_filename} ({len(flow_lines_gdf) + len(return_lines_gdf) + len(heat_consumer_gdf) + len(heat_producer_gdf)} features)")
+        print(
+            f"✓ Exported unified network: {unified_filename} ({len(flow_lines_gdf) + len(return_lines_gdf) + len(heat_consumer_gdf) + len(heat_producer_gdf)} features)"
+        )
     except Exception as e:
         print(f"✗ Failed to export unified format: {e}")
         return
@@ -308,10 +306,10 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
     print(f"Heat generators: {len(heat_producer_gdf)}")
     print(f"Supply line segments: {len(flow_lines_gdf)}")
     print(f"Return line segments: {len(return_lines_gdf)}")
-    
+
     # Calculate total network length
     total_supply_length = flow_lines_gdf.geometry.length.sum()
     total_return_length = return_lines_gdf.geometry.length.sum()
-    print(f"Total supply network length: {total_supply_length/1000:.2f} km")
-    print(f"Total return network length: {total_return_length/1000:.2f} km")
+    print(f"Total supply network length: {total_supply_length / 1000:.2f} km")
+    print(f"Total return network length: {total_return_length / 1000:.2f} km")
     print("Network generation completed successfully!")

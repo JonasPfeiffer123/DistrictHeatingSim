@@ -233,9 +233,11 @@ class ThermalStorage1DDialog(QWidget):
             "initial_temp": float(self.initial_temp_input.text()),
             "loss_model_type": loss_type,
             "U_loss": float(self.U_loss_input.text()),
-            "U_top": float(self.U_top_input.text()) if loss_type == "split"
-                     else float(self.U_top_ground_input.text()) if loss_type == "ground"
-                     else float(self.U_loss_input.text()),
+            "U_top": float(self.U_top_input.text())
+            if loss_type == "split"
+            else float(self.U_top_ground_input.text())
+            if loss_type == "ground"
+            else float(self.U_loss_input.text()),
             "U_side": float(self.U_side_input.text()),
             "U_bottom": float(self.U_bottom_input.text()),
             "T_ambient": T_ambient,

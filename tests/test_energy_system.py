@@ -31,22 +31,27 @@ REL = 1e-4  # relative tolerance — slightly looser than single-generator tests
 
 # The 8 parallel result lists that must always stay equal in length (BACKLOG C4).
 _PARALLEL_KEYS = (
-    'techs', 'Wärmeleistung_L', 'Wärmemengen', 'Anteile',
-    'WGK', 'specific_emissions_L', 'primärenergie_L', 'colors',
+    "techs",
+    "Wärmeleistung_L",
+    "Wärmemengen",
+    "Anteile",
+    "WGK",
+    "specific_emissions_L",
+    "primärenergie_L",
+    "colors",
 )
 
 
 def _assert_parallel_lists(results: dict) -> None:
     """Structural guard: all 8 result lists must be the same length."""
     lengths = {k: len(results[k]) for k in _PARALLEL_KEYS}
-    assert len(set(lengths.values())) == 1, (
-        f"Parallel result list lengths diverged — C4 regression: {lengths}"
-    )
+    assert len(set(lengths.values())) == 1, f"Parallel result list lengths diverged — C4 regression: {lengths}"
 
 
 # ---------------------------------------------------------------------------
 # Module-scoped helper: build a minimal EnergySystem (no fixtures dependency)
 # ---------------------------------------------------------------------------
+
 
 def _make_energy_system(load: np.ndarray, economic_params: dict) -> EnergySystem:
     ts = pd.date_range("2023-01-01", periods=8760, freq="h").to_numpy()
@@ -75,7 +80,8 @@ _LOAD = np.linspace(50.0, 400.0, 8760)
 # 1. EnergySystem — no network storage
 # ===========================================================================
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope="module")
 def no_storage_results():
     """CHP(100 kW) + GasBoiler(500 kW), no seasonal storage.  Run once per module."""
     es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
@@ -93,51 +99,60 @@ class TestEnergySystemNoStorage:
         _assert_parallel_lists(no_storage_results)
 
     def test_anteile_sum_to_one(self, no_storage_results):
-        assert sum(no_storage_results['Anteile']) == pytest.approx(1.0, rel=1e-3)
+        assert sum(no_storage_results["Anteile"]) == pytest.approx(1.0, rel=1e-3)
 
     def test_wgk_gesamt_positive(self, no_storage_results):
-        assert no_storage_results['WGK_Gesamt'] > 0
+        assert no_storage_results["WGK_Gesamt"] > 0
 
     def test_waermemengen_match_jahresbedarf(self, no_storage_results):
         # Sum of per-tech heat totals == annual demand
-        total = sum(no_storage_results['Wärmemengen'])
-        assert total == pytest.approx(no_storage_results['Jahreswärmebedarf'], rel=1e-3)
+        total = sum(no_storage_results["Wärmemengen"])
+        assert total == pytest.approx(no_storage_results["Jahreswärmebedarf"], rel=1e-3)
 
     # ── golden master ────────────────────────────────────────────────────────
 
     def test_wgk_gesamt_golden(self, no_storage_results):
-        assert no_storage_results['WGK_Gesamt'] == pytest.approx(96.103224, rel=REL)
+        assert no_storage_results["WGK_Gesamt"] == pytest.approx(96.103224, rel=REL)
 
     def test_chp_waermemenge_golden(self, no_storage_results):
         # BHKW_1 is technology index 0
-        assert no_storage_results['Wärmemengen'][0] == pytest.approx(814.638001, rel=REL)
+        assert no_storage_results["Wärmemengen"][0] == pytest.approx(814.638001, rel=REL)
 
     def test_gaskessel_waermemenge_golden(self, no_storage_results):
         # Gaskessel_1 is technology index 1
-        assert no_storage_results['Wärmemengen'][1] == pytest.approx(1156.361999, rel=REL)
+        assert no_storage_results["Wärmemengen"][1] == pytest.approx(1156.361999, rel=REL)
 
 
 # ===========================================================================
 # 2. EnergySystem — with small network storage (ThermalStorageAdapter)
 # ===========================================================================
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope="module")
 def network_storage_results():
     """CHP(150 kW) + GasBoiler(500 kW) + 100 m³ cylinder network storage."""
     es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
 
     storage = ThermalStorageAdapter(
         name="TestSpeicher",
-        volume=100.0, height=5.0,
-        T_min=40.0, T_max=90.0, initial_temp=60.0,
+        volume=100.0,
+        height=5.0,
+        T_min=40.0,
+        T_max=90.0,
+        initial_temp=60.0,
         n_nodes=5,
         geometry_type="cylinder",
-        loss_model_type="constant", U_loss=0.3,
+        loss_model_type="constant",
+        U_loss=0.3,
         T_ambient=15.0,
         fluid_type="water",
-        solver="implicit", advection_scheme="tvd", buoyancy=True,
-        spez_Investitionskosten=50.0, hours=8760,
-        T_charge=85.0, T_discharge_return=50.0,
+        solver="implicit",
+        advection_scheme="tvd",
+        buoyancy=True,
+        spez_Investitionskosten=50.0,
+        hours=8760,
+        T_charge=85.0,
+        T_discharge_return=50.0,
     )
 
     chp = CHP(name="BHKW_1", th_Leistung_kW=150)
@@ -158,32 +173,33 @@ class TestEnergySystemWithNetworkStorage:
         _assert_parallel_lists(network_storage_results)
 
     def test_storage_key_present(self, network_storage_results):
-        assert 'storage_class' in network_storage_results
+        assert "storage_class" in network_storage_results
 
     def test_storage_soc_bounds(self, network_storage_results):
-        soc = network_storage_results['storage_class']._soc
+        soc = network_storage_results["storage_class"]._soc
         assert np.all(soc >= -1e-9), "SOC went below 0"
         assert np.all(soc <= 1.0 + 1e-9), "SOC exceeded 1"
 
     def test_storage_q_loss_nonneg(self, network_storage_results):
-        q_loss = network_storage_results['storage_class'].Q_loss
+        q_loss = network_storage_results["storage_class"].Q_loss
         assert np.all(q_loss >= 0), "Q_loss has negative values"
 
     def test_wgk_gesamt_positive(self, network_storage_results):
-        assert network_storage_results['WGK_Gesamt'] > 0
+        assert network_storage_results["WGK_Gesamt"] > 0
 
     # ── golden master ────────────────────────────────────────────────────────
 
     def test_wgk_gesamt_golden(self, network_storage_results):
-        assert network_storage_results['WGK_Gesamt'] == pytest.approx(97.689475, rel=REL)
+        assert network_storage_results["WGK_Gesamt"] == pytest.approx(97.689475, rel=REL)
 
     def test_chp_waermemenge_golden(self, network_storage_results):
-        assert network_storage_results['Wärmemengen'][0] == pytest.approx(1192.050, rel=REL)
+        assert network_storage_results["Wärmemengen"][0] == pytest.approx(1192.050, rel=REL)
 
 
 # ===========================================================================
 # 2b. TechnologyResult records (C4)
 # ===========================================================================
+
 
 class TestTechnologyResultRecords:
     """C4: per-row `TechnologyResult` records are the single source of truth; the
@@ -202,12 +218,25 @@ class TestTechnologyResultRecords:
     def _network_storage_system():
         es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
         storage = ThermalStorageAdapter(
-            name="TestSpeicher", volume=100.0, height=5.0,
-            T_min=40.0, T_max=90.0, initial_temp=60.0, n_nodes=5,
-            geometry_type="cylinder", loss_model_type="constant", U_loss=0.3,
-            T_ambient=15.0, fluid_type="water", solver="implicit",
-            advection_scheme="tvd", buoyancy=True, spez_Investitionskosten=50.0,
-            hours=8760, T_charge=85.0, T_discharge_return=50.0,
+            name="TestSpeicher",
+            volume=100.0,
+            height=5.0,
+            T_min=40.0,
+            T_max=90.0,
+            initial_temp=60.0,
+            n_nodes=5,
+            geometry_type="cylinder",
+            loss_model_type="constant",
+            U_loss=0.3,
+            T_ambient=15.0,
+            fluid_type="water",
+            solver="implicit",
+            advection_scheme="tvd",
+            buoyancy=True,
+            spez_Investitionskosten=50.0,
+            hours=8760,
+            T_charge=85.0,
+            T_discharge_return=50.0,
         )
         chp = CHP(name="BHKW_1", th_Leistung_kW=150)
         chp.strategy = CHPStrategy(charge_on=55, charge_off=80)
@@ -221,22 +250,22 @@ class TestTechnologyResultRecords:
     def test_records_count_matches_projection(self):
         es = self._no_storage_system()
         results = es.calculate_mix()
-        assert len(es.tech_results) == len(results['techs'])
+        assert len(es.tech_results) == len(results["techs"])
         assert all(isinstance(r, TechnologyResult) for r in es.tech_results)
 
     def test_record_fields_match_projected_lists(self):
         es = self._no_storage_system()
         r = es.calculate_mix()
         for i, rec in enumerate(es.tech_results):
-            assert rec.name == r['techs'][i]
-            assert rec.heat_amount_MWh == r['Wärmemengen'][i]
-            assert rec.share == r['Anteile'][i]
-            assert rec.heat_generation_cost == r['WGK'][i]
-            assert rec.specific_co2 == r['specific_emissions_L'][i]
-            assert rec.primary_energy == r['primärenergie_L'][i]
-            assert rec.color == r['colors'][i]
+            assert rec.name == r["techs"][i]
+            assert rec.heat_amount_MWh == r["Wärmemengen"][i]
+            assert rec.share == r["Anteile"][i]
+            assert rec.heat_generation_cost == r["WGK"][i]
+            assert rec.specific_co2 == r["specific_emissions_L"][i]
+            assert rec.primary_energy == r["primärenergie_L"][i]
+            assert rec.color == r["colors"][i]
             # projection reuses the same array object
-            assert rec.heat_output_kW is r['Wärmeleistung_L'][i]
+            assert rec.heat_output_kW is r["Wärmeleistung_L"][i]
 
     def test_network_storage_has_discharge_record(self):
         es = self._network_storage_system()
@@ -244,20 +273,21 @@ class TestTechnologyResultRecords:
         names = [rec.name for rec in es.tech_results]
         assert any("Entladung" in name for name in names)
         # all eight projected lists stay in lockstep with the records
-        assert len(es.tech_results) == len(es.results['techs'])
+        assert len(es.tech_results) == len(es.results["techs"])
         _assert_parallel_lists(es.results)
 
     def test_records_not_serialized(self):
         es = self._no_storage_system()
         es.calculate_mix()
         d = es.to_dict()
-        assert 'tech_results' not in d
-        assert 'tech_results' not in d.get('results', {})
+        assert "tech_results" not in d
+        assert "tech_results" not in d.get("results", {})
 
 
 # ===========================================================================
 # 2c. Serialization schema version (D2)
 # ===========================================================================
+
 
 class TestSerializationVersion:
     """D2: the serialized EnergySystem carries a schema version, round-trips, and
@@ -284,7 +314,7 @@ class TestSerializationVersion:
 
     def test_legacy_dict_without_version_loads(self):
         d = self._system().to_dict()
-        d.pop("_meta", None)              # pre-versioning file (no _meta, no version)
+        d.pop("_meta", None)  # pre-versioning file (no _meta, no version)
         restored = EnergySystem.from_dict(d)  # must not raise
         assert len(restored.technologies) == 2
 
@@ -302,27 +332,33 @@ class TestSerializationVersion:
 # 3. ThermalStorageAdapter — unit tests
 # ===========================================================================
 
+
 class TestThermalStorageAdapter:
     @staticmethod
     def _make(n_steps: int = 48) -> ThermalStorageAdapter:
         return ThermalStorageAdapter(
             name="UnitTest",
-            volume=10.0, height=2.0,
-            T_min=40.0, T_max=90.0, initial_temp=65.0,
+            volume=10.0,
+            height=2.0,
+            T_min=40.0,
+            T_max=90.0,
+            initial_temp=65.0,
             n_nodes=5,
             geometry_type="cylinder",
-            loss_model_type="constant", U_loss=0.5,
+            loss_model_type="constant",
+            U_loss=0.5,
             T_ambient=15.0,
             fluid_type="water",
-            solver="implicit", advection_scheme="tvd", buoyancy=True,
-            spez_Investitionskosten=50.0, hours=n_steps,
+            solver="implicit",
+            advection_scheme="tvd",
+            buoyancy=True,
+            spez_Investitionskosten=50.0,
+            hours=n_steps,
         )
 
     def _simulate(self, sto: ThermalStorageAdapter, Q_in: float, Q_out: float) -> None:
         for t in range(sto.hours):
-            sto.simulate_stratified_temperature_mass_flows(
-                t, Q_in, Q_out, T_Q_in_flow=85.0, T_Q_out_return=50.0
-            )
+            sto.simulate_stratified_temperature_mass_flows(t, Q_in, Q_out, T_Q_in_flow=85.0, T_Q_out_return=50.0)
 
     # ── physical bounds ──────────────────────────────────────────────────────
 
@@ -349,9 +385,7 @@ class TestThermalStorageAdapter:
         for t in range(48):
             q_in = 50.0 if t % 2 == 0 else 0.0
             q_out = 0.0 if t % 2 == 0 else 30.0
-            sto.simulate_stratified_temperature_mass_flows(
-                t, q_in, q_out, T_Q_in_flow=85.0, T_Q_out_return=50.0
-            )
+            sto.simulate_stratified_temperature_mass_flows(t, q_in, q_out, T_Q_in_flow=85.0, T_Q_out_return=50.0)
         assert np.all(sto.Q_loss >= 0)
 
     # ── energy balance direction ─────────────────────────────────────────────
@@ -367,14 +401,10 @@ class TestThermalStorageAdapter:
         # Pre-charge to ~80 % then discharge
         sto = self._make(48)
         for t in range(24):  # charge phase
-            sto.simulate_stratified_temperature_mass_flows(
-                t, 50.0, 5.0, T_Q_in_flow=85.0, T_Q_out_return=50.0
-            )
+            sto.simulate_stratified_temperature_mass_flows(t, 50.0, 5.0, T_Q_in_flow=85.0, T_Q_out_return=50.0)
         soc_after_charge = sto._soc[23]
         for t in range(24, 48):  # discharge phase
-            sto.simulate_stratified_temperature_mass_flows(
-                t, 5.0, 40.0, T_Q_in_flow=85.0, T_Q_out_return=50.0
-            )
+            sto.simulate_stratified_temperature_mass_flows(t, 5.0, 40.0, T_Q_in_flow=85.0, T_Q_out_return=50.0)
         assert sto._soc[-1] < soc_after_charge, "Net discharging should reduce SOC"
 
     # ── serialisation ────────────────────────────────────────────────────────
@@ -402,9 +432,19 @@ class TestThermalStorageAdapter:
     def test_to_dict_has_expected_keys(self):
         sto = self._make(48)
         d = sto.to_dict()
-        for key in ("volume", "height", "T_min", "T_max", "n_nodes",
-                    "geometry_type", "loss_model_type", "initial_temp",
-                    "solver", "T_charge", "T_discharge_return"):
+        for key in (
+            "volume",
+            "height",
+            "T_min",
+            "T_max",
+            "n_nodes",
+            "geometry_type",
+            "loss_model_type",
+            "initial_temp",
+            "solver",
+            "T_charge",
+            "T_discharge_return",
+        ):
             assert key in d, f"Missing key in to_dict(): {key}"
 
 
@@ -412,12 +452,16 @@ class TestThermalStorageAdapter:
 # 4. BufferStorage — unit tests
 # ===========================================================================
 
+
 class TestBufferStorage:
     @staticmethod
     def _make() -> BufferStorage:
         return BufferStorage(
-            volume=5.0, T_flow=80.0, T_return=60.0,
-            U_loss=0.5, T_ambient=15.0,
+            volume=5.0,
+            T_flow=80.0,
+            T_return=60.0,
+            U_loss=0.5,
+            T_ambient=15.0,
         )
 
     # ── initial state ────────────────────────────────────────────────────────

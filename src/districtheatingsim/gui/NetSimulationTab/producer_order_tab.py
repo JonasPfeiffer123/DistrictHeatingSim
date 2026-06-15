@@ -29,7 +29,7 @@ class ProducerOrderTab(QWidget):
     """
     Widget for configuring heat producer selection and priority order.
     """
-    
+
     def __init__(self, dialog_config, parent=None):
         """
         Initialize producer order tab.
@@ -59,7 +59,7 @@ class ProducerOrderTab(QWidget):
         layout.addWidget(producerGroup)
 
         self.load_producers()
-    
+
     def create_producer_selection(self):
         """
         Create producer selection interface components.
@@ -99,7 +99,7 @@ class ProducerOrderTab(QWidget):
             producers = self.read_producers_from_geojson(filepath)
             self.producer_list_widget.clear()
             for producer in producers:
-                item = QListWidgetItem(producer['name'])
+                item = QListWidgetItem(producer["name"])
                 item.setData(Qt.ItemDataRole.UserRole, producer)
                 self.producer_list_widget.addItem(item)
         except FileNotFoundError as e:
@@ -119,20 +119,15 @@ class ProducerOrderTab(QWidget):
             raise FileNotFoundError(f"GeoJSON file not found: {filepath}")
 
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-        
+
         geojson_data = gpd.read_file(filepath)
-        
+
         # Filter for generator features only
-        generator_features = geojson_data[
-            geojson_data['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR
-        ]
-        
+        generator_features = geojson_data[geojson_data["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR]
+
         producers = []
         for idx, row in generator_features.iterrows():
-            producers.append({
-                'name': f'Erzeugerstandort {idx + 1}',
-                'location': row['geometry']
-            })
+            producers.append({"name": f"Erzeugerstandort {idx + 1}", "location": row["geometry"]})
         return producers
 
     def add_producer_to_order(self):
@@ -143,9 +138,15 @@ class ProducerOrderTab(QWidget):
         for item in selected_items:
             producer = item.data(Qt.ItemDataRole.UserRole)
             # Check if the producer is already in the order list
-            if not any(self.producer_order_list_widget.item(i).data(Qt.ItemDataRole.UserRole)['index'] == self.producer_list_widget.row(item) for i in range(self.producer_order_list_widget.count())):
-                order_item = QListWidgetItem(producer['name'])
-                order_item.setData(Qt.ItemDataRole.UserRole, {'name': producer['name'], 'index': self.producer_list_widget.row(item)})
+            if not any(
+                self.producer_order_list_widget.item(i).data(Qt.ItemDataRole.UserRole)["index"]
+                == self.producer_list_widget.row(item)
+                for i in range(self.producer_order_list_widget.count())
+            ):
+                order_item = QListWidgetItem(producer["name"])
+                order_item.setData(
+                    Qt.ItemDataRole.UserRole, {"name": producer["name"], "index": self.producer_list_widget.row(item)}
+                )
                 self.producer_order_list_widget.addItem(order_item)
 
         self.update_producer_percentage_inputs()
@@ -177,7 +178,7 @@ class ProducerOrderTab(QWidget):
         if count > 1:
             for i in range(1, count):
                 percentage_input_layout = QHBoxLayout()
-                label = QLabel(f"Erzeuger {i+1} Prozentuale Erzeugung (%):")
+                label = QLabel(f"Erzeuger {i + 1} Prozentuale Erzeugung (%):")
                 line_edit = QLineEdit()
                 self.percentage_inputs.append(line_edit)
                 percentage_input_layout.addWidget(label)

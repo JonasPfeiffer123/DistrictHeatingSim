@@ -31,10 +31,18 @@ from districtheatingsim.gui.EnergySystemTab.technology_dialogs import (  # noqa:
 
 __all__ = [
     "TechInputDialog",
-    "Field", "CheckField", "SchemaDialog",
-    "GasBoilerDialog", "PowerToHeatDialog", "WasteHeatPumpDialog",
-    "BiomassBoilerDialog", "CHPDialog", "HolzgasCHPDialog",
-    "SolarThermalDialog", "GeothermalDialog",
-    "RiverHeatPumpDialog", "AqvaHeatDialog",
+    "Field",
+    "CheckField",
+    "SchemaDialog",
+    "GasBoilerDialog",
+    "PowerToHeatDialog",
+    "WasteHeatPumpDialog",
+    "BiomassBoilerDialog",
+    "CHPDialog",
+    "HolzgasCHPDialog",
+    "SolarThermalDialog",
+    "GeothermalDialog",
+    "RiverHeatPumpDialog",
+    "AqvaHeatDialog",
     "ThermalStorage1DDialog",
 ]

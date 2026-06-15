@@ -46,7 +46,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import (
 def initialize_geojson(NetworkGenerationData) -> Any:
     """
     Initialize district heating network from unified GeoJSON and heat demand data.
-    
+
     :param NetworkGenerationData: Configuration with network_geojson_path, heat_demand_json_path, temperatures, pipe specs, producer config
     :type NetworkGenerationData: object
     :return: Updated NetworkGenerationData with initialized net, time series, mass flows, building data
@@ -54,25 +54,25 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     :raises FileNotFoundError: If GeoJSON or JSON files not found
     :raises ValueError: If temperature constraints violated (return > supply)
     :raises KeyError: If required JSON fields missing
-    
+
     .. note::
        Loads unified GeoJSON (Wärmenetz.geojson), processes heat demands, validates temperatures.
        Handles cold networks (COP calculation), applies 2% min load. Calculates mass flows
        (main: total demand/ΔT, secondary: percentage-based). Creates complete pandapipes network.
     """
     # Load unified network GeoJSON data
-    
+
     # Read unified GeoJSON file
-    network_gdf = gpd.read_file(NetworkGenerationData.network_geojson_path, driver='GeoJSON')
-    
+    network_gdf = gpd.read_file(NetworkGenerationData.network_geojson_path, driver="GeoJSON")
+
     # Separate features by type
     gdf_dict = {
-        "flow_line": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW].copy(),
-        "return_line": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN].copy(),
-        "heat_consumer": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING].copy(),
-        "heat_producer": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR].copy()
+        "flow_line": network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW].copy(),
+        "return_line": network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN].copy(),
+        "heat_consumer": network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING].copy(),
+        "heat_producer": network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR].copy(),
     }
-    
+
     print(f"Loaded unified network GeoJSON with {len(network_gdf)} features")
     print(f"  Flow lines: {len(gdf_dict['flow_line'])}")
     print(f"  Return lines: {len(gdf_dict['return_line'])}")
@@ -80,12 +80,12 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     print(f"  Heat producers: {len(gdf_dict['heat_producer'])}")
 
     print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
-    
+
     # Load and process heat demand data
-    with open(NetworkGenerationData.heat_demand_json_path, encoding='utf-8') as f:
+    with open(NetworkGenerationData.heat_demand_json_path, encoding="utf-8") as f:
         loaded_data = json.load(f)
-        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
-        heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
+        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
+        heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient="index")
 
     # Extract building temperature data
     supply_temperature_buildings = heat_demand_df["VLT_max"].values.astype(float)
@@ -93,12 +93,14 @@ def initialize_geojson(NetworkGenerationData) -> Any:
 
     # Extract time series data
     yearly_time_steps = np.array(heat_demand_df["zeitschritte"].values[0]).astype(np.datetime64)
-    total_building_heat_demand_W = np.array([results[str(i)]["wärme"] for i in range(len(results))])*1000
-    total_building_heating_demand_W = np.array([results[str(i)]["heizwärme"] for i in range(len(results))])*1000
-    total_building_hot_water_demand_W = np.array([results[str(i)]["warmwasserwärme"] for i in range(len(results))])*1000
+    total_building_heat_demand_W = np.array([results[str(i)]["wärme"] for i in range(len(results))]) * 1000
+    total_building_heating_demand_W = np.array([results[str(i)]["heizwärme"] for i in range(len(results))]) * 1000
+    total_building_hot_water_demand_W = (
+        np.array([results[str(i)]["warmwasserwärme"] for i in range(len(results))]) * 1000
+    )
     supply_temperature_building_curve = np.array([results[str(i)]["vorlauftemperatur"] for i in range(len(results))])
     return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
-    maximum_building_heat_load_W = np.array(results["0"]["max_last"])*1000
+    maximum_building_heat_load_W = np.array(results["0"]["max_last"]) * 1000
 
     print(f"Max heat demand buildings (W): {maximum_building_heat_load_W}")
 
@@ -107,24 +109,35 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         return_temperature_heat_consumer = return_temperature_buildings + NetworkGenerationData.dT_RL
         print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
     else:
-        return_temperature_heat_consumer = np.full_like(return_temperature_buildings, NetworkGenerationData.fixed_return_temperature_heat_consumer)
+        return_temperature_heat_consumer = np.full_like(
+            return_temperature_buildings, NetworkGenerationData.fixed_return_temperature_heat_consumer
+        )
         print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
 
     # Validate temperature constraints
     if np.any(return_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
-        raise ValueError("Return temperature must not be higher than the supply temperature at the injection point. Please check your inputs.")
-    
+        raise ValueError(
+            "Return temperature must not be higher than the supply temperature at the injection point. Please check your inputs."
+        )
+
     # Calculate minimum supply temperature for heat consumers
     if NetworkGenerationData.min_supply_temperature_building is None:
-        min_supply_temperature_heat_consumer = np.zeros_like(supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building)
+        min_supply_temperature_heat_consumer = np.zeros_like(
+            supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building
+        )
         print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
     else:
-        min_supply_temperature_heat_consumer = np.full_like(supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building + NetworkGenerationData.dT_RL)
+        min_supply_temperature_heat_consumer = np.full_like(
+            supply_temperature_buildings,
+            NetworkGenerationData.min_supply_temperature_building + NetworkGenerationData.dT_RL,
+        )
         print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
-    
+
     # Validate minimum supply temperature constraints
     if np.any(min_supply_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
-        raise ValueError("Supply temperature at the heat consumer cannot be higher than the supply temperature at the injection point. Please check your inputs.")
+        raise ValueError(
+            "Supply temperature at the heat consumer cannot be higher than the supply temperature at the injection point. Please check your inputs."
+        )
 
     # Initialize heat and power arrays
     waerme_hast_ges_W = []
@@ -135,18 +148,20 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     # Process heat demands based on network configuration
     if NetworkGenerationData.netconfiguration == "kaltes Netz":
         # Cold network: Calculate heat pump performance
-        COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=';')
+        COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=";")
         COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
         # Calculate heat pump electricity consumption and network heat demand
-        for waerme_gebaeude, leistung_gebaeude, cop in zip(total_building_heat_demand_W, maximum_building_heat_load_W, COP, strict=False):
-            strombedarf_wp = waerme_gebaeude/cop
+        for waerme_gebaeude, leistung_gebaeude, cop in zip(
+            total_building_heat_demand_W, maximum_building_heat_load_W, COP, strict=False
+        ):
+            strombedarf_wp = waerme_gebaeude / cop
             waerme_hast = waerme_gebaeude - strombedarf_wp
             waerme_hast_ges_W.append(waerme_hast)
             strombedarf_hast_ges_W.append(strombedarf_wp)
 
-            el_leistung_wp = leistung_gebaeude/cop
+            el_leistung_wp = leistung_gebaeude / cop
             waerme_leistung_hast = leistung_gebaeude - el_leistung_wp
             max_waerme_hast_ges_W.append(waerme_leistung_hast)
             max_el_leistung_hast_ges_W.append(el_leistung_wp)
@@ -166,7 +181,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     consumer_dict = {
         "qext_w": max_waerme_hast_ges_W,
         "min_supply_temperature_heat_consumer": min_supply_temperature_heat_consumer,
-        "return_temperature_heat_consumer": return_temperature_heat_consumer
+        "return_temperature_heat_consumer": return_temperature_heat_consumer,
     }
 
     pipe_dict = {
@@ -174,7 +189,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         "v_max_pipe": NetworkGenerationData.max_velocity_pipe,
         "material_filter": NetworkGenerationData.material_filter_pipe,
         "pipe_creation_mode": "type",
-        "k_mm": NetworkGenerationData.k_mm_pipe
+        "k_mm": NetworkGenerationData.k_mm_pipe,
     }
 
     # Calculate mass flows for secondary producers
@@ -184,14 +199,22 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         print(f"maximum_building_heat_load_W: {maximum_building_heat_load_W}")
         sum_maximum_building_heat_load_W = np.sum(maximum_building_heat_load_W)
         print(f"sum_maximum_building_heat_load_W: {sum_maximum_building_heat_load_W}")
-        print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
+        print(
+            f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C"
+        )
         print(f"Return temperature heat consumer: {np.average(return_temperature_heat_consumer)} °C")
-        mass_flow = (sum_maximum_building_heat_load_W / 1000) / (cp * (NetworkGenerationData.max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))
+        mass_flow = (sum_maximum_building_heat_load_W / 1000) / (
+            cp
+            * (
+                NetworkGenerationData.max_supply_temperature_heat_generator
+                - np.average(return_temperature_heat_consumer)
+            )
+        )
 
         print(f"Mass flow of main producer: {mass_flow} kg/s")
 
         for secondary_producer in NetworkGenerationData.secondary_producers:
-            secondary_producer.mass_flow = secondary_producer.load_percentage/100 * mass_flow
+            secondary_producer.mass_flow = secondary_producer.load_percentage / 100 * mass_flow
             print(f"Mass flow of secondary producer {secondary_producer.index}: {secondary_producer.mass_flow} kg/s")
 
     producer_dict = {
@@ -199,7 +222,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         "flow_pressure_pump": NetworkGenerationData.flow_pressure_pump,
         "lift_pressure_pump": NetworkGenerationData.lift_pressure_pump,
         "main_producer_location_index": NetworkGenerationData.main_producer_location_index,
-        "secondary_producers": NetworkGenerationData.secondary_producers
+        "secondary_producers": NetworkGenerationData.secondary_producers,
     }
 
     # Create the pandapipes network
@@ -225,12 +248,24 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     # Apply minimum load constraints (2% of maximum)
     max_heat = np.max(NetworkGenerationData.waerme_hast_ges_W)
     max_power = np.max(NetworkGenerationData.strombedarf_hast_ges_W)
-    NetworkGenerationData.waerme_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_heat, NetworkGenerationData.waerme_hast_ges_W)
-    NetworkGenerationData.strombedarf_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_power, NetworkGenerationData.strombedarf_hast_ges_W)
+    NetworkGenerationData.waerme_hast_ges_W = np.where(
+        NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat,
+        0.02 * max_heat,
+        NetworkGenerationData.waerme_hast_ges_W,
+    )
+    NetworkGenerationData.strombedarf_hast_ges_W = np.where(
+        NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat,
+        0.02 * max_power,
+        NetworkGenerationData.strombedarf_hast_ges_W,
+    )
 
     # Convert to kW units
-    NetworkGenerationData.waerme_hast_ges_kW = np.where(NetworkGenerationData.waerme_hast_ges_W == 0, 0, NetworkGenerationData.waerme_hast_ges_W / 1000)
-    NetworkGenerationData.strombedarf_hast_ges_kW = np.where(NetworkGenerationData.strombedarf_hast_ges_W == 0, 0, NetworkGenerationData.strombedarf_hast_ges_W / 1000)
+    NetworkGenerationData.waerme_hast_ges_kW = np.where(
+        NetworkGenerationData.waerme_hast_ges_W == 0, 0, NetworkGenerationData.waerme_hast_ges_W / 1000
+    )
+    NetworkGenerationData.strombedarf_hast_ges_kW = np.where(
+        NetworkGenerationData.strombedarf_hast_ges_W == 0, 0, NetworkGenerationData.strombedarf_hast_ges_W / 1000
+    )
 
     # Calculate total system demands
     NetworkGenerationData.waerme_ges_kW = np.sum(NetworkGenerationData.waerme_hast_ges_kW, axis=0)
@@ -239,7 +274,8 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     NetworkGenerationData.net = net
 
     return NetworkGenerationData
-    
+
+
 def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> tuple[list[list[tuple]], list[float]]:
     """
     Extract 2-D coordinates and lengths from LineString geometries.
@@ -259,15 +295,15 @@ def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> tuple[list[list[tuple]
        GeoPandas length property for geodetic calculation.
     """
     all_line_coords, all_line_lengths = [], []
-    gdf['length'] = gdf.geometry.length
+    gdf["length"] = gdf.geometry.length
 
     for _index, row in gdf.iterrows():
-        line = row['geometry']
+        line = row["geometry"]
 
-        if line.geom_type == 'LineString':
+        if line.geom_type == "LineString":
             # Strip Z — keep only (x, y) for junction dict keys
             coords = [(c[0], c[1]) for c in line.coords]
-            length = row['length']
+            length = row["length"]
             all_line_coords.append(coords)
             all_line_lengths.append(length)
         else:
@@ -292,10 +328,10 @@ def build_elevation_lookup_from_gdf(gdf: gpd.GeoDataFrame) -> dict[tuple, float]
     for geom in gdf.geometry:
         if geom is None:
             continue
-        if geom.geom_type == 'Point':
+        if geom.geom_type == "Point":
             if geom.has_z:
                 lookup[(geom.x, geom.y)] = geom.z
-        elif geom.geom_type == 'LineString':
+        elif geom.geom_type == "LineString":
             for coord in geom.coords:
                 if len(coord) > 2:
                     lookup[(coord[0], coord[1])] = coord[2]
@@ -319,11 +355,16 @@ def get_all_point_coords_from_line_cords(all_line_coords: list[list[tuple]]) -> 
     unique_point_coords = list(set(point_coords))
     return unique_point_coords
 
-def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[str, Any], 
-                  pipe_dict: dict[str, Any], producer_dict: dict[str, Any]) -> pp.pandapipesNet:
+
+def create_network(
+    gdf_dict: dict[str, gpd.GeoDataFrame],
+    consumer_dict: dict[str, Any],
+    pipe_dict: dict[str, Any],
+    producer_dict: dict[str, Any],
+) -> pp.pandapipesNet:
     """
     Create complete pandapipes network with junctions, pipes, consumers, and producers.
-    
+
     :param gdf_dict: GeoDataFrames with keys flow_line, return_line, heat_consumer, heat_producer
     :type gdf_dict: Dict[str, gpd.GeoDataFrame]
     :param consumer_dict: Heat consumer config (qext_w, min_supply_temperature_heat_consumer, return_temperature_heat_consumer)
@@ -334,32 +375,53 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
     :type producer_dict: Dict[str, Any]
     :return: Complete pandapipes network with optimized diameters and controllers
     :rtype: pp.pandapipesNet
-    
+
     .. note::
        Steps: 1) junctions from coords, 2) pipes (supply/return), 3) heat consumers,
        4) producers (main=circ_pump_pressure, secondary=circ_pump_mass), 5) pipeflow,
        6) controllers, diameter optimization. Corrects flow directions automatically.
     """
     # Extract data from dictionaries
-    gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer = gdf_dict["flow_line"], gdf_dict["return_line"], gdf_dict["heat_consumer"], gdf_dict["heat_producer"]
-    qext_w, min_supply_temperature_heat_consumer, return_temperature_heat_consumer = consumer_dict["qext_w"], consumer_dict["min_supply_temperature_heat_consumer"], consumer_dict["return_temperature_heat_consumer"]
-    supply_temperature, flow_pressure_pump, lift_pressure_pump, main_producer_location_index, secondary_producers = producer_dict["supply_temperature"], producer_dict["flow_pressure_pump"], producer_dict["lift_pressure_pump"], producer_dict["main_producer_location_index"], producer_dict["secondary_producers"]
-    pipetype, v_max_pipe, material_filter, pipe_creation_mode, k_mm = pipe_dict["pipetype"], pipe_dict["v_max_pipe"], pipe_dict["material_filter"], pipe_dict["pipe_creation_mode"], pipe_dict["k_mm"]
+    gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer = (
+        gdf_dict["flow_line"],
+        gdf_dict["return_line"],
+        gdf_dict["heat_consumer"],
+        gdf_dict["heat_producer"],
+    )
+    qext_w, min_supply_temperature_heat_consumer, return_temperature_heat_consumer = (
+        consumer_dict["qext_w"],
+        consumer_dict["min_supply_temperature_heat_consumer"],
+        consumer_dict["return_temperature_heat_consumer"],
+    )
+    supply_temperature, flow_pressure_pump, lift_pressure_pump, main_producer_location_index, secondary_producers = (
+        producer_dict["supply_temperature"],
+        producer_dict["flow_pressure_pump"],
+        producer_dict["lift_pressure_pump"],
+        producer_dict["main_producer_location_index"],
+        producer_dict["secondary_producers"],
+    )
+    pipetype, v_max_pipe, material_filter, pipe_creation_mode, k_mm = (
+        pipe_dict["pipetype"],
+        pipe_dict["v_max_pipe"],
+        pipe_dict["material_filter"],
+        pipe_dict["pipe_creation_mode"],
+        pipe_dict["k_mm"],
+    )
 
     # Create empty network and get pipe properties
     net = pp.create_empty_network(fluid="water")
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
     properties = pipe_std_types.loc[pipetype]
-    diameter_mm = properties['inner_diameter_mm']
+    diameter_mm = properties["inner_diameter_mm"]
     u_w_per_m2k_pipe = resolve_pipe_u_w_per_m2k(properties)
 
     # Convert temperatures to Kelvin
     supply_temperature_k = supply_temperature + KELVIN_OFFSET
     return_temperature_heat_consumer_k = return_temperature_heat_consumer + KELVIN_OFFSET
 
-    def create_junctions_from_coords(net_i: pp.pandapipesNet,
-                                     all_coords: list[tuple],
-                                     elevation_lookup: dict[tuple, float]) -> dict[tuple, int]:
+    def create_junctions_from_coords(
+        net_i: pp.pandapipesNet, all_coords: list[tuple], elevation_lookup: dict[tuple, float]
+    ) -> dict[tuple, int]:
         """
         Create junctions in the network from coordinate points.
 
@@ -385,15 +447,21 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
         junction_dict = {}
         for i, coords in enumerate(all_coords, start=0):
             height = elevation_lookup.get(coords, 0.0)
-            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k,
-                                             height_m=height,
-                                             name=f"Junction {i}", geodata=coords)
+            junction_id = pp.create_junction(
+                net_i, pn_bar=1.05, tfluid_k=supply_temperature_k, height_m=height, name=f"Junction {i}", geodata=coords
+            )
             junction_dict[coords] = junction_id
         return junction_dict
 
-    def create_pipes(net_i: pp.pandapipesNet, all_line_coords: list[list[tuple]], 
-                    all_line_lengths: list[float], junction_dict: dict[tuple, int], 
-                    pipe_mode: str, pipe_type_or_diameter: str | float, line_type: str) -> None:
+    def create_pipes(
+        net_i: pp.pandapipesNet,
+        all_line_coords: list[list[tuple]],
+        all_line_lengths: list[float],
+        junction_dict: dict[tuple, int],
+        pipe_mode: str,
+        pipe_type_or_diameter: str | float,
+        line_type: str,
+    ) -> None:
         """
         Create pipes in the network from line geometries.
 
@@ -417,22 +485,47 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
         for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(len(all_line_coords)), strict=False):
             if pipe_mode == "diameter":
                 diameter_mm = pipe_type_or_diameter
-                pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
-                                            to_junction=junction_dict[coords[1]], length_km=length_m/1000,
-                                            diameter_m=diameter_mm/1000, k_mm=k_mm, u_w_per_m2k=u_w_per_m2k_pipe, 
-                                            name=f"{line_type} {i}", geodata=coords, sections=5, text_k=283)
+                pp.create_pipe_from_parameters(
+                    net_i,
+                    from_junction=junction_dict[coords[0]],
+                    to_junction=junction_dict[coords[1]],
+                    length_km=length_m / 1000,
+                    diameter_m=diameter_mm / 1000,
+                    k_mm=k_mm,
+                    u_w_per_m2k=u_w_per_m2k_pipe,
+                    name=f"{line_type} {i}",
+                    geodata=coords,
+                    sections=5,
+                    text_k=283,
+                )
             elif pipe_mode == "type":
-                pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
-                            std_type=pipe_type_or_diameter, length_km=length_m/1000, k_mm=k_mm, 
-                            name=f"{line_type} {i}", geodata=coords, sections=5, text_k=283)
+                pp.create_pipe(
+                    net_i,
+                    from_junction=junction_dict[coords[0]],
+                    to_junction=junction_dict[coords[1]],
+                    std_type=pipe_type_or_diameter,
+                    length_km=length_m / 1000,
+                    k_mm=k_mm,
+                    name=f"{line_type} {i}",
+                    geodata=coords,
+                    sections=5,
+                    text_k=283,
+                )
 
-    def create_heat_consumers(net_i: pp.pandapipesNet, all_coords: list[list[tuple]], 
-                            junction_dict: dict[tuple, int], name_prefix: str) -> None:
+    def create_heat_consumers(
+        net_i: pp.pandapipesNet, all_coords: list[list[tuple]], junction_dict: dict[tuple, int], name_prefix: str
+    ) -> None:
         """Create heat consumers in the network."""
         for i, (coords, q, t) in enumerate(zip(all_coords, qext_w, return_temperature_heat_consumer_k, strict=False)):
-            pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], 
-                                  to_junction=junction_dict[coords[1]], loss_coefficient=0, 
-                                  qext_w=q, treturn_k=t, name=f"{name_prefix} {i}")
+            pp.create_heat_consumer(
+                net_i,
+                from_junction=junction_dict[coords[0]],
+                to_junction=junction_dict[coords[1]],
+                loss_coefficient=0,
+                qext_w=q,
+                treturn_k=t,
+                name=f"{name_prefix} {i}",
+            )
 
     def _resolve_pump_junctions(coords, jd_vl, jd_rl):
         """Return (return_junction_idx, flow_junction_idx) for a generator connection line.
@@ -448,32 +541,48 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
         :raises KeyError: if neither coordinate can be found in the expected dicts.
         """
         if coords[0] in jd_vl:
-            return jd_rl[coords[1]], jd_vl[coords[0]]   # return=RL end, flow=VL end
+            return jd_rl[coords[1]], jd_vl[coords[0]]  # return=RL end, flow=VL end
         elif coords[1] in jd_vl:
-            return jd_rl[coords[0]], jd_vl[coords[1]]   # return=RL end, flow=VL end
+            return jd_rl[coords[0]], jd_vl[coords[1]]  # return=RL end, flow=VL end
         else:
             # Fallback – merged dict, original (possibly wrong) order
-            logging.warning("Could not determine VL/RL side for generator connection; "
-                            "using original coord order (may cause pump-direction warning)")
+            logging.warning(
+                "Could not determine VL/RL side for generator connection; "
+                "using original coord order (may cause pump-direction warning)"
+            )
             merged = {**jd_vl, **jd_rl}
             return merged[coords[1]], merged[coords[0]]
 
-    def create_circulation_pump_pressure(net_i: pp.pandapipesNet, all_coords: list[list[tuple]],
-                                        jd_vl: dict[tuple, int], jd_rl: dict[tuple, int],
-                                        name_prefix: str) -> None:
+    def create_circulation_pump_pressure(
+        net_i: pp.pandapipesNet,
+        all_coords: list[list[tuple]],
+        jd_vl: dict[tuple, int],
+        jd_rl: dict[tuple, int],
+        name_prefix: str,
+    ) -> None:
         """Create pressure-controlled circulation pumps with correct VL/RL junction assignment."""
         for i, coords in enumerate(all_coords, start=0):
             return_junc, flow_junc = _resolve_pump_junctions(coords, jd_vl, jd_rl)
-            pp.create_circ_pump_const_pressure(net_i, return_junc, flow_junc,
-                                               p_flow_bar=flow_pressure_pump,
-                                               plift_bar=lift_pressure_pump,
-                                               t_flow_k=supply_temperature_k, type="auto",
-                                               name=f"{name_prefix} {i}")
+            pp.create_circ_pump_const_pressure(
+                net_i,
+                return_junc,
+                flow_junc,
+                p_flow_bar=flow_pressure_pump,
+                plift_bar=lift_pressure_pump,
+                t_flow_k=supply_temperature_k,
+                type="auto",
+                name=f"{name_prefix} {i}",
+            )
 
-    def create_circulation_pump_mass_flow(net_i: pp.pandapipesNet, all_coords: list[list[tuple]],
-                                         jd_vl: dict[tuple, int], jd_rl: dict[tuple, int],
-                                         name_prefix: str, mass_flows: list[float],
-                                         elevation_lookup: dict[tuple, float]) -> None:
+    def create_circulation_pump_mass_flow(
+        net_i: pp.pandapipesNet,
+        all_coords: list[list[tuple]],
+        jd_vl: dict[tuple, int],
+        jd_rl: dict[tuple, int],
+        name_prefix: str,
+        mass_flows: list[float],
+        elevation_lookup: dict[tuple, float],
+    ) -> None:
         """Create mass-flow-controlled circulation pumps with correct VL/RL junction assignment.
 
         The intermediate junction inserted between pump and flow-control element
@@ -486,16 +595,26 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
             z0 = elevation_lookup.get(coords[0], 0.0)
             z1 = elevation_lookup.get(coords[1], 0.0)
             mid_height = (z0 + z1) / 2.0
-            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k,
-                                                  height_m=mid_height,
-                                                  name=f"Junction {name_prefix}", geodata=mid_coord)
-            pp.create_circ_pump_const_mass_flow(net_i, return_junc, mid_junction_idx,
-                                                p_flow_bar=flow_pressure_pump,
-                                                mdot_flow_kg_per_s=mass_flow,
-                                                t_flow_k=supply_temperature_k, type="auto",
-                                                name=f"{name_prefix} {i}", in_service=True)
-            pp.create_flow_control(net_i, mid_junction_idx, flow_junc,
-                                   controlled_mdot_kg_per_s=mass_flow)
+            mid_junction_idx = pp.create_junction(
+                net_i,
+                pn_bar=1.05,
+                tfluid_k=supply_temperature_k,
+                height_m=mid_height,
+                name=f"Junction {name_prefix}",
+                geodata=mid_coord,
+            )
+            pp.create_circ_pump_const_mass_flow(
+                net_i,
+                return_junc,
+                mid_junction_idx,
+                p_flow_bar=flow_pressure_pump,
+                mdot_flow_kg_per_s=mass_flow,
+                t_flow_k=supply_temperature_k,
+                type="auto",
+                name=f"{name_prefix} {i}",
+                in_service=True,
+            )
+            pp.create_flow_control(net_i, mid_junction_idx, flow_junc, controlled_mdot_kg_per_s=mass_flow)
 
     # Build elevation lookup from 3-D GeoJSON geometries (Z-coord = height above NN).
     # All four GDFs are merged so that every junction—whether on a network line,
@@ -507,48 +626,84 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
     if elevation_lookup:
         z_vals = list(elevation_lookup.values())
         dh = max(z_vals) - min(z_vals)
-        logging.info("Elevation data found: min=%.1f m, max=%.1f m, Δh=%.1f m "
-                     "→ hydrostatic pressure offset ≈ %.2f bar",
-                     min(z_vals), max(z_vals), dh, 1000 * 9.81 * dh / 1e5)
+        logging.info(
+            "Elevation data found: min=%.1f m, max=%.1f m, Δh=%.1f m → hydrostatic pressure offset ≈ %.2f bar",
+            min(z_vals),
+            max(z_vals),
+            dh,
+            1000 * 9.81 * dh / 1e5,
+        )
         if dh > 0.5 * lift_pressure_pump * 1e5 / (1000 * 9.81):
             logging.warning(
-                "Hydrostatic head (%.1f m) exceeds 50%% of pump lift (%.2f bar). "
-                "Verify pressure zone design.", dh, lift_pressure_pump)
+                "Hydrostatic head (%.1f m) exceeds 50%% of pump lift (%.2f bar). Verify pressure zone design.",
+                dh,
+                lift_pressure_pump,
+            )
     else:
         logging.info("No elevation data in GeoJSON — all junctions set to height_m=0.")
 
     # Create network topology
-    flow_line_2d_coords  = get_line_coords_and_lengths(gdf_flow_line)[0]
+    flow_line_2d_coords = get_line_coords_and_lengths(gdf_flow_line)[0]
     return_line_2d_coords = get_line_coords_and_lengths(gdf_return_line)[0]
 
     junction_dict_vl = create_junctions_from_coords(
-        net, get_all_point_coords_from_line_cords(flow_line_2d_coords), elevation_lookup)
+        net, get_all_point_coords_from_line_cords(flow_line_2d_coords), elevation_lookup
+    )
     junction_dict_rl = create_junctions_from_coords(
-        net, get_all_point_coords_from_line_cords(return_line_2d_coords), elevation_lookup)
+        net, get_all_point_coords_from_line_cords(return_line_2d_coords), elevation_lookup
+    )
 
     # Create pipes
-    create_pipes(net, *get_line_coords_and_lengths(gdf_flow_line), junction_dict_vl,
-                pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "flow line")
-    create_pipes(net, *get_line_coords_and_lengths(gdf_return_line), junction_dict_rl,
-                pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return line")
+    create_pipes(
+        net,
+        *get_line_coords_and_lengths(gdf_flow_line),
+        junction_dict_vl,
+        pipe_creation_mode,
+        diameter_mm if pipe_creation_mode == "diameter" else pipetype,
+        "flow line",
+    )
+    create_pipes(
+        net,
+        *get_line_coords_and_lengths(gdf_return_line),
+        junction_dict_rl,
+        pipe_creation_mode,
+        diameter_mm if pipe_creation_mode == "diameter" else pipetype,
+        "return line",
+    )
 
     # Create heat consumers
-    create_heat_consumers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0],
-                        {**junction_dict_vl, **junction_dict_rl}, "heat consumer")
+    create_heat_consumers(
+        net,
+        get_line_coords_and_lengths(gdf_heat_exchanger)[0],
+        {**junction_dict_vl, **junction_dict_rl},
+        "heat consumer",
+    )
 
     # Create heat producers
     all_heat_producer_coords, all_heat_producer_lengths = get_line_coords_and_lengths(gdf_heat_producer)
     if all_heat_producer_coords:
         # Main producer (pressure controlled)
-        create_circulation_pump_pressure(net, [all_heat_producer_coords[main_producer_location_index]],
-                                        junction_dict_vl, junction_dict_rl, "heat source")
+        create_circulation_pump_pressure(
+            net,
+            [all_heat_producer_coords[main_producer_location_index]],
+            junction_dict_vl,
+            junction_dict_rl,
+            "heat source",
+        )
 
         # Secondary producers (mass flow controlled)
         if secondary_producers:
             mass_flows = [producer.mass_flow for producer in secondary_producers]
             secondary_coords = [all_heat_producer_coords[producer.index] for producer in secondary_producers]
-            create_circulation_pump_mass_flow(net, secondary_coords, junction_dict_vl, junction_dict_rl,
-                                             "heat source slave", mass_flows, elevation_lookup)
+            create_circulation_pump_mass_flow(
+                net,
+                secondary_coords,
+                junction_dict_vl,
+                junction_dict_rl,
+                "heat source slave",
+                mass_flows,
+                elevation_lookup,
+            )
 
     print(f"secondary_producers: {secondary_producers}")
 
@@ -562,9 +717,15 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
             logging.warning(f"Initial pipeflow UserWarning (will be corrected): {e}")
 
     # Network optimization
-    net = create_controllers(net, qext_w, supply_temperature, min_supply_temperature_heat_consumer, 
-                           return_temperature_heat_consumer, secondary_producers)
-    
+    net = create_controllers(
+        net,
+        qext_w,
+        supply_temperature,
+        min_supply_temperature_heat_consumer,
+        return_temperature_heat_consumer,
+        secondary_producers,
+    )
+
     try:
         run_control(net, mode="bidirectional", iter=100)
     except UserWarning as e:

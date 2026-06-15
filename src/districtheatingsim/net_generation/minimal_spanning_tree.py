@@ -24,7 +24,7 @@ def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     :type points: gpd.GeoDataFrame
     :return: MST network as LineString geometries
     :rtype: gpd.GeoDataFrame
-    
+
     .. note::
         Tree topology (n-1 edges for n points). Uses Kruskal's algorithm with Euclidean distances.
     """
@@ -35,23 +35,23 @@ def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             if i != j:
                 distance = point1.geometry.distance(point2.geometry)
                 g.add_edge(i, j, weight=distance)
-    
+
     # Generate minimum spanning tree
     mst = nx.minimum_spanning_tree(g)
-    
+
     # Convert MST edges to LineString geometries
-    lines = [
-        LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) 
-        for edge in mst.edges()
-    ]
-    
+    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+
     return gpd.GeoDataFrame(geometry=lines)
 
-def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame, 
-                           street_layer: gpd.GeoDataFrame, 
-                           all_end_points_gdf: gpd.GeoDataFrame, 
-                           threshold: float = 5.0, 
-                           min_improvement: float = 0.5) -> gpd.GeoDataFrame:
+
+def adjust_segments_to_roads(
+    mst_gdf: gpd.GeoDataFrame,
+    street_layer: gpd.GeoDataFrame,
+    all_end_points_gdf: gpd.GeoDataFrame,
+    threshold: float = 5.0,
+    min_improvement: float = 0.5,
+) -> gpd.GeoDataFrame:
     """
     Iteratively adjust MST segments to follow street network.
 
@@ -69,7 +69,7 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
     :rtype: gpd.GeoDataFrame
     :raises ValueError: If invalid geometries or empty network
     :raises RuntimeError: If fails to converge within iteration limit
-    
+
     .. note::
         Uses iterative improvement with blacklisting to prevent oscillation. Max 50 iterations.
     """
@@ -113,8 +113,7 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
 
             if distance_to_street > threshold:
                 # Avoid adjustments where projection point equals line endpoints
-                if (point_on_street.equals(Point(line.coords[0])) or 
-                    point_on_street.equals(Point(line.coords[1]))):
+                if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
                     print("    Skipping adjustment: projected point is endpoint")
                     adjusted_lines.append(line)
                     continue
@@ -136,11 +135,11 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
                         point_on_street_new = nearest_points(new_midpoint, nearest_street_new)[1]
                         new_distance = new_midpoint.distance(point_on_street_new)
                         improvement = orig_distance - new_distance
-                        
+
                         if improvement < min_improvement:
                             print(f"    Insufficient improvement ({improvement:.2f}m), blacklisting segment")
                             blacklist.add(line_hash(new_line))
-                        
+
                         adjusted_lines.append(new_line)
                     else:
                         print("    [!] Invalid new segment created")
@@ -176,6 +175,7 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
     print("Road alignment optimization completed")
     return mst_gdf
 
+
 def simplify_network(gdf: gpd.GeoDataFrame, threshold: float = 10.0) -> gpd.GeoDataFrame:
     """
     Simplify network by merging nearby points.
@@ -186,7 +186,7 @@ def simplify_network(gdf: gpd.GeoDataFrame, threshold: float = 10.0) -> gpd.GeoD
     :type threshold: float
     :return: Simplified network with merged points
     :rtype: gpd.GeoDataFrame
-    
+
     .. note::
         Merges points within threshold to their centroid, maintaining connectivity.
     """
@@ -205,20 +205,17 @@ def simplify_network(gdf: gpd.GeoDataFrame, threshold: float = 10.0) -> gpd.GeoD
     for point in points:
         if point in merged_points:
             continue
-        
+
         # Find all points within threshold distance
-        nearby_points = [
-            p for p in points 
-            if p.distance(point) < threshold and p not in merged_points
-        ]
-        
+        nearby_points = [p for p in points if p.distance(point) < threshold and p not in merged_points]
+
         if not nearby_points:
             merged_points[point] = point
         else:
             # Calculate centroid of nearby points
             all_points = np.array([[p.x, p.y] for p in nearby_points])
             centroid = Point(np.mean(all_points, axis=0))
-            
+
             # Map all nearby points to centroid
             for p in nearby_points:
                 merged_points[p] = centroid
@@ -228,15 +225,17 @@ def simplify_network(gdf: gpd.GeoDataFrame, threshold: float = 10.0) -> gpd.GeoD
         start, end = line.boundary.geoms
         new_start = merged_points.get(start, start)
         new_end = merged_points.get(end, end)
-        
+
         # Create new line with updated endpoints
         if not new_start.equals(new_end):  # Avoid zero-length lines
             simplified_lines.append(LineString([new_start, new_end]))
 
     return gpd.GeoDataFrame(geometry=simplified_lines)
 
-def extract_unique_points_and_create_mst(gdf: gpd.GeoDataFrame, 
-                                       all_end_points_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+
+def extract_unique_points_and_create_mst(
+    gdf: gpd.GeoDataFrame, all_end_points_gdf: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
     """
     Extract unique points and rebuild MST structure.
 
@@ -246,7 +245,7 @@ def extract_unique_points_and_create_mst(gdf: gpd.GeoDataFrame,
     :type all_end_points_gdf: gpd.GeoDataFrame
     :return: Reconstructed MST connecting all unique points
     :rtype: gpd.GeoDataFrame
-    
+
     .. note::
         Ensures tree topology (n-1 edges for n points) after network adjustments.
     """
@@ -255,7 +254,7 @@ def extract_unique_points_and_create_mst(gdf: gpd.GeoDataFrame,
     for line in gdf.geometry:
         if isinstance(line, LineString):
             all_points.extend(line.coords)
-    
+
     # Add terminal points from endpoint GeoDataFrame
     for point in all_end_points_gdf.geometry:
         if isinstance(point, Point):
@@ -264,11 +263,11 @@ def extract_unique_points_and_create_mst(gdf: gpd.GeoDataFrame,
     # Remove duplicates and convert to Point objects
     unique_points = set(all_points)
     unique_points = [Point(pt) for pt in unique_points]
-    
+
     # Create GeoDataFrame from unique points
     points_gdf = gpd.GeoDataFrame(geometry=unique_points)
-    
+
     # Generate new MST from unique points
     mst_gdf = generate_mst(points_gdf)
-    
+
     return mst_gdf

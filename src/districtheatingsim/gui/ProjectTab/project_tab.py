@@ -76,9 +76,10 @@ class ProjectModel:
     """
     Model for managing project data including CSV and GeoJSON file operations.
     """
+
     def __init__(self):
         self.base_path = None
-        self.current_file_path = ''
+        self.current_file_path = ""
         self.layers = {}
 
     def load_csv(self, file_path):
@@ -90,8 +91,8 @@ class ProjectModel:
         :return: Headers and data lists.
         :rtype: tuple
         """
-        with open(file_path, encoding='utf-8') as file:
-            reader = csv.reader(file, delimiter=';')
+        with open(file_path, encoding="utf-8") as file:
+            reader = csv.reader(file, delimiter=";")
             headers = next(reader)
             data = [row for row in reader]
         return headers, data
@@ -107,8 +108,8 @@ class ProjectModel:
         :param data: Table data.
         :type data: list of lists
         """
-        with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
-            writer = csv.writer(file, delimiter=';')
+        with open(file_path, "w", newline="", encoding="utf-8-sig") as file:
+            writer = csv.writer(file, delimiter=";")
             writer.writerow(headers)
             writer.writerows(data)
 
@@ -123,8 +124,8 @@ class ProjectModel:
         :param default_data: Default row data.
         :type default_data: list
         """
-        with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
-            writer = csv.writer(file, delimiter=';')
+        with open(file_path, "w", newline="", encoding="utf-8-sig") as file:
+            writer = csv.writer(file, delimiter=";")
             writer.writerow(headers)
             writer.writerow(default_data)
 
@@ -144,72 +145,95 @@ class ProjectModel:
         try:
             with open(geojson_file_path) as geojson_file:
                 data = json.load(geojson_file)
-            
+
             # Initialize geocoder and transformer once
             geolocator = Nominatim(user_agent="DistrictHeatingSim")
             transformer = Transformer.from_crs(project_crs, "epsg:4326", always_xy=True)
-            
-            with open(output_file_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
-                fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil", "Typ_Heizflächen", 
-                              "VLT_max", "Steigung_Heizkurve", "RLT_max", "Normaußentemperatur", "UTM_X", "UTM_Y"]
+
+            with open(output_file_path, "w", encoding="utf-8-sig", newline="") as csvfile:
+                fieldnames = [
+                    "Land",
+                    "Bundesland",
+                    "Stadt",
+                    "Adresse",
+                    "Wärmebedarf",
+                    "Gebäudetyp",
+                    "Subtyp",
+                    "WW_Anteil",
+                    "Typ_Heizflächen",
+                    "VLT_max",
+                    "Steigung_Heizkurve",
+                    "RLT_max",
+                    "Normaußentemperatur",
+                    "UTM_X",
+                    "UTM_Y",
+                ]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
                 writer.writeheader()
-                
-                for feature in data['features']:
-                    centroid = self.calculate_centroid(feature['geometry']['coordinates'])
-                    
+
+                for feature in data["features"]:
+                    centroid = self.calculate_centroid(feature["geometry"]["coordinates"])
+
                     # Reverse geocode each building individually
                     land = default_values.get("Land", "Deutschland")
                     bundesland = default_values.get("Bundesland", "")
                     stadt = default_values.get("Stadt", "")
                     adresse = default_values.get("Adresse", "")
-                    
+
                     if centroid[0] is not None and centroid[1] is not None:
                         try:
                             # Transform UTM to WGS84
                             lon, lat = transformer.transform(centroid[0], centroid[1])
-                            
+
                             # Reverse geocode with timeout
                             location = geolocator.reverse(f"{lat}, {lon}", language="de", timeout=10)
-                            
-                            if location and location.raw.get('address'):
-                                address_data = location.raw['address']
-                                
+
+                            if location and location.raw.get("address"):
+                                address_data = location.raw["address"]
+
                                 # Extract address components
-                                land = address_data.get('country', land)
-                                bundesland = address_data.get('state', bundesland)
-                                stadt = address_data.get('city') or address_data.get('town') or address_data.get('village') or address_data.get('municipality') or stadt
-                                
+                                land = address_data.get("country", land)
+                                bundesland = address_data.get("state", bundesland)
+                                stadt = (
+                                    address_data.get("city")
+                                    or address_data.get("town")
+                                    or address_data.get("village")
+                                    or address_data.get("municipality")
+                                    or stadt
+                                )
+
                                 # Build street address
                                 street_parts = []
-                                if 'road' in address_data:
-                                    street_parts.append(address_data['road'])
-                                if 'house_number' in address_data:
-                                    street_parts.append(address_data['house_number'])
-                                
+                                if "road" in address_data:
+                                    street_parts.append(address_data["road"])
+                                if "house_number" in address_data:
+                                    street_parts.append(address_data["house_number"])
+
                                 if street_parts:
                                     adresse = " ".join(street_parts)
-                                
+
                         except Exception:
                             pass  # Reverse geocoding failed for this building — skip
-                    
-                    writer.writerow({
-                        "Land": land,
-                        "Bundesland": bundesland,
-                        "Stadt": stadt,
-                        "Adresse": adresse,
-                        "Wärmebedarf": default_values["Wärmebedarf"],
-                        "Gebäudetyp": default_values["Gebäudetyp"],
-                        "Subtyp": default_values["Subtyp"],
-                        "WW_Anteil": default_values["WW_Anteil"],
-                        "Typ_Heizflächen": default_values["Typ_Heizflächen"],
-                        "VLT_max": default_values["VLT_max"],
-                        "Steigung_Heizkurve": default_values["Steigung_Heizkurve"],
-                        "RLT_max": default_values["RLT_max"],
-                        "Normaußentemperatur": default_values["Normaußentemperatur"],
-                        "UTM_X": centroid[0],
-                        "UTM_Y": centroid[1]
-                    })
+
+                    writer.writerow(
+                        {
+                            "Land": land,
+                            "Bundesland": bundesland,
+                            "Stadt": stadt,
+                            "Adresse": adresse,
+                            "Wärmebedarf": default_values["Wärmebedarf"],
+                            "Gebäudetyp": default_values["Gebäudetyp"],
+                            "Subtyp": default_values["Subtyp"],
+                            "WW_Anteil": default_values["WW_Anteil"],
+                            "Typ_Heizflächen": default_values["Typ_Heizflächen"],
+                            "VLT_max": default_values["VLT_max"],
+                            "Steigung_Heizkurve": default_values["Steigung_Heizkurve"],
+                            "RLT_max": default_values["RLT_max"],
+                            "Normaußentemperatur": default_values["Normaußentemperatur"],
+                            "UTM_X": centroid[0],
+                            "UTM_Y": centroid[1],
+                        }
+                    )
             return output_file_path
         except Exception as e:
             raise Exception(f"Fehler beim Erstellen der CSV-Datei: {str(e)}") from e
@@ -227,10 +251,12 @@ class ProjectModel:
         """
         return centroid_of(coordinates)
 
+
 class ProjectPresenter:
     """
     Presenter managing interaction between ProjectModel and ProjectTabView.
     """
+
     def __init__(self, model, view, folder_manager, data_manager, config_manager):
         """
         Initialize project presenter.
@@ -257,32 +283,24 @@ class ProjectPresenter:
             {
                 "name": "Schritt 1: Gebäudedaten Quartier definieren",
                 "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'. Die CSV kann manuell erstellt, aus GeoJSON importiert oder durch Geocoding mit Koordinaten angereichert werden.",
-                "required_files": [
-                    "..\\Definition Quartier IST\\Quartier IST.csv"
-                ],
+                "required_files": ["..\\Definition Quartier IST\\Quartier IST.csv"],
                 "csv_creation_status": "not_checked",  # Will be updated dynamically
-                "geocoding_status": "not_checked"      # Will be updated dynamically
+                "geocoding_status": "not_checked",  # Will be updated dynamically
             },
             {
                 "name": "Schritt 2: Gebäude-Lastgang generieren",
                 "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
-                "required_files": [
-                    "Lastgang\\Gebäude Lastgang.json"
-                ]
+                "required_files": ["Lastgang\\Gebäude Lastgang.json"],
             },
             {
                 "name": "Schritt 3: Straßendaten herunterladen",
                 "description": "Führen Sie eine OSM-Straßenabfrage im Tab 'Wärmenetz generieren' durch.",
-                "required_files": [
-                    "..\\Eingangsdaten allgemein\\Straßen.geojson"
-                ]
+                "required_files": ["..\\Eingangsdaten allgemein\\Straßen.geojson"],
             },
             {
                 "name": "Schritt 3: Wärmenetz Daten erstellen",
                 "description": "Generieren Sie das Wärmenetz im Tab 'Wärmenetz generieren'.",
-                "required_files": [
-                    "Wärmenetz\\Wärmenetz.geojson"
-                ]
+                "required_files": ["Wärmenetz\\Wärmenetz.geojson"],
             },
             {
                 "name": "Schritt 4: Thermohydraulische Berechnung",
@@ -291,18 +309,15 @@ class ProjectPresenter:
                     "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
                     "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
                     "Wärmenetz\\Konfiguration Netzinitialisierung.json",
-                    "Lastgang\\Lastgang.csv"
+                    "Lastgang\\Lastgang.csv",
                 ],
-                "check_dimensioned_network": True  # Special check for dimensioned flag in Wärmenetz.geojson
+                "check_dimensioned_network": True,  # Special check for dimensioned flag in Wärmenetz.geojson
             },
             {
                 "name": "Schritt 5: Erzeugermix auslegen und berechnen",
                 "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
-                "required_files": [
-                    "Ergebnisse\\calculated_heat_generation.csv",
-                    "Ergebnisse\\Ergebnisse.json"
-                ]
-            }
+                "required_files": ["Ergebnisse\\calculated_heat_generation.csv", "Ergebnisse\\Ergebnisse.json"],
+            },
         ]
 
         # Connect signals and initialize (only after view is set)
@@ -362,13 +377,13 @@ class ProjectPresenter:
         """
         """Handle tree view double-click events."""
         file_path = self.view.get_selected_file_path(index)
-        
+
         if os.path.isdir(file_path):
             if VARIANT_PREFIX in os.path.basename(file_path):
                 self.folder_manager.set_variant_folder(file_path)
             else:
                 self.folder_manager.set_project_folder(file_path)
-        elif file_path.endswith('.csv'):
+        elif file_path.endswith(".csv"):
             self.load_csv(file_path)
 
     def _on_crs_combo_changed(self, label: str):
@@ -380,7 +395,7 @@ class ProjectPresenter:
 
     def _suggest_crs(self):
         """Auto-detect and suggest CRS based on first building coordinate in CSV."""
-        if not (hasattr(self.model, 'current_file_path') and self.model.current_file_path):
+        if not (hasattr(self.model, "current_file_path") and self.model.current_file_path):
             return
         try:
             headers, data = self.model.load_csv(self.model.current_file_path)
@@ -424,6 +439,7 @@ class ProjectPresenter:
             import pandas as pd
 
             from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, _detect_delimiter
+
             delim = _detect_delimiter(fname)
             probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
             required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
@@ -487,12 +503,20 @@ class ProjectPresenter:
         :type show_dialog: bool
         """
         headers = [self.view.csvTable.horizontalHeaderItem(i).text() for i in range(self.view.csvTable.columnCount())]
-        data = [[self.view.csvTable.item(row, column).text() if self.view.csvTable.item(row, column) else '' 
-                for column in range(self.view.csvTable.columnCount())] for row in range(self.view.csvTable.rowCount())]
+        data = [
+            [
+                self.view.csvTable.item(row, column).text() if self.view.csvTable.item(row, column) else ""
+                for column in range(self.view.csvTable.columnCount())
+            ]
+            for row in range(self.view.csvTable.rowCount())
+        ]
         file_path = self.model.current_file_path
         if not file_path:
             # Use default path if no file is open
-            file_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+            file_path = os.path.join(
+                self.folder_manager.get_variant_folder(),
+                self.config_manager.get_relative_path("current_building_data_path"),
+            )
             self.model.current_file_path = file_path
         try:
             self.model.save_csv(file_path, headers, data)
@@ -527,12 +551,31 @@ class ProjectPresenter:
         :param show_dialog: Show file dialog if True.
         :type show_dialog: bool
         """
-        headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', "Subtyp", 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', "Normaußentemperatur"]
-        default_data = ['']*len(headers)
+        headers = [
+            "Land",
+            "Bundesland",
+            "Stadt",
+            "Adresse",
+            "Wärmebedarf",
+            "Gebäudetyp",
+            "Subtyp",
+            "WW_Anteil",
+            "Typ_Heizflächen",
+            "VLT_max",
+            "Steigung_Heizkurve",
+            "RLT_max",
+            "Normaußentemperatur",
+        ]
+        default_data = [""] * len(headers)
         if not fname:
-            fname = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+            fname = os.path.join(
+                self.folder_manager.get_variant_folder(),
+                self.config_manager.get_relative_path("current_building_data_path"),
+            )
             if show_dialog:
-                fname_dialog, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', fname, 'CSV Files (*.csv);;All Files (*)')
+                fname_dialog, _ = QFileDialog.getSaveFileName(
+                    self.view, "Gebäude-CSV erstellen", fname, "CSV Files (*.csv);;All Files (*)"
+                )
                 if fname_dialog and fname_dialog.strip():  # Check for valid file path
                     fname = fname_dialog
                 else:
@@ -547,31 +590,39 @@ class ProjectPresenter:
         """
         Create CSV from GeoJSON with user-defined building parameters.
         """
-        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_buldings_path"))
-        geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", standard_path, "All Files (*)")
+        standard_path = os.path.join(
+            self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_buldings_path")
+        )
+        geojson_file_path, _ = QFileDialog.getOpenFileName(
+            self.view, "geoJSON auswählen", standard_path, "All Files (*)"
+        )
         if geojson_file_path and geojson_file_path.strip():  # Check for valid file path
             # Extract sample coordinates from first building for reverse geocoding
             sample_coords = None
             try:
                 with open(geojson_file_path) as f:
                     data = json.load(f)
-                    if data.get('features') and len(data['features']) > 0:
-                        first_feature = data['features'][0]
-                        centroid = self.model.calculate_centroid(first_feature['geometry']['coordinates'])
+                    if data.get("features") and len(data["features"]) > 0:
+                        first_feature = data["features"][0]
+                        centroid = self.model.calculate_centroid(first_feature["geometry"]["coordinates"])
                         if centroid[0] is not None and centroid[1] is not None:
                             sample_coords = centroid
             except Exception:
                 pass  # Could not extract sample coordinates — continue without them
-            
-            dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords,
-                                     project_crs=self.folder_manager.project_crs)
+
+            dialog = OSMImportDialog(
+                self.view, sample_utm_coords=sample_coords, project_crs=self.folder_manager.project_crs
+            )
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 default_values = dialog.get_input_data()
-                standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
+                standard_output_path = os.path.join(
+                    self.folder_manager.get_variant_folder(),
+                    self.config_manager.get_relative_path("OSM_building_data_path"),
+                )
                 output_file_path = standard_output_path
 
                 # Start conversion in thread
-                if hasattr(self, 'geojson_conversion_thread') and self.geojson_conversion_thread.isRunning():
+                if hasattr(self, "geojson_conversion_thread") and self.geojson_conversion_thread.isRunning():
                     self.geojson_conversion_thread.stop()
                     self.geojson_conversion_thread.wait()
 
@@ -580,13 +631,13 @@ class ProjectPresenter:
                     output_file_path,
                     default_values,
                     self.model,
-                    project_crs=self.folder_manager.project_crs
+                    project_crs=self.folder_manager.project_crs,
                 )
                 self.geojson_conversion_thread.progress_update.connect(self.on_geojson_conversion_progress)
                 self.geojson_conversion_thread.calculation_done.connect(self.on_geojson_conversion_done)
                 self.geojson_conversion_thread.calculation_error.connect(self.on_geojson_conversion_error)
                 self.geojson_conversion_thread.start()
-                
+
                 # Show progress bar
                 self.view.progressBar.setRange(0, 0)  # Indeterminate until we know total
                 self.view.statusLabel.setText("Konvertiere GeoJSON zu CSV mit Reverse Geocoding...")
@@ -606,7 +657,7 @@ class ProjectPresenter:
             self.view.progressBar.setRange(0, total)
             self.view.progressBar.setValue(current)
         self.view.statusLabel.setText(message)
-    
+
     def on_geojson_conversion_done(self, output_file_path):
         """
         Handle completion of GeoJSON conversion.
@@ -619,7 +670,7 @@ class ProjectPresenter:
         self.view.statusLabel.setText("Konvertierung abgeschlossen")
         self.load_csv(output_file_path)
         self.view.show_message("Erfolg", f"CSV-Datei wurde erfolgreich erstellt:\n{output_file_path}")
-    
+
     def on_geojson_conversion_error(self, error_message):
         """
         Handle error during GeoJSON conversion.
@@ -636,20 +687,27 @@ class ProjectPresenter:
         """
         Geocode the currently loaded CSV file.
         """
-        if hasattr(self.model, 'current_file_path') and self.model.current_file_path:
+        if hasattr(self.model, "current_file_path") and self.model.current_file_path:
             # Save current table data first
             self.save_csv(show_dialog=False)
             # Then geocode the saved file
             self.geocode_addresses(self.model.current_file_path)
         else:
-            self.view.show_error_message("Fehler", "Keine CSV-Datei geladen. Bitte laden Sie zuerst eine CSV-Datei oder erstellen Sie eine neue.")
+            self.view.show_error_message(
+                "Fehler", "Keine CSV-Datei geladen. Bitte laden Sie zuerst eine CSV-Datei oder erstellen Sie eine neue."
+            )
 
     def open_geocode_addresses_dialog(self):
         """
         Open file dialog for geocoding CSV selection.
         """
-        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', standard_path, 'CSV Files (*.csv);;All Files (*)')
+        standard_path = os.path.join(
+            self.folder_manager.get_variant_folder(),
+            self.config_manager.get_relative_path("current_building_data_path"),
+        )
+        fname, _ = QFileDialog.getOpenFileName(
+            self.view, "CSV-Koordinaten laden", standard_path, "CSV Files (*.csv);;All Files (*)"
+        )
         if fname and fname.strip():  # Check for valid file path
             self.geocode_addresses(fname)
 
@@ -660,7 +718,7 @@ class ProjectPresenter:
         :param inputfilename: Path to CSV file for geocoding.
         :type inputfilename: str
         """
-        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
+        if hasattr(self, "geocodingThread") and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
             self.geocodingThread.wait()
         self.geocodingThread = GeocodingThread(inputfilename, project_crs=self.folder_manager.project_crs)
@@ -677,7 +735,7 @@ class ProjectPresenter:
         :type fname: str
         """
         self.view.progressBar.setRange(0, 1)
-        
+
         # Automatically reload the updated CSV file to show the new coordinates
         if fname and os.path.exists(fname):
             self.load_csv(fname)
@@ -718,42 +776,42 @@ class ProjectPresenter:
         :rtype: str
         """
         if not os.path.exists(csv_file_path):
-            return 'fehlt'
-            
+            return "fehlt"
+
         try:
-            with open(csv_file_path, encoding='utf-8', errors='ignore') as file:
+            with open(csv_file_path, encoding="utf-8", errors="ignore") as file:
                 # Use semicolon delimiter to match the CSV format
-                reader = csv.DictReader(file, delimiter=';')
+                reader = csv.DictReader(file, delimiter=";")
                 headers = reader.fieldnames
-                
+
                 if not headers:
-                    return 'ist vorhanden'
-                
+                    return "ist vorhanden"
+
                 # Check if UTM coordinate columns exist
-                coord_columns = ['UTM_X', 'UTM_Y']
+                coord_columns = ["UTM_X", "UTM_Y"]
                 has_coord_headers = all(col in headers for col in coord_columns)
-                
+
                 if not has_coord_headers:
-                    return 'ist vorhanden'
-                
+                    return "ist vorhanden"
+
                 # Check if coordinate columns have data
                 for row in reader:
-                    if 'UTM_X' in row and 'UTM_Y' in row and row['UTM_X'] and row['UTM_Y']:
-                        if row['UTM_X'].strip() and row['UTM_Y'].strip():
+                    if "UTM_X" in row and "UTM_Y" in row and row["UTM_X"] and row["UTM_Y"]:
+                        if row["UTM_X"].strip() and row["UTM_Y"].strip():
                             try:
-                                float(row['UTM_X'])
-                                float(row['UTM_Y'])
-                                return 'mit Koordinaten'  # Found at least one valid coordinate pair
+                                float(row["UTM_X"])
+                                float(row["UTM_Y"])
+                                return "mit Koordinaten"  # Found at least one valid coordinate pair
                             except ValueError:
                                 continue
                     # Only check first few rows for performance
                     break
-                    
-                return 'ist vorhanden'  # Has headers but no valid coordinate data
-                
+
+                return "ist vorhanden"  # Has headers but no valid coordinate data
+
         except Exception:
             # If we can't read the CSV, assume it exists but is problematic
-            return 'ist vorhanden'
+            return "ist vorhanden"
 
     def check_network_dimensioned(self, network_file_path):
         """
@@ -766,17 +824,17 @@ class ProjectPresenter:
         """
         if not os.path.exists(network_file_path):
             return False
-            
+
         try:
             from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-            
+
             geojson = NetworkGeoJSONSchema.import_from_file(network_file_path)
-            
+
             # Check metadata for state == "dimensioned"
-            metadata = geojson.get('metadata', {})
-            state = metadata.get('state', '')
-            return state == 'dimensioned'
-            
+            metadata = geojson.get("metadata", {})
+            state = metadata.get("state", "")
+            return state == "dimensioned"
+
         except Exception:
             return False
 
@@ -786,7 +844,7 @@ class ProjectPresenter:
         """
         if not self.view:  # Skip if view not available yet
             return
-            
+
         base_path = self.model.base_path
 
         # CSV Status: check first process step (Quartier IST.csv) with detailed analysis
@@ -794,60 +852,62 @@ class ProjectPresenter:
         if base_path:
             # Check first process step for Quartier IST.csv
             first_step = self.process_steps[0]
-            csv_file_path = os.path.join(base_path, first_step['required_files'][0])
+            csv_file_path = os.path.join(base_path, first_step["required_files"][0])
             csv_status = self.check_csv_status(csv_file_path)
-            
+
             # Update CSV creation and geocoding status for first step
             if os.path.exists(csv_file_path):
-                first_step['csv_creation_status'] = 'completed'
+                first_step["csv_creation_status"] = "completed"
                 # Check if CSV has coordinates (UTM_X and UTM_Y columns)
-                if csv_status == 'mit Koordinaten':
-                    first_step['geocoding_status'] = 'completed'
-                elif csv_status == 'ist vorhanden':
-                    first_step['geocoding_status'] = 'pending'
+                if csv_status == "mit Koordinaten":
+                    first_step["geocoding_status"] = "completed"
+                elif csv_status == "ist vorhanden":
+                    first_step["geocoding_status"] = "pending"
                 else:
-                    first_step['geocoding_status'] = 'not_applicable'
+                    first_step["geocoding_status"] = "not_applicable"
             else:
-                first_step['csv_creation_status'] = 'pending'
-                first_step['geocoding_status'] = 'not_applicable'
-            
+                first_step["csv_creation_status"] = "pending"
+                first_step["geocoding_status"] = "not_applicable"
+
             # Update all process steps
             for step in self.process_steps:
-                full_paths = [os.path.join(base_path, path) for path in step['required_files']]
+                full_paths = [os.path.join(base_path, path) for path in step["required_files"]]
                 generated_files = [file for file in full_paths if os.path.exists(file)]
-                
+
                 # Special check for dimensioned network flag in Wärmenetz.geojson
-                if step.get('check_dimensioned_network', False):
+                if step.get("check_dimensioned_network", False):
                     network_file = os.path.join(base_path, "Wärmenetz\\Wärmenetz.geojson")
                     network_dimensioned = self.check_network_dimensioned(network_file)
-                    
+
                     if not network_dimensioned:
                         # Add virtual missing file indicator
-                        step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
-                        step['missing_files'].append("Wärmenetz\\Wärmenetz.geojson (nicht dimensioniert)")
-                        step['completed'] = False
+                        step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
+                        step["missing_files"].append("Wärmenetz\\Wärmenetz.geojson (nicht dimensioniert)")
+                        step["completed"] = False
                     else:
-                        step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
-                        step['completed'] = len(step['missing_files']) == 0
+                        step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
+                        step["completed"] = len(step["missing_files"]) == 0
                 else:
-                    step['completed'] = len(generated_files) == len(full_paths)
-                    step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
+                    step["completed"] = len(generated_files) == len(full_paths)
+                    step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
         else:
             for step in self.process_steps:
-                step['completed'] = False
-                step['missing_files'] = step['required_files']
+                step["completed"] = False
+                step["missing_files"] = step["required_files"]
 
         total_steps = len(self.process_steps)
-        completed_steps = sum(1 for step in self.process_steps if step['completed'])
+        completed_steps = sum(1 for step in self.process_steps if step["completed"])
         overall_progress = (completed_steps / total_steps) * 100
 
         self.view.update_progress(overall_progress, csv_status=csv_status)
         self.view.set_process_steps(self.process_steps)
 
+
 class ProjectTabView(QWidget):
     """
     View component for project tab UI with file browser and CSV editor.
     """
+
     def __init__(self, presenter=None, parent=None):
         """
         Initialize project tab view.
@@ -895,7 +955,9 @@ class ProjectTabView(QWidget):
 
         # CSV-Status oben
         self.csv_status_label = QLabel("❓ Quartier IST.csv: Status unbekannt")
-        self.csv_status_label.setStyleSheet("font-weight: bold; color: #757575; background-color: #f5f5f5; padding: 8px; border-radius: 4px; border-left: 4px solid #757575; margin-bottom: 10px;")
+        self.csv_status_label.setStyleSheet(
+            "font-weight: bold; color: #757575; background-color: #f5f5f5; padding: 8px; border-radius: 4px; border-left: 4px solid #757575; margin-bottom: 10px;"
+        )
         self.leftLayout.addWidget(self.csv_status_label)
 
         # CRS selector row
@@ -966,17 +1028,17 @@ class ProjectTabView(QWidget):
         self.csvTable.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.EditKeyPressed)
         self.csvTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.csvTable.customContextMenuRequested.connect(self.show_context_menu)
-        
+
         # Enhanced table formatting
         self.csvTable.setAlternatingRowColors(True)
         self.csvTable.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.csvTable.setSortingEnabled(True)
         self.csvTable.horizontalHeader().setStretchLastSection(True)
-        
+
         # Set row height for better visibility
         self.csvTable.verticalHeader().setDefaultSectionSize(35)
         self.csvTable.verticalHeader().setMinimumSectionSize(30)
-        
+
         self.rightLayout.addWidget(self.csvTable)
 
         # Status label for operations
@@ -1052,7 +1114,7 @@ class ProjectTabView(QWidget):
         contextMenu.addAction(addRowAction)
         contextMenu.addAction(deleteRowAction)
         contextMenu.addAction(duplicateRowAction)
-        
+
         addRowAction.triggered.connect(self.add_row)
         deleteRowAction.triggered.connect(self.delete_row)
         duplicateRowAction.triggered.connect(self.duplicate_row)
@@ -1092,7 +1154,7 @@ class ProjectTabView(QWidget):
             self.csvTable.insertRow(row)
             for column in range(self.csvTable.columnCount()):
                 item = self.csvTable.item(currentRow, column)
-                newItem = QTableWidgetItem(item.text() if item else '')
+                newItem = QTableWidgetItem(item.text() if item else "")
                 self.csvTable.setItem(row, column, newItem)
         else:
             self.show_error_message("Warnung", "Bitte wählen Sie ein Gebäude zum Duplizieren aus.")
@@ -1132,27 +1194,27 @@ class ProjectTabView(QWidget):
         if csv_status is not None:
             # Define status with icons and colors
             status_config = {
-                'fehlt': {
-                    'text': '❌ Quartier IST.csv: Datei fehlt',
-                    'style': 'font-weight: bold; color: #d32f2f; background-color: #ffebee; padding: 8px; border-radius: 4px; border-left: 4px solid #d32f2f;'
+                "fehlt": {
+                    "text": "❌ Quartier IST.csv: Datei fehlt",
+                    "style": "font-weight: bold; color: #d32f2f; background-color: #ffebee; padding: 8px; border-radius: 4px; border-left: 4px solid #d32f2f;",
                 },
-                'ist vorhanden': {
-                    'text': '⚠️ Quartier IST.csv: Ist vorhanden (ohne Koordinaten)',
-                    'style': 'font-weight: bold; color: #f57c00; background-color: #fff3e0; padding: 8px; border-radius: 4px; border-left: 4px solid #f57c00;'
+                "ist vorhanden": {
+                    "text": "⚠️ Quartier IST.csv: Ist vorhanden (ohne Koordinaten)",
+                    "style": "font-weight: bold; color: #f57c00; background-color: #fff3e0; padding: 8px; border-radius: 4px; border-left: 4px solid #f57c00;",
                 },
-                'mit Koordinaten': {
-                    'text': '✅ Quartier IST.csv: Mit Koordinaten (vollständig)',
-                    'style': 'font-weight: bold; color: #388e3c; background-color: #e8f5e8; padding: 8px; border-radius: 4px; border-left: 4px solid #388e3c;'
+                "mit Koordinaten": {
+                    "text": "✅ Quartier IST.csv: Mit Koordinaten (vollständig)",
+                    "style": "font-weight: bold; color: #388e3c; background-color: #e8f5e8; padding: 8px; border-radius: 4px; border-left: 4px solid #388e3c;",
                 },
-                'unbekannt': {
-                    'text': '❓ Quartier IST.csv: Status unbekannt',
-                    'style': 'font-weight: bold; color: #757575; background-color: #f5f5f5; padding: 8px; border-radius: 4px; border-left: 4px solid #757575;'
-                }
+                "unbekannt": {
+                    "text": "❓ Quartier IST.csv: Status unbekannt",
+                    "style": "font-weight: bold; color: #757575; background-color: #f5f5f5; padding: 8px; border-radius: 4px; border-left: 4px solid #757575;",
+                },
             }
-            
-            config = status_config.get(csv_status, status_config['unbekannt'])
-            self.csv_status_label.setText(config['text'])
-            self.csv_status_label.setStyleSheet(config['style'])
+
+            config = status_config.get(csv_status, status_config["unbekannt"])
+            self.csv_status_label.setText(config["text"])
+            self.csv_status_label.setStyleSheet(config["style"])
 
     def showDetailsDialog(self):
         """
@@ -1181,6 +1243,7 @@ class ProjectTabView(QWidget):
         """
         QMessageBox.information(self, title, message)
 
+
 class ProjectTab(QWidget):
     """
     Main project tab widget integrating MVP components.
@@ -1188,6 +1251,7 @@ class ProjectTab(QWidget):
     .. note::
        Central interface for project management with file operations and progress tracking functionality.
     """
+
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
         Initialize project tab with MVP architecture.

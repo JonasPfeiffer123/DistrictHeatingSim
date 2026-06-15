@@ -34,7 +34,7 @@ class ProjectConfigManager:
     :type config_path: str
     :param file_paths_path: Path to file_paths.json (optional, uses default if None)
     :type file_paths_path: str
-    
+
     .. note::
         Configuration files are stored with UTF-8 encoding for international
         character support.
@@ -53,7 +53,7 @@ class ProjectConfigManager:
         self.file_paths_path = file_paths_path or self.get_default_file_paths_path()
         self.config_data = self.load_config()
         self.file_paths_data = self.load_file_paths()
-        
+
     def get_default_config_path(self) -> str:
         """
         Get the default path to recent_projects.json.
@@ -61,7 +61,7 @@ class ProjectConfigManager:
         :return: Absolute path to the default configuration file
         :rtype: str
         """
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'recent_projects.json')
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "recent_projects.json")
 
     def get_default_file_paths_path(self) -> str:
         """
@@ -70,7 +70,7 @@ class ProjectConfigManager:
         :return: Absolute path to the default file paths configuration file
         :rtype: str
         """
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_paths.json')
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "file_paths.json")
 
     def load_config(self) -> dict[str, Any]:
         """
@@ -81,7 +81,7 @@ class ProjectConfigManager:
         """
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, encoding='utf-8') as file:
+                with open(self.config_path, encoding="utf-8") as file:
                     return json.load(file)
             except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
@@ -96,7 +96,7 @@ class ProjectConfigManager:
         """
         if os.path.exists(self.file_paths_path):
             try:
-                with open(self.file_paths_path, encoding='utf-8') as file:
+                with open(self.file_paths_path, encoding="utf-8") as file:
                     return json.load(file)
             except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
@@ -111,7 +111,7 @@ class ProjectConfigManager:
         :raises Exception: If file cannot be written
         """
         try:
-            with open(self.config_path, 'w', encoding='utf-8') as file:
+            with open(self.config_path, "w", encoding="utf-8") as file:
                 json.dump(config, file, indent=4, ensure_ascii=False)
         except Exception:
             raise
@@ -125,7 +125,7 @@ class ProjectConfigManager:
         :raises Exception: If file cannot be written
         """
         try:
-            with open(self.file_paths_path, 'w', encoding='utf-8') as file:
+            with open(self.file_paths_path, "w", encoding="utf-8") as file:
                 json.dump(file_paths, file, indent=4, ensure_ascii=False)
         except Exception:
             raise
@@ -137,7 +137,7 @@ class ProjectConfigManager:
         :return: Path to last opened project (empty string if none)
         :rtype: str
         """
-        return self.config_data.get('last_project', '')
+        return self.config_data.get("last_project", "")
 
     def set_last_project(self, path: str) -> None:
         """
@@ -149,22 +149,22 @@ class ProjectConfigManager:
         :param path: Path to the project directory
         :type path: str
         """
-        self.config_data['last_project'] = path
-        
+        self.config_data["last_project"] = path
+
         # Initialize recent projects list if not exists
-        if 'recent_projects' not in self.config_data:
-            self.config_data['recent_projects'] = []
-        
+        if "recent_projects" not in self.config_data:
+            self.config_data["recent_projects"] = []
+
         # Add to recent projects with duplicate prevention
-        if path not in self.config_data['recent_projects']:
-            self.config_data['recent_projects'].insert(0, path)
+        if path not in self.config_data["recent_projects"]:
+            self.config_data["recent_projects"].insert(0, path)
             # Maintain maximum of 5 recent projects
-            self.config_data['recent_projects'] = self.config_data['recent_projects'][:5]
+            self.config_data["recent_projects"] = self.config_data["recent_projects"][:5]
         else:
             # Move existing entry to top
-            self.config_data['recent_projects'].remove(path)
-            self.config_data['recent_projects'].insert(0, path)
-        
+            self.config_data["recent_projects"].remove(path)
+            self.config_data["recent_projects"].insert(0, path)
+
         # Persist changes immediately
         self.save_config(self.config_data)
 
@@ -175,7 +175,7 @@ class ProjectConfigManager:
         :return: List of project paths (max 5 entries, most recent first)
         :rtype: list of str
         """
-        return self.config_data.get('recent_projects', [])
+        return self.config_data.get("recent_projects", [])
 
     def get_relative_path(self, key: str) -> str:
         """
@@ -190,7 +190,7 @@ class ProjectConfigManager:
         relative_path = self.file_paths_data.get(key, "")
         if not relative_path:
             raise KeyError(f"Key '{key}' not found in file paths configuration.")
-        
+
         return relative_path
 
     def get_resource_path(self, key: str) -> str:
@@ -205,6 +205,7 @@ class ProjectConfigManager:
         relative_path = self.get_relative_path(key)
         absolute_path = get_resource_path(relative_path)
         return absolute_path
+
 
 class DataManager:
     """
@@ -231,7 +232,7 @@ class ProjectFolderManager(QObject):
 
     :param config_manager: Configuration manager instance (creates new if None)
     :type config_manager: ProjectConfigManager
-    
+
     :signal project_folder_changed: Emitted when project/variant folder changes (str)
     """
 
@@ -416,13 +417,16 @@ class ProjectFolderManager(QObject):
         path = self._settings_path()
         if path:
             try:
-                data = add_meta({
-                    "crs": self.project_crs,
-                    "calculation_year": self.calculation_year,
-                    "active_energy_configs": self.active_energy_configs,
-                    "try_filename": self._to_relative_path(self.try_filename),
-                    "cop_filename": self._to_relative_path(self.cop_filename),
-                }, "project_settings")
+                data = add_meta(
+                    {
+                        "crs": self.project_crs,
+                        "calculation_year": self.calculation_year,
+                        "active_energy_configs": self.active_energy_configs,
+                        "try_filename": self._to_relative_path(self.try_filename),
+                        "cop_filename": self._to_relative_path(self.cop_filename),
+                    },
+                    "project_settings",
+                )
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4, ensure_ascii=False)
             except OSError:
@@ -494,7 +498,9 @@ class ProjectFolderManager(QObject):
         dest = os.path.join(dest_dir, os.path.basename(src))
         # Skip copy if file is already inside the project folder
         try:
-            if os.path.commonpath([os.path.abspath(src), os.path.abspath(self.project_folder)]) == os.path.abspath(self.project_folder):
+            if os.path.commonpath([os.path.abspath(src), os.path.abspath(self.project_folder)]) == os.path.abspath(
+                self.project_folder
+            ):
                 return src
         except ValueError:
             pass  # Happens on different Windows drives — proceed with copy

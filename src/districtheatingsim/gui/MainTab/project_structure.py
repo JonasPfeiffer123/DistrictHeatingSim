@@ -76,7 +76,5 @@ def discover_variants(project_path: str) -> list[str]:
     except (FileNotFoundError, NotADirectoryError):
         return []
     return sorted(
-        name for name in entries
-        if name.startswith(VARIANT_PREFIX)
-        and os.path.isdir(os.path.join(project_path, name))
+        name for name in entries if name.startswith(VARIANT_PREFIX) and os.path.isdir(os.path.join(project_path, name))
     )

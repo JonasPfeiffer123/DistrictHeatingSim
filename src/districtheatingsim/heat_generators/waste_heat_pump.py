@@ -31,10 +31,17 @@ class WasteHeatPump(HeatPump):
        High COP due to elevated source temperatures.
     """
 
-    def __init__(self, name: str, Kühlleistung_Abwärme: float, 
-                 Temperatur_Abwärme: float, spez_Investitionskosten_Abwärme: float = 500, 
-                 spezifische_Investitionskosten_WP: float = 1000, min_Teillast: float = 0.2,
-                 opt_cooling_min: float = 0, opt_cooling_max: float = 500) -> None:
+    def __init__(
+        self,
+        name: str,
+        Kühlleistung_Abwärme: float,
+        Temperatur_Abwärme: float,
+        spez_Investitionskosten_Abwärme: float = 500,
+        spezifische_Investitionskosten_WP: float = 1000,
+        min_Teillast: float = 0.2,
+        opt_cooling_min: float = 0,
+        opt_cooling_max: float = 500,
+    ) -> None:
         """
         Initialize waste heat pump system.
 
@@ -65,7 +72,9 @@ class WasteHeatPump(HeatPump):
         self.opt_cooling_min = opt_cooling_min
         self.opt_cooling_max = opt_cooling_max
 
-    def calculate_heat_pump(self, VLT_L: np.ndarray, COP_data: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def calculate_heat_pump(
+        self, VLT_L: np.ndarray, COP_data: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Calculate heat pump performance for waste heat operation.
 
@@ -80,17 +89,16 @@ class WasteHeatPump(HeatPump):
         """
         # Calculate COP based on waste heat temperature and flow temperature
         COP_L, VLT_WP_L = self.calculate_COP(VLT_L, self.Temperatur_Abwärme, COP_data)
-        
+
         # Calculate heat output based on waste heat extraction and COP
         Wärmeleistung_kW = self.Kühlleistung_Abwärme / (1 - (1 / COP_L))
-        
+
         # Calculate electrical power consumption
         el_Leistung_kW = Wärmeleistung_kW - self.Kühlleistung_Abwärme
 
         return Wärmeleistung_kW, el_Leistung_kW, VLT_WP_L, COP_L
 
-    def calculate_operation(self, Last_L: np.ndarray, VLT_L: np.ndarray, 
-                           COP_data: np.ndarray) -> None:
+    def calculate_operation(self, Last_L: np.ndarray, VLT_L: np.ndarray, COP_data: np.ndarray) -> None:
         """
         Calculate operational performance considering waste heat availability.
 
@@ -106,30 +114,30 @@ class WasteHeatPump(HeatPump):
         """
         if self.Kühlleistung_Abwärme > 0:
             # Calculate heat pump performance for all time steps
-            self.Wärmeleistung_kW, self.el_Leistung_kW, self.VLT_WP, self.COP = self.calculate_heat_pump(VLT_L, COP_data)
+            self.Wärmeleistung_kW, self.el_Leistung_kW, self.VLT_WP, self.COP = self.calculate_heat_pump(
+                VLT_L, COP_data
+            )
 
             # Determine operational constraints
             # Heat pump operates when load demand exceeds minimum part-load threshold
             self.betrieb_mask = Last_L >= self.Wärmeleistung_kW * self.min_Teillast
-            
+
             # Adjust heat output to match actual demand (limited by capacity)
             self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(
-                Last_L[self.betrieb_mask], 
-                self.Wärmeleistung_kW[self.betrieb_mask]
+                Last_L[self.betrieb_mask], self.Wärmeleistung_kW[self.betrieb_mask]
             )
-            
+
             # Calculate corresponding electrical consumption
             self.el_Leistung_kW[self.betrieb_mask] = (
-                self.Wärmeleistung_kW[self.betrieb_mask] - 
-                self.Kühlleistung_Abwärme
+                self.Wärmeleistung_kW[self.betrieb_mask] - self.Kühlleistung_Abwärme
             )
-            
+
             # Set outputs to zero when not operating
             self.Wärmeleistung_kW[~self.betrieb_mask] = 0
             self.el_Leistung_kW[~self.betrieb_mask] = 0
             self.VLT_WP[~self.betrieb_mask] = 0
             self.COP[~self.betrieb_mask] = 0
-            
+
             # Initialize waste heat extraction array
             self.Kühlleistung_kW = np.zeros_like(Last_L, dtype=float)
             self.Kühlleistung_kW[self.betrieb_mask] = self.Kühlleistung_Abwärme
@@ -155,16 +163,16 @@ class WasteHeatPump(HeatPump):
 
         .. note:: Checks waste heat availability and operational constraints.
         """
-        VLT = kwargs.get('VLT_L', 0)
-        COP_data = kwargs.get('COP_data', None)
+        VLT = kwargs.get("VLT_L", 0)
+        COP_data = kwargs.get("COP_data", None)
 
         # Calculate performance for current time step
-        self.Wärmeleistung_kW[t], self.el_Leistung_kW[t], self.VLT_WP[t], self.COP[t] = self.calculate_heat_pump(VLT, COP_data)
+        self.Wärmeleistung_kW[t], self.el_Leistung_kW[t], self.VLT_WP[t], self.COP[t] = self.calculate_heat_pump(
+            VLT, COP_data
+        )
 
         # Check operational constraints
-        if (self.active and 
-            self.VLT_WP[t] >= VLT and 
-            self.Kühlleistung_Abwärme > 0):
+        if self.active and self.VLT_WP[t] >= VLT and self.Kühlleistung_Abwärme > 0:
             # Waste heat pump can operate - generate heat
             self.betrieb_mask[t] = True
             self.Kühlleistung_kW[t] = self.Kühlleistung_Abwärme
@@ -178,7 +186,7 @@ class WasteHeatPump(HeatPump):
             self.COP[t] = 0
 
         return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
-    
+
     def calculate_results(self, duration: float) -> None:
         """
         Calculate aggregated performance metrics from simulation results.
@@ -191,22 +199,22 @@ class WasteHeatPump(HeatPump):
         # Calculate total energy production and consumption
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
-        
+
         # Calculate Seasonal Coefficient of Performance
         self.SCOP = self.Wärmemenge_MWh / self.Strommenge_MWh if self.Strommenge_MWh > 0 else 0
 
         # Determine maximum heat output
         self.max_Wärmeleistung = np.max(self.Wärmeleistung_kW)
-        
+
         # Calculate operational statistics
         starts = np.diff(self.betrieb_mask.astype(int)) > 0  # Start-up events
         self.Anzahl_Starts = np.sum(starts)
         self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
-                                         if self.Anzahl_Starts > 0 else 0)
-    
-    def calculate(self, economic_parameters: dict[str, Any], duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> dict[str, Any]:
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+    def calculate(
+        self, economic_parameters: dict[str, Any], duration: float, load_profile: np.ndarray, **kwargs
+    ) -> dict[str, Any]:
         """
         Comprehensive calculation of waste heat pump performance and economics.
 
@@ -224,47 +232,47 @@ class WasteHeatPump(HeatPump):
         .. note:: Integrates waste heat recovery with heat pump performance and lifecycle cost analysis.
         """
         # Extract required parameters
-        VLT_L = kwargs.get('VLT_L')
-        COP_data = kwargs.get('COP_data')
+        VLT_L = kwargs.get("VLT_L")
+        COP_data = kwargs.get("COP_data")
 
         # Perform operational calculation if not already done
         if not self.calculated:
             self.calculate_operation(load_profile, VLT_L, COP_data)
             self.calculated = True
-        
+
         # Calculate performance metrics
         self.calculate_results(duration)
-        
+
         # Economic evaluation with waste heat specific costs
         self.WGK = self.calculate_heat_generation_costs(
-            self.max_Wärmeleistung, 
-            self.Wärmemenge_MWh, 
-            self.Strommenge_MWh, 
-            self.spez_Investitionskosten_Abwärme, 
-            economic_parameters
+            self.max_Wärmeleistung,
+            self.Wärmemenge_MWh,
+            self.Strommenge_MWh,
+            self.spez_Investitionskosten_Abwärme,
+            economic_parameters,
         )
-        
+
         # Environmental impact assessment
         self.calculate_environmental_impact()
 
         # Compile comprehensive results
         results = {
-            'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_MWh,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Strombedarf': self.Strommenge_MWh,
-            'el_Leistung_L': self.el_Leistung_kW,
-            'WGK': self.WGK,
-            'Anzahl_Starts': self.Anzahl_Starts,
-            'Betriebsstunden': self.Betriebsstunden,
-            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie,
-            'color': "grey"  # Visualization color coding
+            "tech_name": self.name,
+            "Wärmemenge": self.Wärmemenge_MWh,
+            "Wärmeleistung_L": self.Wärmeleistung_kW,
+            "Strombedarf": self.Strommenge_MWh,
+            "el_Leistung_L": self.el_Leistung_kW,
+            "WGK": self.WGK,
+            "Anzahl_Starts": self.Anzahl_Starts,
+            "Betriebsstunden": self.Betriebsstunden,
+            "Betriebsstunden_pro_Start": self.Betriebsstunden_pro_Start,
+            "spec_co2_total": self.spec_co2_total,
+            "primärenergie": self.primärenergie,
+            "color": "grey",  # Visualization color coding
         }
 
         return results
-    
+
     def set_parameters(self, variables: list, variables_order: list, idx: int) -> None:
         """
         Set optimization parameters for the waste heat pump system.
@@ -303,7 +311,7 @@ class WasteHeatPump(HeatPump):
         bounds = [(self.opt_cooling_min, self.opt_cooling_max)]
 
         return initial_values, variables_order, bounds
-    
+
     def get_display_text(self) -> str:
         """
         Generate human-readable display text for system configuration.
@@ -313,11 +321,13 @@ class WasteHeatPump(HeatPump):
 
         .. note:: Includes waste heat capacity, temperature, and investment costs.
         """
-        return (f"{self.name}: Kühlleistung Abwärme: {self.Kühlleistung_Abwärme} kW, "
-                f"Temperatur Abwärme: {self.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: "
-                f"{self.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: "
-                f"{self.spezifische_Investitionskosten_WP} €/kW")
-    
+        return (
+            f"{self.name}: Kühlleistung Abwärme: {self.Kühlleistung_Abwärme} kW, "
+            f"Temperatur Abwärme: {self.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: "
+            f"{self.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: "
+            f"{self.spezifische_Investitionskosten_WP} €/kW"
+        )
+
     def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting and analysis.
@@ -328,17 +338,21 @@ class WasteHeatPump(HeatPump):
         .. note:: Includes waste heat capacity, source temperature, and component costs.
         """
         # Technical specifications
-        dimensions = (f"Kühlleistung Abwärme: {self.Kühlleistung_Abwärme:.1f} kW, "
-                     f"Temperatur Abwärme: {self.Temperatur_Abwärme:.1f} °C, "
-                     f"th. Leistung: {self.max_Wärmeleistung:.1f} kW")
-        
+        dimensions = (
+            f"Kühlleistung Abwärme: {self.Kühlleistung_Abwärme:.1f} kW, "
+            f"Temperatur Abwärme: {self.Temperatur_Abwärme:.1f} °C, "
+            f"th. Leistung: {self.max_Wärmeleistung:.1f} kW"
+        )
+
         # Detailed cost breakdown
         waste_heat_cost = self.spez_Investitionskosten_Abwärme * self.max_Wärmeleistung
         hp_cost = self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung
-        costs = (f"Investitionskosten Abwärmenutzung: {waste_heat_cost:.1f} €, "
-                f"Investitionskosten Wärmepumpe: {hp_cost:.1f} €")
-        
+        costs = (
+            f"Investitionskosten Abwärmenutzung: {waste_heat_cost:.1f} €, "
+            f"Investitionskosten Wärmepumpe: {hp_cost:.1f} €"
+        )
+
         # Total investment costs
         full_costs = f"{waste_heat_cost + hp_cost:.1f}"
-        
+
         return self.name, dimensions, costs, full_costs

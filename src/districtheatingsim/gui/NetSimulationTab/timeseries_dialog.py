@@ -55,19 +55,19 @@ class TimeSeriesCalculationDialog(QDialog):
         # Berechnungsmethode auswählen
         calculationMethodGroup = QGroupBox("Berechnungsmethode", self)
         calculationMethodLayout = QVBoxLayout()
-        
+
         self.detailedCalcRadio = QRadioButton("Ausführliche Berechnung mit pandapipes (detailliert, langsamer)", self)
         self.simplifiedCalcRadio = QRadioButton("Vereinfachte Berechnung (schnell, basierend auf Auslegung)", self)
         self.detailedCalcRadio.setChecked(True)
-        
+
         self.calculationMethodGroup = QButtonGroup(self)
         self.calculationMethodGroup.addButton(self.detailedCalcRadio, 0)
         self.calculationMethodGroup.addButton(self.simplifiedCalcRadio, 1)
-        
+
         calculationMethodLayout.addWidget(self.detailedCalcRadio)
         calculationMethodLayout.addWidget(self.simplifiedCalcRadio)
         calculationMethodGroup.setLayout(calculationMethodLayout)
-        
+
         self.layout.addWidget(calculationMethodGroup)
 
         # Zeitschritte
@@ -85,8 +85,10 @@ class TimeSeriesCalculationDialog(QDialog):
         self.fileInputlayout = QHBoxLayout()
 
         self.resultsFileLabel = QLabel("Ausgabedatei Lastgang:", self)
-        self.resultsFileInput = QLineEdit(os.path.join(self.base_path, self.parent.config_manager.get_relative_path('load_profile_path')), self)
-        self.selectresultsFileButton = QPushButton('csv-Datei auswählen')
+        self.resultsFileInput = QLineEdit(
+            os.path.join(self.base_path, self.parent.config_manager.get_relative_path("load_profile_path")), self
+        )
+        self.selectresultsFileButton = QPushButton("csv-Datei auswählen")
         self.selectresultsFileButton.clicked.connect(lambda: self.selectFilename(self.resultsFileInput))
 
         self.fileInputlayout.addWidget(self.resultsFileLabel)
@@ -99,10 +101,10 @@ class TimeSeriesCalculationDialog(QDialog):
         buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
-        
+
         okButton.clicked.connect(self.onAccept)
         cancelButton.clicked.connect(self.reject)
-        
+
         buttonLayout.addWidget(okButton)
         buttonLayout.addWidget(cancelButton)
 
@@ -124,12 +126,16 @@ class TimeSeriesCalculationDialog(QDialog):
         """
         start = int(self.StartTimeStepInput.text())
         end = int(self.EndTimeStepInput.text())
-        
+
         if start < 0 or start > 8760 or end < 0 or end > 8760:
-            QMessageBox.warning(self, "Ungültige Eingabe", "Start- und Endzeitschritte müssen zwischen 0 und 8760 liegen.")
+            QMessageBox.warning(
+                self, "Ungültige Eingabe", "Start- und Endzeitschritte müssen zwischen 0 und 8760 liegen."
+            )
             return False
         if start > end:
-            QMessageBox.warning(self, "Ungültige Eingabe", "Der Startschritt darf nicht größer als der Endschritt sein.")
+            QMessageBox.warning(
+                self, "Ungültige Eingabe", "Der Startschritt darf nicht größer als der Endschritt sein."
+            )
             return False
         return True
 
@@ -152,8 +158,8 @@ class TimeSeriesCalculationDialog(QDialog):
         :rtype: dict
         """
         return {
-            'results_filename': self.resultsFileInput.text(),
-            'start': int(self.StartTimeStepInput.text()),
-            'end': int(self.EndTimeStepInput.text()),
-            'simplified': self.simplifiedCalcRadio.isChecked()
+            "results_filename": self.resultsFileInput.text(),
+            "start": int(self.StartTimeStepInput.text()),
+            "end": int(self.EndTimeStepInput.text()),
+            "simplified": self.simplifiedCalcRadio.isChecked(),
         }

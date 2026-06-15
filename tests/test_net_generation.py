@@ -24,9 +24,7 @@ class TestReturnNetworkOffset:
         # An east-west segment with the historical angle=0 (east) reference. The old
         # rigid east-translation left it collinear (distance 0); the perpendicular
         # offset separates it by `distance` to the north.
-        flow = gpd.GeoDataFrame(
-            geometry=[LineString([(0, 0), (10, 0)])], crs="EPSG:25833"
-        )
+        flow = gpd.GeoDataFrame(geometry=[LineString([(0, 0), (10, 0)])], crs="EPSG:25833")
         ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
 
         assert flow.geometry.iloc[0].distance(ret.geometry.iloc[0]) == pytest.approx(1.0, abs=1e-9)
@@ -41,9 +39,9 @@ class TestReturnNetworkOffset:
         # junction. The return network must keep them connected at a single junction.
         flow = gpd.GeoDataFrame(
             geometry=[
-                LineString([(0, 0), (10, 0)]),    # east-west
+                LineString([(0, 0), (10, 0)]),  # east-west
                 LineString([(10, 0), (10, 10)]),  # north-south
-                LineString([(10, 0), (20, 5)]),   # diagonal
+                LineString([(10, 0), (20, 5)]),  # diagonal
             ],
             crs="EPSG:25833",
         )
@@ -57,8 +55,8 @@ class TestReturnNetworkOffset:
         # All three return lines meet at one shared return junction (the offset of (10, 0)).
         junction_ends = {
             ret.geometry.iloc[0].coords[-1],  # line 0 ends at (10, 0)
-            ret.geometry.iloc[1].coords[0],   # line 1 starts at (10, 0)
-            ret.geometry.iloc[2].coords[0],   # line 2 starts at (10, 0)
+            ret.geometry.iloc[1].coords[0],  # line 1 starts at (10, 0)
+            ret.geometry.iloc[2].coords[0],  # line 2 starts at (10, 0)
         }
         assert len(junction_ends) == 1
 
@@ -81,9 +79,7 @@ class TestReturnNetworkOffset:
             assert fl.distance(rl) > 0.0
 
     def test_z_coordinate_preserved(self):
-        flow = gpd.GeoDataFrame(
-            geometry=[LineString([(0, 0, 100.0), (10, 0, 105.0)])], crs="EPSG:25833"
-        )
+        flow = gpd.GeoDataFrame(geometry=[LineString([(0, 0, 100.0), (10, 0, 105.0)])], crs="EPSG:25833")
         ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
         zs = [c[2] for c in ret.geometry.iloc[0].coords]
         assert zs == [100.0, 105.0]
@@ -94,8 +90,7 @@ class TestNetworkGeoJSONVersion:
     (a semver string, its own convention); import_from_file validates it softly."""
 
     def test_current_version_passes_quietly(self, caplog):
-        gj = {"type": "FeatureCollection", "features": [],
-              "metadata": {"version": NetworkGeoJSONSchema.VERSION}}
+        gj = {"type": "FeatureCollection", "features": [], "metadata": {"version": NetworkGeoJSONSchema.VERSION}}
         with caplog.at_level(logging.WARNING):
             found = NetworkGeoJSONSchema.validate_version(gj)
         assert found == NetworkGeoJSONSchema.VERSION
@@ -115,8 +110,7 @@ class TestNetworkGeoJSONVersion:
         assert any("newer than this app" in r.getMessage() for r in caplog.records)
 
     def test_import_from_file_roundtrips_and_validates(self, tmp_path, caplog):
-        gj = {"type": "FeatureCollection", "features": [],
-              "metadata": NetworkGeoJSONSchema.create_metadata()}
+        gj = {"type": "FeatureCollection", "features": [], "metadata": NetworkGeoJSONSchema.create_metadata()}
         path = str(tmp_path / "net.geojson")
         NetworkGeoJSONSchema.export_to_file(gj, path)
         with caplog.at_level(logging.WARNING):

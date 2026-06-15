@@ -39,6 +39,7 @@ class LayerGenerationDialog(QDialog):
     """
     Dialog for generating layers for heat network visualization.
     """
+
     accepted_inputs = pyqtSignal(dict)
     request_map_coordinate = pyqtSignal()
 
@@ -61,18 +62,20 @@ class LayerGenerationDialog(QDialog):
         self.config_manager = config_manager
         self.project_crs = project_crs
         self.waiting_for_map_click = False
-        self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'  # Default filter
+        self.custom_filter = (
+            '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'  # Default filter
+        )
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
         self.initUI()
 
     def initUI(self):
         """
         Initialize user interface components.
-        
+
         Creates the complete dialog layout including data input section,
         coordinate management, and OSMnx advanced settings.
         """
-        self.setWindowTitle('Wärmenetzgenerierung')
+        self.setWindowTitle("Wärmenetzgenerierung")
         self.setGeometry(300, 300, 800, 800)
 
         layout = QVBoxLayout(self)
@@ -83,24 +86,30 @@ class LayerGenerationDialog(QDialog):
         dataLayout = QFormLayout()
         dataLayout.setSpacing(10)
 
-        self.dataInput, self.dataCsvButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('current_building_data_path'))))
+        self.dataInput, self.dataCsvButton = self.createFileInput(
+            os.path.abspath(
+                os.path.join(self.base_path, self.config_manager.get_relative_path("current_building_data_path"))
+            )
+        )
         dataLayout.addRow("Gebäudestandorte (CSV):", self.createFileInputLayout(self.dataInput, self.dataCsvButton))
-        
+
         self.generationModeComboBox = QComboBox(self)
         self.generationModeComboBox.addItems(["OSMnx", "Advanced MST", "MST"])
         self.generationModeComboBox.currentIndexChanged.connect(self.toggleGenerationMode)
         dataLayout.addRow("Netzgenerierungsmodus:", self.generationModeComboBox)
 
-        self.fileInput, self.fileButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('OSM_streets_path'))))
+        self.fileInput, self.fileButton = self.createFileInput(
+            os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path("OSM_streets_path")))
+        )
         self.streetLayerLabel = QLabel("GeoJSON-Straßen-Layer:")
         self.streetLayerWidget = self.createFileInputLayout(self.fileInput, self.fileButton)
         dataLayout.addRow(self.streetLayerLabel, self.streetLayerWidget)
-        
+
         # OSMnx Advanced Settings (collapsible)
         self.osmnxAdvancedWidget = QWidget()
         osmnxAdvancedLayout = QVBoxLayout(self.osmnxAdvancedWidget)
         osmnxAdvancedLayout.setContentsMargins(0, 5, 0, 5)
-        
+
         # Toggle button for advanced settings
         self.osmnxAdvancedToggle = QPushButton("▶ Erweiterte OSMnx-Einstellungen")
         self.osmnxAdvancedToggle.setFlat(True)
@@ -118,16 +127,16 @@ class LayerGenerationDialog(QDialog):
         """)
         self.osmnxAdvancedToggle.clicked.connect(self.toggleOSMnxAdvancedSettings)
         osmnxAdvancedLayout.addWidget(self.osmnxAdvancedToggle)
-        
+
         # Content widget (initially hidden)
         self.osmnxAdvancedContent = QWidget()
         osmnxContentLayout = QVBoxLayout(self.osmnxAdvancedContent)
         osmnxContentLayout.setContentsMargins(20, 5, 0, 5)
-        
+
         filterLabel = QLabel("Straßentypen für OSMnx-Filter:")
         filterLabel.setStyleSheet("font-weight: bold; color: #333333; margin-top: 5px;")
         osmnxContentLayout.addWidget(filterLabel)
-        
+
         # Highway type checkboxes
         self.highwayCheckboxes = {}
         highway_types = [
@@ -136,32 +145,32 @@ class LayerGenerationDialog(QDialog):
             ("tertiary", "Tertiärstraßen (tertiary)"),
             ("residential", "Wohnstraßen (residential)"),
             ("living_street", "Verkehrsberuhigte Bereiche (living_street)"),
-            ("service", "Erschließungsstraßen (service)")
+            ("service", "Erschließungsstraßen (service)"),
         ]
-        
+
         for key, label in highway_types:
             checkbox = QCheckBox(label)
             checkbox.setChecked(True)  # All checked by default
             checkbox.stateChanged.connect(self.updateFilters)
             self.highwayCheckboxes[key] = checkbox
             osmnxContentLayout.addWidget(checkbox)
-        
+
         # Select/Deselect all buttons
         selectButtonLayout = QHBoxLayout()
         selectAllBtn = QPushButton("Alle auswählen")
         selectAllBtn.clicked.connect(lambda: self.setAllHighwayCheckboxes(True))
         selectButtonLayout.addWidget(selectAllBtn)
-        
+
         deselectAllBtn = QPushButton("Alle abwählen")
         deselectAllBtn.clicked.connect(lambda: self.setAllHighwayCheckboxes(False))
         selectButtonLayout.addWidget(deselectAllBtn)
         osmnxContentLayout.addLayout(selectButtonLayout)
-        
+
         self.osmnxAdvancedContent.setVisible(False)  # Initially collapsed
         osmnxAdvancedLayout.addWidget(self.osmnxAdvancedContent)
-        
+
         dataLayout.addRow("", self.osmnxAdvancedWidget)
-        
+
         dataGroup.setLayout(dataLayout)
         layout.addWidget(dataGroup)
 
@@ -193,7 +202,9 @@ class LayerGenerationDialog(QDialog):
         # Input mode selection
         modeLayout = QFormLayout()
         self.locationModeComboBox = QComboBox(self)
-        self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus CSV laden"])
+        self.locationModeComboBox.addItems(
+            ["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus CSV laden"]
+        )
         self.locationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
         modeLayout.addRow("Eingabemodus:", self.locationModeComboBox)
         coordLayout.addLayout(modeLayout)
@@ -205,21 +216,21 @@ class LayerGenerationDialog(QDialog):
         coordInputLayout.addRow("Koordinatensystem:", self.coordSystemComboBox)
 
         self.coordInput = QLineEdit(self)
-        self.coordInput.setText("499827.8585093066,55666161.599635682") # Görlitz
+        self.coordInput.setText("499827.8585093066,55666161.599635682")  # Görlitz
         self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate'")
         coordInputLayout.addRow("Koordinaten:", self.coordInput)
-        
+
         # Button layout for coordinate input
         coordButtonLayout = QHBoxLayout()
         self.addCoordButton = QPushButton("Koordinate hinzufügen", self)
         self.addCoordButton.clicked.connect(self.addCoordFromInput)
         coordButtonLayout.addWidget(self.addCoordButton)
-        
+
         self.mapPickerButton = QPushButton("Aus Karte wählen", self)
         self.mapPickerButton.clicked.connect(self.activateMapPicker)
         self.mapPickerButton.setToolTip("Klicken Sie auf die Karte, um Koordinaten auszuwählen")
         coordButtonLayout.addWidget(self.mapPickerButton)
-        
+
         coordInputLayout.addRow("", coordButtonLayout)
         coordLayout.addLayout(coordInputLayout)
 
@@ -229,7 +240,7 @@ class LayerGenerationDialog(QDialog):
         self.addressInput.setText("Deutschland,Sachsen,Bad Muskau,Gablenzer Straße 4")
         self.addressInput.setToolTip("Eingabe in folgender Form: 'Land,Bundesland,Stadt,Adresse'")
         addressInputLayout.addRow("Adresse:", self.addressInput)
-        
+
         self.geocodeButton = QPushButton("Adresse geocodieren", self)
         self.geocodeButton.clicked.connect(self.geocodeAndAdd)
         addressInputLayout.addRow("", self.geocodeButton)
@@ -246,7 +257,7 @@ class LayerGenerationDialog(QDialog):
         # Coordinate table
         tableLabel = QLabel("Erzeugerkoordinaten:")
         coordLayout.addWidget(tableLabel)
-        
+
         self.coordTable = QTableWidget(self)
         self.coordTable.setColumnCount(2)
         self.coordTable.setHorizontalHeaderLabels(["X-Koordinate (UTM)", "Y-Koordinate (UTM)"])
@@ -262,27 +273,27 @@ class LayerGenerationDialog(QDialog):
         self.copyButton.clicked.connect(self.copyCoordinates)
         self.copyButton.setToolTip("Kopiert alle Koordinaten in die Zwischenablage")
         tableButtonLayout.addWidget(self.copyButton)
-        
+
         self.pasteButton = QPushButton("Koordinaten einfügen", self)
         self.pasteButton.clicked.connect(self.pasteCoordinates)
         self.pasteButton.setToolTip("Fügt Koordinaten aus der Zwischenablage ein")
         tableButtonLayout.addWidget(self.pasteButton)
-        
+
         self.saveButton = QPushButton("Als CSV speichern", self)
         self.saveButton.clicked.connect(self.saveCoordinatesToCSV)
         self.saveButton.setToolTip("Speichert Koordinaten als CSV-Datei")
         tableButtonLayout.addWidget(self.saveButton)
-        
+
         self.deleteCoordButton = QPushButton("Ausgewählte löschen", self)
         self.deleteCoordButton.clicked.connect(self.deleteSelectedRow)
         tableButtonLayout.addWidget(self.deleteCoordButton)
-        
+
         self.clearButton = QPushButton("Alle löschen", self)
         self.clearButton.clicked.connect(self.clearAllCoordinates)
         tableButtonLayout.addWidget(self.clearButton)
-        
+
         coordLayout.addLayout(tableButtonLayout)
-        
+
         coordGroup.setLayout(coordLayout)
         layout.addWidget(coordGroup)
 
@@ -296,7 +307,7 @@ class LayerGenerationDialog(QDialog):
         buttonLayout.addStretch(1)
         buttonLayout.addWidget(self.okButton)
         buttonLayout.addWidget(self.cancelButton)
-        
+
         layout.addLayout(buttonLayout)
 
         # Styling
@@ -346,11 +357,11 @@ class LayerGenerationDialog(QDialog):
         self.coordSystemComboBox.setEnabled(index == 0)
         self.coordInput.setEnabled(index == 0)
         self.addCoordButton.setEnabled(index == 0)
-        
+
         # Mode 1: Address geocoding
         self.addressInput.setEnabled(index == 1)
         self.geocodeButton.setEnabled(index == 1)
-        
+
         # Mode 2: CSV import
         self.importCsvButton.setEnabled(index == 2)
 
@@ -362,52 +373,52 @@ class LayerGenerationDialog(QDialog):
         :type index: int
         """
         # Street layer only needed for non-OSMnx modes
-        is_osmnx = (self.generationModeComboBox.currentText() == "OSMnx")
+        is_osmnx = self.generationModeComboBox.currentText() == "OSMnx"
         self.streetLayerLabel.setVisible(not is_osmnx)
         self.fileInput.setVisible(not is_osmnx)
         self.fileButton.setVisible(not is_osmnx)
-        
+
         # Show OSMnx advanced settings only for OSMnx mode
         self.osmnxAdvancedWidget.setVisible(is_osmnx)
 
     def toggleOSMnxAdvancedSettings(self):
         """
         Toggle visibility of OSMnx advanced settings.
-        
+
         Switches between expanded and collapsed state of the advanced
         settings panel and updates the toggle button text accordingly.
         """
         is_visible = self.osmnxAdvancedContent.isVisible()
         self.osmnxAdvancedContent.setVisible(not is_visible)
-        
+
         # Update button text with arrow
         if is_visible:
             self.osmnxAdvancedToggle.setText("▶ Erweiterte OSMnx-Einstellungen")
         else:
             self.osmnxAdvancedToggle.setText("▼ Erweiterte OSMnx-Einstellungen")
-    
+
     def setAllHighwayCheckboxes(self, checked):
         """
         Set all highway checkboxes to checked or unchecked.
-        
+
         :param checked: True to check all, False to uncheck all
         :type checked: bool
         """
         for checkbox in self.highwayCheckboxes.values():
             checkbox.setChecked(checked)
-    
+
     def updateFilters(self):
         """
         Update custom filter string based on selected highway types.
-        
+
         Builds an OSMnx-compatible filter string from the selected
         highway type checkboxes for network generation.
         """
         selected_types = [key for key, checkbox in self.highwayCheckboxes.items() if checkbox.isChecked()]
-        
+
         if selected_types:
             # Build filter string like: ["highway"~"primary|secondary|tertiary"]
-            filter_string = '|'.join(selected_types)
+            filter_string = "|".join(selected_types)
             self.custom_filter = f'["highway"~"{filter_string}"]'
         else:
             # No types selected - use None to fall back to default
@@ -457,8 +468,7 @@ class LayerGenerationDialog(QDialog):
     def _openDemFileDialog(self):
         """Open a file dialog filtered to GeoTIFF files for DEM selection."""
         filename, _ = QFileDialog.getOpenFileName(
-            self, "DGM-Datei auswählen", self.base_path,
-            "GeoTIFF (*.tif *.tiff);;All Files (*)"
+            self, "DGM-Datei auswählen", self.base_path, "GeoTIFF (*.tif *.tiff);;All Files (*)"
         )
         if filename:
             self.demInput.setText(filename)
@@ -466,11 +476,11 @@ class LayerGenerationDialog(QDialog):
     def addCoordFromInput(self):
         """
         Add coordinates from input field to table.
-        
+
         Parses coordinate input, transforms to the project CRS if needed,
         and adds the coordinate pair to the table.
         """
-        coords = self.coordInput.text().split(',')
+        coords = self.coordInput.text().split(",")
         if len(coords) == 2:
             x, y = map(str.strip, coords)
             source_crs = self.coordSystemComboBox.currentText()
@@ -480,7 +490,7 @@ class LayerGenerationDialog(QDialog):
     def geocodeAndAdd(self):
         """
         Geocode address and add coordinates to table.
-        
+
         Converts the address input to coordinates using geocoding
         service and adds result to coordinate table.
         """
@@ -493,15 +503,15 @@ class LayerGenerationDialog(QDialog):
     def importCoordsFromCSV(self):
         """
         Import coordinates from CSV file.
-        
+
         Opens file dialog to select CSV with UTM_X and UTM_Y columns
         and imports all coordinates to the table.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "CSV-Datei auswählen", f"{self.base_path}", "CSV Files (*.csv)")
         if filename:
-            data = pd.read_csv(filename, delimiter=';', usecols=['UTM_X', 'UTM_Y'])
+            data = pd.read_csv(filename, delimiter=";", usecols=["UTM_X", "UTM_Y"])
             for _, row in data.iterrows():
-                self.insertRowInTable(str(row['UTM_X']), str(row['UTM_Y']))
+                self.insertRowInTable(str(row["UTM_X"]), str(row["UTM_Y"]))
 
     def transform_coordinates(self, x, y, source_crs):
         """
@@ -540,7 +550,7 @@ class LayerGenerationDialog(QDialog):
     def deleteSelectedRow(self):
         """
         Delete selected row from coordinates table.
-        
+
         Removes the currently selected coordinate row from the table.
         """
         selected_row = self.coordTable.currentRow()
@@ -550,59 +560,64 @@ class LayerGenerationDialog(QDialog):
     def clearAllCoordinates(self):
         """
         Clear all coordinates from table.
-        
+
         Shows confirmation dialog and removes all coordinate rows
         from the table if confirmed.
         """
-        reply = QMessageBox.question(self, 'Bestätigung', 
-                                    'Möchten Sie wirklich alle Koordinaten löschen?',
-                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                    QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            "Bestätigung",
+            "Möchten Sie wirklich alle Koordinaten löschen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             self.coordTable.setRowCount(0)
 
     def copyCoordinates(self):
         """
         Copy all coordinates to clipboard.
-        
+
         Exports all coordinate pairs from the table to the system
         clipboard in comma-separated format.
         """
         if self.coordTable.rowCount() == 0:
             QMessageBox.information(self, "Information", "Keine Koordinaten zum Kopieren vorhanden.")
             return
-        
+
         coordinates_text = ""
         for row in range(self.coordTable.rowCount()):
             x = self.coordTable.item(row, 0).text()
             y = self.coordTable.item(row, 1).text()
             coordinates_text += f"{x},{y}\n"
-        
+
         clipboard = QClipboard()
         clipboard.setText(coordinates_text.strip())
-        QMessageBox.information(self, "Erfolg", f"{self.coordTable.rowCount()} Koordinate(n) in die Zwischenablage kopiert.")
+        QMessageBox.information(
+            self, "Erfolg", f"{self.coordTable.rowCount()} Koordinate(n) in die Zwischenablage kopiert."
+        )
 
     def pasteCoordinates(self):
         """
         Paste coordinates from clipboard.
-        
+
         Parses coordinate data from clipboard and adds valid coordinate
         pairs to the table.
         """
         clipboard = QClipboard()
         text = clipboard.text().strip()
-        
+
         if not text:
             QMessageBox.warning(self, "Warnung", "Zwischenablage ist leer.")
             return
-        
-        lines = text.split('\n')
+
+        lines = text.split("\n")
         added_count = 0
-        
+
         for line in lines:
             line = line.strip()
-            if ',' in line:
-                parts = line.split(',')
+            if "," in line:
+                parts = line.split(",")
                 if len(parts) >= 2:
                     try:
                         x = float(parts[0].strip())
@@ -611,7 +626,7 @@ class LayerGenerationDialog(QDialog):
                         added_count += 1
                     except ValueError:
                         continue
-        
+
         if added_count > 0:
             QMessageBox.information(self, "Erfolg", f"{added_count} Koordinate(n) eingefügt.")
         else:
@@ -620,14 +635,14 @@ class LayerGenerationDialog(QDialog):
     def saveCoordinatesToCSV(self):
         """
         Save coordinates to CSV file.
-        
+
         Prompts user for save format (with or without addresses) and
         exports coordinates to a CSV file.
         """
         if self.coordTable.rowCount() == 0:
             QMessageBox.information(self, "Information", "Keine Koordinaten zum Speichern vorhanden.")
             return
-        
+
         # Ask user what format to save
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle("Speicherformat wählen")
@@ -636,33 +651,33 @@ class LayerGenerationDialog(QDialog):
         addressButton = msgBox.addButton("Mit Adresse", QMessageBox.ButtonRole.ActionRole)
         cancelButton = msgBox.addButton("Abbrechen", QMessageBox.ButtonRole.RejectRole)
         msgBox.exec()
-        
+
         clicked_button = msgBox.clickedButton()
-        
+
         if clicked_button == cancelButton:
             return
-        
-        filename, _ = QFileDialog.getSaveFileName(self, "CSV-Datei speichern", 
-                                                  os.path.join(self.base_path, "erzeuger_koordinaten.csv"),
-                                                  "CSV Files (*.csv)")
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "CSV-Datei speichern", os.path.join(self.base_path, "erzeuger_koordinaten.csv"), "CSV Files (*.csv)"
+        )
         if not filename:
             return
-        
+
         try:
             data = []
             for row in range(self.coordTable.rowCount()):
                 x = self.coordTable.item(row, 0).text()
                 y = self.coordTable.item(row, 1).text()
-                
+
                 if clicked_button == addressButton:
                     # Try to reverse geocode
                     address = self.reverse_geocode(float(x), float(y))
-                    data.append({'UTM_X': x, 'UTM_Y': y, 'Adresse': address})
+                    data.append({"UTM_X": x, "UTM_Y": y, "Adresse": address})
                 else:
-                    data.append({'UTM_X': x, 'UTM_Y': y})
-            
+                    data.append({"UTM_X": x, "UTM_Y": y})
+
             df = pd.DataFrame(data)
-            df.to_csv(filename, sep=';', index=False, encoding='utf-8-sig')
+            df.to_csv(filename, sep=";", index=False, encoding="utf-8-sig")
             QMessageBox.information(self, "Erfolg", f"Koordinaten erfolgreich gespeichert:\n{filename}")
         except Exception as e:
             QMessageBox.critical(self, "Fehler", f"Fehler beim Speichern der Datei:\n{str(e)}")
@@ -670,7 +685,7 @@ class LayerGenerationDialog(QDialog):
     def reverse_geocode(self, x, y):
         """
         Simple reverse geocoding (returns formatted coordinates if geocoding fails).
-        
+
         :param x: UTM X coordinate
         :type x: float
         :param y: UTM Y coordinate
@@ -682,12 +697,13 @@ class LayerGenerationDialog(QDialog):
             # Transform to WGS84 for geocoding
             transformer = Transformer.from_crs(self.project_crs, "EPSG:4326", always_xy=True)
             lon, lat = transformer.transform(x, y)
-            
+
             # Use Nominatim for reverse geocoding
             from geopy.geocoders import Nominatim
+
             geolocator = Nominatim(user_agent="districtheatingsim")
-            location = geolocator.reverse(f"{lat}, {lon}", language='de', timeout=5)
-            
+            location = geolocator.reverse(f"{lat}, {lon}", language="de", timeout=5)
+
             if location:
                 return location.address
             else:
@@ -698,26 +714,26 @@ class LayerGenerationDialog(QDialog):
     def activateMapPicker(self):
         """
         Activate map coordinate picker mode.
-        
+
         Enables interactive coordinate selection from the map view
         and updates button state to indicate waiting status.
         """
         if not self.visualization_tab:
             QMessageBox.warning(self, "Warnung", "Keine Kartenverbindung verfügbar.")
             return
-        
+
         self.waiting_for_map_click = True
         self.mapPickerButton.setEnabled(False)
         self.mapPickerButton.setText("Warte auf Kartenklick...")
         self.mapPickerButton.setStyleSheet("background-color: #ffc107; color: black;")
-        
+
         # Emit signal to activate map picker mode
         self.request_map_coordinate.emit()
-    
+
     def receiveMapCoordinates(self, lat, lon):
         """
         Receive coordinates from map click.
-        
+
         :param lat: Latitude (WGS84)
         :type lat: float
         :param lon: Longitude (WGS84)
@@ -725,27 +741,26 @@ class LayerGenerationDialog(QDialog):
         """
         if not self.waiting_for_map_click:
             return
-        
+
         # Reset button state immediately
         self.waiting_for_map_click = False
         self.mapPickerButton.setEnabled(True)
         self.mapPickerButton.setText("Aus Karte wählen")
         # Reset to default button style (remove the yellow background)
         self.mapPickerButton.setStyleSheet("background-color: none;")
-        
+
         try:
             # Transform from WGS84 to project CRS
             transformer = Transformer.from_crs("EPSG:4326", self.project_crs, always_xy=True)
             x, y = transformer.transform(lon, lat)
-            
+
             # Update input field
             self.coordInput.setText(f"{x},{y}")
-            
+
             # Automatically add to table
             self.insertRowInTable(x, y)
-            
-            QMessageBox.information(self, "Erfolg", 
-                                   f"Koordinate aus Karte übernommen:\nUTM X: {x:.2f}\nUTM Y: {y:.2f}")
+
+            QMessageBox.information(self, "Erfolg", f"Koordinate aus Karte übernommen:\nUTM X: {x:.2f}\nUTM Y: {y:.2f}")
         except Exception as e:
             QMessageBox.critical(self, "Fehler", f"Fehler bei der Koordinatentransformation:\n{str(e)}")
 
@@ -781,7 +796,7 @@ class LayerGenerationDialog(QDialog):
     def onAccept(self):
         """
         Handle accept event.
-        
+
         Collects all input data and emits the accepted_inputs signal
         before closing the dialog.
         """

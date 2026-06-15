@@ -7,7 +7,6 @@ Gas-fired boiler system with economic analysis and environmental assessment.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-
 import numpy as np
 
 from districtheatingsim.constants import CO2_FACTOR_GAS, PRIMARY_ENERGY_FACTOR_GAS
@@ -33,8 +32,14 @@ class GasBoiler(BaseHeatGenerator):
        Simple load-following operation without minimum load constraints.
     """
 
-    def __init__(self, name: str, thermal_capacity_kW: float, spez_Investitionskosten: float = 30, 
-                 Nutzungsgrad: float = 0.9, active: bool = True):
+    def __init__(
+        self,
+        name: str,
+        thermal_capacity_kW: float,
+        spez_Investitionskosten: float = 30,
+        Nutzungsgrad: float = 0.9,
+        active: bool = True,
+    ):
         """
         Initialize gas boiler system.
 
@@ -54,7 +59,7 @@ class GasBoiler(BaseHeatGenerator):
         self.spez_Investitionskosten = spez_Investitionskosten
         self.Nutzungsgrad = Nutzungsgrad
         self.active = active
-        
+
         # System specifications based on gas boiler standards
         self.Nutzungsdauer = 20  # Operational lifespan [years]
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0  # Installation and maintenance factors
@@ -96,12 +101,9 @@ class GasBoiler(BaseHeatGenerator):
         """
         # Operate whenever there is heat demand
         self.betrieb_mask = Last_L > 0
-        
+
         # Calculate heat output limited by boiler capacity
-        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(
-            Last_L[self.betrieb_mask], 
-            self.thermal_capacity_kW
-        )
+        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.thermal_capacity_kW)
 
     def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
@@ -114,7 +116,7 @@ class GasBoiler(BaseHeatGenerator):
         :return: (heat_output [kW], electricity_output [kW])
         :rtype: tuple
         """
-        remaining_load = kwargs.get('remaining_load', 0)
+        remaining_load = kwargs.get("remaining_load", 0)
 
         if self.active:
             self.betrieb_mask[t] = True
@@ -122,9 +124,9 @@ class GasBoiler(BaseHeatGenerator):
         else:
             self.betrieb_mask[t] = False
             self.Wärmeleistung_kW[t] = 0
-        
+
         return self.Wärmeleistung_kW[t], 0  # Heat output, no electricity generation
-        
+
     def calculate_results(self, duration: float) -> None:
         """
         Calculate operational metrics.
@@ -135,13 +137,12 @@ class GasBoiler(BaseHeatGenerator):
         # Calculate annual energy generation and fuel consumption
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
-        
+
         # Analyze start-stop cycles and operational hours
         starts = np.diff(self.betrieb_mask.astype(int)) > 0
         self.Anzahl_Starts = np.sum(starts)
         self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
-                                         if self.Anzahl_Starts > 0 else 0)
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
     def calculate_heat_generation_cost(self, economic_parameters: dict) -> None:
         """
@@ -169,20 +170,20 @@ class GasBoiler(BaseHeatGenerator):
                 operational_effort_h=self.Bedienaufwand,
                 interest_rate_factor=self.q,
                 inflation_rate_factor=self.r,
-                consideration_time_period_years=self.T, 
+                consideration_time_period_years=self.T,
                 annual_energy_demand=self.Brennstoffbedarf_MWh,
                 energy_cost_per_unit=self.Gaspreis,
                 annual_revenue=0,
-                hourly_rate=self.stundensatz
+                hourly_rate=self.stundensatz,
             )
-            
+
             # Calculate heat generation cost
             self.WGK = self.A_N / self.Wärmemenge_MWh
         else:
             # Handle case with no heat generation
             self.Investitionskosten = 0
             self.A_N = 0
-            self.WGK = float('inf')
+            self.WGK = float("inf")
 
     def calculate_environmental_impact(self) -> None:
         """
@@ -193,16 +194,16 @@ class GasBoiler(BaseHeatGenerator):
         """
         # Calculate CO2 emissions from natural gas consumption
         self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel  # tCO2
-        
+
         # Calculate specific CO2 emissions per unit heat generated
-        self.spec_co2_total = (self.co2_emissions / self.Wärmemenge_MWh 
-                              if self.Wärmemenge_MWh > 0 else 0)  # tCO2/MWh_heat
-        
+        self.spec_co2_total = (
+            self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0
+        )  # tCO2/MWh_heat
+
         # Calculate primary energy consumption
         self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters: dict, duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> dict:
+    def calculate(self, economic_parameters: dict, duration: float, load_profile: np.ndarray, **kwargs) -> dict:
         """
         Comprehensive system analysis.
 
@@ -224,28 +225,28 @@ class GasBoiler(BaseHeatGenerator):
 
         # Calculate performance metrics
         self.calculate_results(duration)
-        
+
         # Perform economic and environmental analysis
         self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 
         # Compile comprehensive results
         results = {
-            'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_MWh,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
-            'WGK': self.WGK,
-            'Anzahl_Starts': self.Anzahl_Starts,
-            'Betriebsstunden': self.Betriebsstunden,
-            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie,
-            "color": "saddlebrown"  # Brown color for gas technology
+            "tech_name": self.name,
+            "Wärmemenge": self.Wärmemenge_MWh,
+            "Wärmeleistung_L": self.Wärmeleistung_kW,
+            "Brennstoffbedarf": self.Brennstoffbedarf_MWh,
+            "WGK": self.WGK,
+            "Anzahl_Starts": self.Anzahl_Starts,
+            "Betriebsstunden": self.Betriebsstunden,
+            "Betriebsstunden_pro_Start": self.Betriebsstunden_pro_Start,
+            "spec_co2_total": self.spec_co2_total,
+            "primärenergie": self.primärenergie,
+            "color": "saddlebrown",  # Brown color for gas technology
         }
 
         return results
-    
+
     def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters.
@@ -273,10 +274,12 @@ class GasBoiler(BaseHeatGenerator):
         :return: Formatted configuration text
         :rtype: str
         """
-        return (f"{self.name}: Nennleistung: {self.thermal_capacity_kW:.1f} kW, "
-                f"Nutzungsgrad: {self.Nutzungsgrad:.2f}, "
-                f"spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW")
-    
+        return (
+            f"{self.name}: Nennleistung: {self.thermal_capacity_kW:.1f} kW, "
+            f"Nutzungsgrad: {self.Nutzungsgrad:.2f}, "
+            f"spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
+        )
+
     def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
@@ -289,6 +292,7 @@ class GasBoiler(BaseHeatGenerator):
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
 
+
 class GasBoilerStrategy(BaseStrategy):
     """
     Control strategy for gas boiler backup operation.
@@ -298,7 +302,7 @@ class GasBoilerStrategy(BaseStrategy):
     :param charge_off: Temperature threshold for deactivation [°C], optional
     :type charge_off: float, optional
     """
-    
+
     def __init__(self, charge_on: float, charge_off: float | None = None):
         """
         Initialize control strategy.
@@ -310,8 +314,9 @@ class GasBoilerStrategy(BaseStrategy):
         """
         super().__init__(charge_on, charge_off)
 
-    def decide_operation(self, current_state: float, upper_storage_temp: float, 
-                        lower_storage_temp: float, remaining_demand: float) -> bool:
+    def decide_operation(
+        self, current_state: float, upper_storage_temp: float, lower_storage_temp: float, remaining_demand: float
+    ) -> bool:
         """
         Decide gas boiler operation based on storage and demand.
 

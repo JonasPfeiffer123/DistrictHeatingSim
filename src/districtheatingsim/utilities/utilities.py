@@ -29,15 +29,15 @@ def get_resource_path(relative_path):
         - In pip installations, uses importlib.resources for package data.
     """
     # 1. PyInstaller build: handle frozen state and data folders outside _internal
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # When the application is frozen, the base path needs special handling
         # PyInstaller extracts files to sys._MEIPASS (_internal folder)
         # but we configure some data folders to be in the parent directory
         # Check if the relative_path starts with known data folders that are outside _internal
-        data_folders_outside = ['data', 'project_data', 'images', 'leaflet']
-        
+        data_folders_outside = ["data", "project_data", "images", "leaflet"]
+
         # Check if this is a path that should be outside _internal
-        first_component = relative_path.split(os.sep)[0].split('/')[0]
+        first_component = relative_path.split(os.sep)[0].split("/")[0]
         if first_component in data_folders_outside:
             # These folders are in the application directory (parent of _internal)
             base_path = os.path.dirname(sys._MEIPASS)
@@ -54,27 +54,29 @@ def get_resource_path(relative_path):
 
     # 3. pip-installed package: use importlib.resources for package data
     import importlib.resources
-    parts = relative_path.replace('\\', '/').split('/')
+
+    parts = relative_path.replace("\\", "/").split("/")
     if not parts:
         raise FileNotFoundError(f"Empty resource path: {relative_path}")
     resource_package = f"districtheatingsim.{parts[0]}"
-    resource_path = '/'.join(parts[1:])
+    resource_path = "/".join(parts[1:])
     try:
         return str(importlib.resources.files(resource_package).joinpath(resource_path))
     except Exception as e:
         raise FileNotFoundError(f"Resource not found via importlib.resources: {relative_path}\n{e}") from e
 
+
 def handle_global_exception(exc_type, exc_value, exc_traceback):
     """
     Global exception handler that displays errors in a QMessageBox dialog.
-    
+
     :param exc_type: Exception type
     :type exc_type: type
     :param exc_value: Exception instance
     :type exc_value: BaseException
     :param exc_traceback: Traceback object
     :type exc_traceback: types.TracebackType
-    
+
     .. note::
         KeyboardInterrupt exceptions are handled by the default system handler.
     """
@@ -96,13 +98,14 @@ def handle_global_exception(exc_type, exc_value, exc_traceback):
     msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
     msg_box.exec()
 
+
 def get_stylesheet_based_on_time():
     """
     Get stylesheet identifier based on current system time.
-    
+
     :return: 'light_theme_style_path' if between 6:00-18:00, otherwise 'dark_theme_style_path'
     :rtype: str
-    
+
     .. note::
         Light theme is applied during daytime (6 AM - 6 PM),
         dark theme during evening/night hours.
@@ -111,4 +114,4 @@ def get_stylesheet_based_on_time():
     if 6 <= current_hour < 18:  # Wenn es zwischen 6:00 und 18:00 Uhr ist
         return "light_theme_style_path"  # Pfad zum hellen Stylesheet
     else:
-        return "dark_theme_style_path"   # Pfad zum dunklen Stylesheet
+        return "dark_theme_style_path"  # Pfad zum dunklen Stylesheet

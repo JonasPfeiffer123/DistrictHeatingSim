@@ -34,10 +34,10 @@ class TechnologyResult:
     """
 
     name: str
-    heat_output_kW: np.ndarray   # per-timestep thermal output [kW]
-    heat_amount_MWh: float       # annual heat generated [MWh]
-    share: float                 # fraction of the annual heat demand [-]
+    heat_output_kW: np.ndarray  # per-timestep thermal output [kW]
+    heat_amount_MWh: float  # annual heat generated [MWh]
+    share: float  # fraction of the annual heat demand [-]
     heat_generation_cost: float  # LCOH / Wärmegestehungskosten [€/MWh]
-    specific_co2: float          # specific CO₂ emissions [t/MWh_th]
-    primary_energy: float        # primary energy [MWh]
-    color: str                   # plot colour
+    specific_co2: float  # specific CO₂ emissions [t/MWh_th]
+    primary_energy: float  # primary energy [MWh]
+    color: str  # plot colour

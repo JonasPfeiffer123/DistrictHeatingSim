@@ -7,7 +7,6 @@ list of common projected coordinate systems.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-
 # Curated list of common projected CRS options (epsg_code, display_label)
 COMMON_CRS_OPTIONS: list[tuple[str, str]] = [
     ("EPSG:25832", "EPSG:25832 – ETRS89 / UTM Zone 32N (Westdeutschland, 6°–12°E)"),
@@ -19,10 +18,10 @@ COMMON_CRS_OPTIONS: list[tuple[str, str]] = [
     ("EPSG:32634", "EPSG:32634 – WGS84 / UTM Zone 34N"),
     ("EPSG:31467", "EPSG:31467 – DHDN / Gauß-Krüger Zone 3 (Deutschland)"),
     ("EPSG:31468", "EPSG:31468 – DHDN / Gauß-Krüger Zone 4 (Deutschland)"),
-    ("EPSG:2056",  "EPSG:2056  – CH1903+ / LV95 (Schweiz)"),
+    ("EPSG:2056", "EPSG:2056  – CH1903+ / LV95 (Schweiz)"),
     ("EPSG:31287", "EPSG:31287 – MGI / Austria Lambert (Österreich)"),
-    ("EPSG:3035",  "EPSG:3035  – ETRS89 / LAEA Europe (ganz Europa)"),
-    ("EPSG:3857",  "EPSG:3857  – Web Mercator (globale Webkarten)"),
+    ("EPSG:3035", "EPSG:3035  – ETRS89 / LAEA Europe (ganz Europa)"),
+    ("EPSG:3857", "EPSG:3857  – Web Mercator (globale Webkarten)"),
     ("EPSG:32601", "EPSG:32601 – WGS84 / UTM Zone 1N"),
     ("EPSG:32755", "EPSG:32755 – WGS84 / UTM Zone 55S (Australien)"),
 ]

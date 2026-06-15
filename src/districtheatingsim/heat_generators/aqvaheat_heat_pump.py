@@ -25,6 +25,7 @@ class AqvaHeat(HeatPump):
     :param temperature_difference: Temperature difference [K], defaults to 0
     :type temperature_difference: float
     """
+
     def __init__(self, name, nominal_power=100, temperature_difference=0):
 
         self.name = name
@@ -47,9 +48,9 @@ class AqvaHeat(HeatPump):
         :return: Performance metrics and results
         :rtype: dict
         """
-        VLT_L = kwargs.get('VLT_L')
-        COP_data = kwargs.get('COP_data')
-        
+        VLT_L = kwargs.get("VLT_L")
+        COP_data = kwargs.get("COP_data")
+
         residual_powers = load_profile
         effective_powers = np.zeros_like(residual_powers)
 
@@ -66,7 +67,9 @@ class AqvaHeat(HeatPump):
         electrical_powers = effective_powers - cooling_powers
 
         # disable heat pump when not reaching supply temperature
-        operation_mask = effective_output_temperatures >= VLT_L - self.temperature_difference  # TODO: verify direction of difference
+        operation_mask = (
+            effective_output_temperatures >= VLT_L - self.temperature_difference
+        )  # TODO: verify direction of difference
         effective_powers[~operation_mask] = 0
         cooling_powers[~operation_mask] = 0
         electrical_powers[~operation_mask] = 0
@@ -77,32 +80,39 @@ class AqvaHeat(HeatPump):
 
         # VACUUM ICE GENERATOR
         # now the vacuum ice generator, needs to supply 12°C from river water to the heatpump
-        # cooling supplied by heat pump is heat supplied by vacuum ice process 
+        # cooling supplied by heat pump is heat supplied by vacuum ice process
 
         isentropic_efficiency = 0.7  # Adjust this value based on the actual compressor efficiency
-        fluid = 'Water'
+        fluid = "Water"
 
         # Triple point conditions for water
         # temperature_triple_point = 273.16  # Temperature in Kelvin
         # pressure_triple_point = 611.657  # Pressure in Pascal
 
         # Define initial conditions
-        triple_point_pressure =  CP.PropsSI('ptriple', 'T', 0, 'P', 0, fluid) + 0.01 # in Pascal, delta because of validity range
-        triple_point_temperature = CP.PropsSI('T', 'Q', 0, 'P', triple_point_pressure + 1, fluid)  # Triple point temperature
+        triple_point_pressure = (
+            CP.PropsSI("ptriple", "T", 0, "P", 0, fluid) + 0.01
+        )  # in Pascal, delta because of validity range
+        triple_point_temperature = CP.PropsSI(
+            "T", "Q", 0, "P", triple_point_pressure + 1, fluid
+        )  # Triple point temperature
 
         initial_pressure = triple_point_pressure
         initial_temperature = triple_point_temperature
 
         # Define final conditions after first compression
         final_temperature = 12 + KELVIN_OFFSET  # Convert to Kelvin
-        final_pressure = CP.PropsSI('P', 'T', final_temperature, 'Q', 0, fluid)
+        final_pressure = CP.PropsSI("P", "T", final_temperature, "Q", 0, fluid)
 
         # mass flow from condensing vapor at 12°C, 14hPa
-        mass_flows = effective_powers / (CP.PropsSI('H','P',14000,'Q',1,'Water') - 
-                                        CP.PropsSI('H','P',14000,'Q',0,'Water'))
-        # electrical power needed compressing vapor from triple point 
-        energy_compression = (CP.PropsSI('H', 'T', final_temperature, 'P', final_pressure, fluid) -
-                                      CP.PropsSI('H', 'T', initial_temperature, 'P', initial_pressure, fluid)) / isentropic_efficiency
+        mass_flows = effective_powers / (
+            CP.PropsSI("H", "P", 14000, "Q", 1, "Water") - CP.PropsSI("H", "P", 14000, "Q", 0, "Water")
+        )
+        # electrical power needed compressing vapor from triple point
+        energy_compression = (
+            CP.PropsSI("H", "T", final_temperature, "P", final_pressure, fluid)
+            - CP.PropsSI("H", "T", initial_temperature, "P", initial_pressure, fluid)
+        ) / isentropic_efficiency
 
         electrical_powers += mass_flows * energy_compression / 1000  # W -> kW
 
@@ -119,21 +129,20 @@ class AqvaHeat(HeatPump):
 
         self.spec_co2_total = -1
 
-
         results = {
-            'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_AqvaHeat,  # heat energy for whole duration
-            'Wärmeleistung_L': self.Wärmeleistung_kW,  # vector length time steps with actual power supplied
-            'Strombedarf': self.Strombedarf_AqvaHeat,  # electrical energy consumed during whole duration
-            'el_Leistung_L': self.el_Leistung_kW,  # vector length time steps with actual electrical power consumed
-            'WGK': WGK_Abwärme,
-            'spec_co2_total': self.spec_co2_total,  # tCO2/MWh_heat
-            'primärenergie': self.primärenergie,
-            'color': "blue"
+            "tech_name": self.name,
+            "Wärmemenge": self.Wärmemenge_AqvaHeat,  # heat energy for whole duration
+            "Wärmeleistung_L": self.Wärmeleistung_kW,  # vector length time steps with actual power supplied
+            "Strombedarf": self.Strombedarf_AqvaHeat,  # electrical energy consumed during whole duration
+            "el_Leistung_L": self.el_Leistung_kW,  # vector length time steps with actual electrical power consumed
+            "WGK": WGK_Abwärme,
+            "spec_co2_total": self.spec_co2_total,  # tCO2/MWh_heat
+            "primärenergie": self.primärenergie,
+            "color": "blue",
         }
 
         return results
-    
+
     def set_parameters(self, variables, variables_order, idx):
         pass
 
@@ -150,9 +159,11 @@ class AqvaHeat(HeatPump):
 
     def get_display_text(self):
         return f"Name: {self.name}, Nennleistung: {self.nominal_power} kW, Temperaturdifferenz: {self.temperature_difference} K"
-    
+
     def extract_tech_data(self):
-        dimensions = f"Nennleistung: {self.nominal_power:.1f} kW, Temperaturdifferenz: {self.temperature_difference:.1f} K"
+        dimensions = (
+            f"Nennleistung: {self.nominal_power:.1f} kW, Temperaturdifferenz: {self.temperature_difference:.1f} K"
+        )
         costs = "Keine spezifischen Kosten"
         full_costs = "Keine spezifischen Kosten"
         return self.name, dimensions, costs, full_costs

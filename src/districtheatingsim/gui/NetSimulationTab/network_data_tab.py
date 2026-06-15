@@ -31,7 +31,7 @@ class NetworkDataTab(QWidget):
     """
     Widget for selecting network data files and previewing GeoJSON data.
     """
-    
+
     def __init__(self, base_path, dialog_config, parent=None):
         """
         Initialize network data tab.
@@ -71,7 +71,11 @@ class NetworkDataTab(QWidget):
         jsonImportLayout = QHBoxLayout()
         jsonLabel = QLabel("JSON mit Daten:")
         jsonImportLayout.addWidget(jsonLabel)
-        self.jsonLineEdit = QLineEdit(os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path('building_load_profile_path')))
+        self.jsonLineEdit = QLineEdit(
+            os.path.join(
+                self.base_path, self.parent.parent.config_manager.get_relative_path("building_load_profile_path")
+            )
+        )
         jsonImportLayout.addWidget(self.jsonLineEdit)
         jsonBrowseButton = QPushButton("Datei auswählen")
         jsonBrowseButton.clicked.connect(self.browseJsonFile)
@@ -109,15 +113,12 @@ class NetworkDataTab(QWidget):
         """
         # Default path for unified network GeoJSON
         default_network_path = os.path.join(
-            self.base_path, 
-            self.parent.parent.config_manager.get_relative_path("dimensioned_net_path")
+            self.base_path, self.parent.parent.config_manager.get_relative_path("dimensioned_net_path")
         )
 
         file_inputs_layout = self.createFileInputsGeoJSON(default_network_path)
 
-        inputs = [
-            file_inputs_layout
-        ]
+        inputs = [file_inputs_layout]
         return inputs
 
     def createFileInputsGeoJSON(self, default_network_path):
@@ -160,7 +161,14 @@ class NetworkDataTab(QWidget):
         """
         Open file dialog for JSON file selection.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path('building_load_profile_path')), 'JSON Files (*.json);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select JSON File",
+            os.path.join(
+                self.base_path, self.parent.parent.config_manager.get_relative_path("building_load_profile_path")
+            ),
+            "JSON Files (*.json);;All Files (*)",
+        )
         if fname:
             self.jsonLineEdit.setText(fname)
 
@@ -171,7 +179,9 @@ class NetworkDataTab(QWidget):
         :param line_edit: Line edit widget to update.
         :type line_edit: QLineEdit
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
+        fname, _ = QFileDialog.getOpenFileName(
+            self, "Datei auswählen", "", "All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)"
+        )
         if fname:
             line_edit.setText(fname)
             self.update_plot()
@@ -183,58 +193,65 @@ class NetworkDataTab(QWidget):
         try:
             # Import schema for feature type identification
             from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-            
+
             # Pfad auslesen
             network_path = self.networkInput.itemAt(1).widget().text()
 
             # Datei prüfen, ob sie existiert
             if not os.path.exists(network_path):
                 raise FileNotFoundError("Die Wärmenetz GeoJSON-Datei wurde nicht gefunden.")
-            
+
             # Datei einlesen
             network_gdf = gpd.read_file(network_path)
-            
+
             # Separate features by type
-            vorlauf = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW]
-            ruecklauf = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN]
-            hast = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING]
-            erzeugeranlagen = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR]
+            vorlauf = network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW]
+            ruecklauf = network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN]
+            hast = network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING]
+            erzeugeranlagen = network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR]
 
             # Plot vorbereiten
             self.figure1.clear()
             ax = self.figure1.add_subplot(111)
 
             # GeoJSON-Daten plotten
-            vorlauf.plot(ax=ax, color='red')
-            ruecklauf.plot(ax=ax, color='blue')
-            hast.plot(ax=ax, color='green')
-            erzeugeranlagen.plot(ax=ax, color='black')
+            vorlauf.plot(ax=ax, color="red")
+            ruecklauf.plot(ax=ax, color="blue")
+            hast.plot(ax=ax, color="green")
+            erzeugeranlagen.plot(ax=ax, color="black")
 
             # Annotations vorbereiten
             annotations = []
             for _idx, row in hast.iterrows():
-                point = row['geometry'].representative_point()
-                
+                point = row["geometry"].representative_point()
+
                 # Access building data from nested structure
-                building_data = row.get('building_data', {})
+                building_data = row.get("building_data", {})
                 if isinstance(building_data, dict):
-                    adresse = building_data.get('Adresse', 'N/A')
-                    waermebedarf = building_data.get('Wärmebedarf', 'N/A')
-                    gebaeudetyp = building_data.get('Gebäudetyp', 'N/A')
-                    vlt_max = building_data.get('VLT_max', 'N/A')
-                    rlt_max = building_data.get('RLT_max', 'N/A')
+                    adresse = building_data.get("Adresse", "N/A")
+                    waermebedarf = building_data.get("Wärmebedarf", "N/A")
+                    gebaeudetyp = building_data.get("Gebäudetyp", "N/A")
+                    vlt_max = building_data.get("VLT_max", "N/A")
+                    rlt_max = building_data.get("RLT_max", "N/A")
                 else:
                     # Fallback if data structure is different
-                    adresse = 'N/A'
-                    waermebedarf = 'N/A'
-                    gebaeudetyp = 'N/A'
-                    vlt_max = 'N/A'
-                    rlt_max = 'N/A'
-                
-                label = (f"{adresse}\nWärmebedarf: {waermebedarf}\n"
-                        f"Gebäudetyp: {gebaeudetyp}\nVLT_max: {vlt_max}\nRLT_max: {rlt_max}")
-                annotation = ax.annotate(label, xy=(point.x, point.y), xytext=(10, 10),
-                                        textcoords="offset points", bbox=dict(boxstyle="round", fc="w"))
+                    adresse = "N/A"
+                    waermebedarf = "N/A"
+                    gebaeudetyp = "N/A"
+                    vlt_max = "N/A"
+                    rlt_max = "N/A"
+
+                label = (
+                    f"{adresse}\nWärmebedarf: {waermebedarf}\n"
+                    f"Gebäudetyp: {gebaeudetyp}\nVLT_max: {vlt_max}\nRLT_max: {rlt_max}"
+                )
+                annotation = ax.annotate(
+                    label,
+                    xy=(point.x, point.y),
+                    xytext=(10, 10),
+                    textcoords="offset points",
+                    bbox=dict(boxstyle="round", fc="w"),
+                )
                 annotation.set_visible(False)
                 annotations.append((point, annotation))
 
@@ -245,7 +262,7 @@ class NetworkDataTab(QWidget):
 
                 visibility_changed = False
                 for point, annotation in annotations:
-                    should_be_visible = (point.distance(Point(event.xdata, event.ydata)) < 5)
+                    should_be_visible = point.distance(Point(event.xdata, event.ydata)) < 5
                     if should_be_visible != annotation.get_visible():
                         visibility_changed = True
                         annotation.set_visible(should_be_visible)
@@ -254,17 +271,17 @@ class NetworkDataTab(QWidget):
                     self.canvas1.draw()
 
             # Maus-Bewegung-Event verbinden
-            self.figure1.canvas.mpl_connect('motion_notify_event', on_move)
+            self.figure1.canvas.mpl_connect("motion_notify_event", on_move)
 
-            ax.set_title('Visualisierung der GeoJSON-Netz-Daten')
-            ax.set_xlabel('Longitude')
-            ax.set_ylabel('Latitude')
+            ax.set_title("Visualisierung der GeoJSON-Netz-Daten")
+            ax.set_xlabel("Longitude")
+            ax.set_ylabel("Latitude")
 
         except FileNotFoundError as e:
             # Fehlermeldung anzeigen, wenn Dateien fehlen
             self.figure1.clear()
             ax = self.figure1.add_subplot(111)
-            ax.text(0.5, 0.5, 'No data available', fontsize=20, ha='center')
+            ax.text(0.5, 0.5, "No data available", fontsize=20, ha="center")
             self.canvas1.draw()
 
             msg = QMessageBox()

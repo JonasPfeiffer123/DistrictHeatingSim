@@ -48,7 +48,7 @@ class EconomicParametersDialog(QDialog):
             "inflation_rate": 1.03,
             "time_period": 20,
             "hourly_rate": 45.0,
-            "subsidy_eligibility": "Nein"
+            "subsidy_eligibility": "Nein",
         }
         self.initUI()
         self.loadValues(self.default_values)
@@ -136,7 +136,7 @@ class EconomicParametersDialog(QDialog):
         self.strompreisInput.setText(str(values["electricity_price"]))
         self.holzpreisInput.setText(str(values["wood_price"]))
         self.kapitalzinsInput.setText(str((values["capital_interest_rate"] - 1) * 100))
-        self.preissteigerungsrateInput.setText(str((values["inflation_rate"] - 1 ) * 100))
+        self.preissteigerungsrateInput.setText(str((values["inflation_rate"] - 1) * 100))
         self.betrachtungszeitraumInput.setText(str(values["time_period"]))
         self.stundensatzInput.setText(str(values["hourly_rate"]))
         self.BEWComboBox.setCurrentText(values["subsidy_eligibility"])
@@ -156,7 +156,7 @@ class EconomicParametersDialog(QDialog):
             "inflation_rate": (float(self.preissteigerungsrateInput.text()) / 100) + 1,
             "time_period": int(self.betrachtungszeitraumInput.text()),
             "hourly_rate": float(self.stundensatzInput.text()),
-            "subsidy_eligibility": self.BEWComboBox.currentText()
+            "subsidy_eligibility": self.BEWComboBox.currentText(),
         }
 
     def updateValues(self, new_values):
@@ -168,7 +168,7 @@ class EconomicParametersDialog(QDialog):
         """
         self.default_values.update(new_values)
         self.loadValues(self.default_values)
-        
+
         self.plotPriceDevelopment()
 
     def connectSignals(self):
@@ -222,23 +222,33 @@ class EconomicParametersDialog(QDialog):
         self.ax.clear()
 
         years = range(1, int(self.betrachtungszeitraumInput.text()) + 1)
-        gas_prices = [float(self.gaspreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year for year in years]
-        strom_prices = [float(self.strompreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year for year in years]
-        holz_prices = [float(self.holzpreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year for year in years]
+        gas_prices = [
+            float(self.gaspreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year
+            for year in years
+        ]
+        strom_prices = [
+            float(self.strompreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year
+            for year in years
+        ]
+        holz_prices = [
+            float(self.holzpreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year
+            for year in years
+        ]
 
-        self.ax.plot(years, gas_prices, label='Gaspreis')
-        self.ax.plot(years, strom_prices, label='Strompreis')
-        self.ax.plot(years, holz_prices, label='Holzpreis')
+        self.ax.plot(years, gas_prices, label="Gaspreis")
+        self.ax.plot(years, strom_prices, label="Strompreis")
+        self.ax.plot(years, holz_prices, label="Holzpreis")
 
         self.ax.set_xticks(years[::1])
         self.ax.set_xticklabels(years[::1])
-        self.ax.set_xlabel('Jahr')
-        self.ax.set_ylabel('Preis (€/MWh)')
-        self.ax.set_title('Preisentwicklung der Energieträger')
+        self.ax.set_xlabel("Jahr")
+        self.ax.set_ylabel("Preis (€/MWh)")
+        self.ax.set_title("Preisentwicklung der Energieträger")
         self.ax.legend()
 
         self.fig.tight_layout()
         self.canvas.draw()
+
 
 class KostenBerechnungDialog(QDialog):
     """
@@ -296,61 +306,68 @@ class KostenBerechnungDialog(QDialog):
         Read unified GeoJSON file and calculate total cost based on input values.
         """
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-        
+
         # Load unified GeoJSON and convert to GeoDataFrame
         unified_geojson = NetworkGeoJSONSchema.import_from_file(self.filename)
-        gdf_net = gpd.GeoDataFrame.from_features(unified_geojson['features'])
+        gdf_net = gpd.GeoDataFrame.from_features(unified_geojson["features"])
 
         # Filter by feature_type instead of name
         if self.type.startswith("flow line"):
             gdf_net_filtered = gdf_net[gdf_net["feature_type"] == "network_line_flow"]
-            
+
             # Extract length from nested calculated data
             length_values = []
             for _, row in gdf_net_filtered.iterrows():
-                if 'calculated' in row and row['calculated'] and 'length_m' in row['calculated']:
-                    length_values.append(float(row['calculated']['length_m']))
-            
+                if "calculated" in row and row["calculated"] and "length_m" in row["calculated"]:
+                    length_values.append(float(row["calculated"]["length_m"]))
+
             self.length_values = np.array(length_values)
             self.cost_lines = self.length_values * float(self.specCostInput.text())
             self.total_cost = round(np.sum(self.cost_lines), 0)
 
         elif self.type == "HAST":
             gdf_net_filtered = gdf_net[gdf_net["feature_type"] == "building_connection"]
-            
+
             # Extract heat_demand from nested building_data
             qext_values = []
             for _, row in gdf_net_filtered.iterrows():
-                if 'building_data' in row and row['building_data'] and 'heat_demand_W' in row['building_data']:
-                    qext_values.append(float(row['building_data']['heat_demand_W']) / 1000)
-            
+                if "building_data" in row and row["building_data"] and "heat_demand_W" in row["building_data"]:
+                    qext_values.append(float(row["building_data"]["heat_demand_W"]) / 1000)
+
             self.qext_values = np.array(qext_values)
             self.cost_lines = self.qext_values * float(self.specCostInput.text())
             self.total_cost = round(np.sum(self.cost_lines), 0)
 
         self.accept()
-    
+
+
 class WeightDialog(QDialog):
     """
     Dialog for setting weights for optimization.
     """
-    
+
     def __init__(self):
         """
         Initialize the WeightDialog.
         """
         super().__init__()
-        
+
         self.setWindowTitle("Gewichte für Optimierung festlegen")
-        
+
         self.wgk_input = QLineEdit("1.0", self)
-        self.wgk_input.setToolTip("Geben Sie das Gewicht für die Wärmegestehungskosten ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung).")
+        self.wgk_input.setToolTip(
+            "Geben Sie das Gewicht für die Wärmegestehungskosten ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung)."
+        )
 
         self.co2_input = QLineEdit("0.0", self)
-        self.co2_input.setToolTip("Geben Sie das Gewicht für die spezifischen CO2-Emissionen ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung).")
+        self.co2_input.setToolTip(
+            "Geben Sie das Gewicht für die spezifischen CO2-Emissionen ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung)."
+        )
 
         self.pe_input = QLineEdit("0.0", self)
-        self.pe_input.setToolTip("Geben Sie das Gewicht für den Primärenergiefaktor ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung).")
+        self.pe_input.setToolTip(
+            "Geben Sie das Gewicht für den Primärenergiefaktor ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung)."
+        )
 
         form_layout = QFormLayout()
         form_layout.addRow("Wärmegestehungskosten", self.wgk_input)
@@ -364,9 +381,9 @@ class WeightDialog(QDialog):
         layout = QVBoxLayout()
         layout.addLayout(form_layout)
         layout.addWidget(self.button_box)
-        
+
         self.setLayout(layout)
-    
+
     def get_weights(self):
         """
         Get weights from input fields.
@@ -383,14 +400,14 @@ class WeightDialog(QDialog):
             co2_weight = float(self.co2_input.text())
         except ValueError:
             co2_weight = 0.0
-        
+
         try:
             pe_weight = float(self.pe_input.text())
         except ValueError:
             pe_weight = 0.0
 
         return {
-            'WGK_Gesamt': wgk_weight,
-            'specific_emissions_Gesamt': co2_weight,
-            'primärenergiefaktor_Gesamt': pe_weight
+            "WGK_Gesamt": wgk_weight,
+            "specific_emissions_Gesamt": co2_weight,
+            "primärenergiefaktor_Gesamt": pe_weight,
         }
