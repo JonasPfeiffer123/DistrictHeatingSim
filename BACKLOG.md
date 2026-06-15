@@ -200,9 +200,17 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      **Done (2026-06):** extracted the GUI-free `format_kpi_range(variant_data, key, fmt,
      empty=…)`; the view is now a data-driven loop over a `(widget, key, fmt, empty)` spec
      (~70 lines → ~16). Pinned by `tests/test_comparison_kpis.py` (7).
+   - ~~`ProjectModel.calculate_centroid` recursed through `self` for a pure geometry
+     average.~~ **Done (2026-06):** extracted the GUI-free `centroid_of(coordinates)`
+     (point / LineString / Polygon / MultiPolygon); the model method is a thin wrapper.
+     Pinned by `tests/test_project_centroid.py` (4).
    - Worker threads (`_06_calculate_energy_system_thread`, `net_calculation_threads`)
      call domain code — more acceptable (off-UI-thread) but still GUI-package
      orchestration. (`run_energy_system_calculation` is now the GUI-free seam — see C1.)
+   - *Remaining smaller candidates:* `building_tab.combine_data_with_results` (thin, but
+     has an in-place `reset_index` side effect to untangle first) and the
+     `KostenBerechnungDialog` cost math (`Σ quantity·spec_cost`, tightly coupled to Qt
+     input parsing).
 3. **Cross-component reach-through.** `main_view` drives other tabs by calling their
    presenters directly (`buildingTab.presenter.load_csv(...)`,
    `projectTab.presenter.save_csv(...)`).
