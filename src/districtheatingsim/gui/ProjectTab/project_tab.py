@@ -42,6 +42,36 @@ from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialo
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
 
+def centroid_of(coordinates):
+    """
+    Recursively average a (possibly nested) GeoJSON coordinate array.
+
+    Handles a bare ``[x, y]`` point as well as the nested arrays of LineString /
+    Polygon / MultiPolygon geometries by averaging the centroids of the parts.
+    GUI-free pure logic (extracted from ``ProjectModel.calculate_centroid`` so it
+    is unit-testable — BACKLOG B2).
+
+    :param coordinates: A ``[x, y]`` point or a nested list of such arrays.
+    :return: ``(x, y)`` centroid, or ``(None, None)`` if no point is found.
+    :rtype: tuple
+    """
+    # Base case: a single [x, y] point.
+    if isinstance(coordinates[0], float):
+        return coordinates[0], coordinates[1]
+
+    x_sum = y_sum = 0.0
+    total_points = 0
+    for item in coordinates:
+        x, y = centroid_of(item)
+        if x is not None and y is not None:
+            x_sum += x
+            y_sum += y
+            total_points += 1
+    if total_points > 0:
+        return x_sum / total_points, y_sum / total_points
+    return None, None
+
+
 class ProjectModel:
     """
     Model for managing project data including CSV and GeoJSON file operations.
@@ -186,33 +216,16 @@ class ProjectModel:
 
     def calculate_centroid(self, coordinates):
         """
-        Calculate centroid of coordinate array.
+        Calculate centroid of a (possibly nested) coordinate array.
+
+        Thin wrapper over the GUI-free :func:`centroid_of`.
 
         :param coordinates: Coordinate array.
         :type coordinates: list
         :return: Centroid coordinates (x, y).
         :rtype: tuple
         """
-        x_sum = 0
-        y_sum = 0
-        total_points = 0
-        if isinstance(coordinates[0], float):
-            x_sum += coordinates[0]
-            y_sum += coordinates[1]
-            total_points += 1
-        else:
-            for item in coordinates:
-                x, y = self.calculate_centroid(item)
-                if x is not None and y is not None:
-                    x_sum += x
-                    y_sum += y
-                    total_points += 1
-        if total_points > 0:
-            centroid_x = x_sum / total_points
-            centroid_y = y_sum / total_points
-            return centroid_x, centroid_y
-        else:
-            return None, None
+        return centroid_of(coordinates)
 
 class ProjectPresenter:
     """
