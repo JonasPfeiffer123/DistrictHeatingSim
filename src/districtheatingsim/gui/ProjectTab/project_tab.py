@@ -719,8 +719,9 @@ class ProjectPresenter:
         :type inputfilename: str
         """
         if hasattr(self, "geocodingThread") and self.geocodingThread.isRunning():
-            self.geocodingThread.terminate()
-            self.geocodingThread.wait()
+            # Cooperative stop (waits for the current run to finish) instead of
+            # terminate(), which can kill the thread mid-write and truncate the CSV.
+            self.geocodingThread.stop()
         self.geocodingThread = GeocodingThread(inputfilename, project_crs=self.folder_manager.project_crs)
         self.geocodingThread.calculation_done.connect(self.on_geocode_done)
         self.geocodingThread.calculation_error.connect(self.on_geocode_error)
