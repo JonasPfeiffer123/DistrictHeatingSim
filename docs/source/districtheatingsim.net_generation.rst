@@ -1,6 +1,11 @@
 Net generation package
 ==========================================
 
+.. automodule:: districtheatingsim.net_generation.elevation_utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.net_generation.import_and_create_layers
    :members:
    :show-inheritance:

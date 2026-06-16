@@ -88,21 +88,24 @@ DistrictHeatingSim Documentation
 
 .. code-block:: bash
 
-   pip install districtheatingsim
-   
+   # Install directly from GitHub (requires git; not published on PyPI)
+   pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
+
    # Or for development:
-   git clone https://github.com/jonaspfeiffer123/DistrictHeatingSim.git
+   git clone https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
    cd DistrictHeatingSim
    pip install -e .
 
 🚀 Quick Start
 ----------------
 
-To start the application directly, run the following in the terminal:
+After installation, start the application with the entry-point command (or the module):
 
 .. code-block:: bash
 
-   python src/districtheatingsim/DistrictHeatingSim.py
+   districtheatingsim
+   # equivalently:
+   python -m districtheatingsim
 
 📚 Documentation
 --------------------

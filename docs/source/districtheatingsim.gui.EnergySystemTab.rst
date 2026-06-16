@@ -27,6 +27,51 @@ Das EnergySystemTab-Paket enthält die GUI-Komponenten für die Konfiguration un
    :undoc-members:
    :special-members: __init__
 
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._base
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._schemas
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._dispatcher
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._simple
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._combustion
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._solar
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._geothermal
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._heat_pump
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._storage
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.EnergySystemTab._05_cost_tab
    :members:
    :show-inheritance:

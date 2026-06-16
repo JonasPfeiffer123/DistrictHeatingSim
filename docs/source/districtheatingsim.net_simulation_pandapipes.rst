@@ -26,12 +26,32 @@ Net simulation pandapipes package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.net_simulation_pandapipes.net_migration
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.net_simulation_pandapipes.pipe_std_types
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.net_simulation_pandapipes.plot_data
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson
    :members:
    :show-inheritance:
    :undoc-members:
 
 .. automodule:: districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.net_simulation_pandapipes.result_validation
    :members:
    :show-inheritance:
    :undoc-members:
