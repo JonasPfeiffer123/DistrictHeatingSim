@@ -154,3 +154,22 @@ class TestCHP:
 
     def test_holzgas_name_infers_wood_gas(self):
         assert self._make(name="Holzgas-BHKW").fuel_type == "wood_gas"
+
+    def test_invalid_bew_raises(self, economic_parameters, load_profile):
+        # C21: BEW neither "Ja" nor "Nein" used to fall off the end of
+        # calculate_heat_generation_costs returning None, which silently
+        # propagated into the WGK result. It now raises a clear ValueError.
+        chp = self._make()
+        chp.calculate(economic_parameters, 1, load_profile)  # populate Wärmemenge_MWh
+        # subsidy_eligibility drives self.BEW (reloaded at the top of the cost calc),
+        # so an invalid value must come through the economic parameters.
+        bad_params = {**economic_parameters, "subsidy_eligibility": "Vielleicht"}
+        with pytest.raises(ValueError, match="BEW"):
+            chp.calculate_heat_generation_costs(bad_params)
+
+    def test_zero_heat_amount_cost_is_inf(self, economic_parameters):
+        # C21: the zero-Wärmemenge sentinel is unified on inf (was 0), matching
+        # GasBoiler/PowerToHeat so an idle generator never shows a misleading 0 WGK.
+        chp = self._make()
+        chp.Wärmemenge_MWh = 0
+        assert chp.calculate_heat_generation_costs(economic_parameters) == float("inf")

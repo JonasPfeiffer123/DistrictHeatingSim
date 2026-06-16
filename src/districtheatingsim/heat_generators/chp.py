@@ -299,8 +299,8 @@ class CHP(BaseHeatGenerator):
         self.load_economic_parameters(economic_parameters)
 
         if self.Wärmemenge_MWh == 0:
-            self.WGK = 0
-            return 0
+            self.WGK = float("inf")
+            return float("inf")
 
         # Determine technology-specific costs and fuel prices by fuel type (not name).
         if self._resolve_fuel_type() == "wood_gas":
@@ -362,6 +362,8 @@ class CHP(BaseHeatGenerator):
             return self.WGK
         elif self.BEW == "Ja":
             return self.WGK_BEW
+        else:
+            raise ValueError(f"Ungültiger BEW-Wert: {self.BEW!r} (erwartet 'Ja' oder 'Nein').")
 
     def calculate_environmental_impact(self) -> None:
         """
