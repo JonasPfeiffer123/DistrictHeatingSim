@@ -906,17 +906,26 @@ last push. The earlier CLAUDE.md/BACKLOG note "main is ahead of origin / CI neve
 heavy scientific stack on Ubuntu). Check the GitHub Actions result for `b03bf77`; if red, fix
 before tagging. (`rasterio`/elevation extra is *not* a CI failure point — imported lazily,
 not at test-collection time.)
-### F5. Docs sweep (the BACKLOG pre-release item, now scoped)
-**Severity: pre-release.** Prose docs (`thermal_storage.rst`, README) are current (no
-KMR/STES residue). The rot is in the **hand-maintained autodoc stubs**, which silently miss
-every module added during the refactors: `heat_generators.results` (the `TechnologyResult`
-source of truth) + `json_encoder`, `constants.py`,
-`net_simulation_pandapipes.{pipe_std_types,net_migration,result_validation,plot_data}`,
-`utilities.{schema,csv_schemas}`, `osm.area_selection`, `net_generation.elevation_utils`, and
-the EnergySystemTab autodoc still points at the `_04_technology_dialogs` façade not the
-`technology_dialogs/` package. One `sphinx-apidoc -f -o source/ ../src/districtheatingsim`
-closes most of it (then re-add the hand-written prose pages it doesn't touch). Also fix the
-1.0.0 badge (F3) and the bare `pip install districtheatingsim` in `index.rst:91` (→ git URL).
+### F5. Docs sweep (done 2026-06-16)
+Prose docs (`thermal_storage.rst`, README) were already current (no KMR/STES residue — verified
+by a stale-term sweep). The rot was in the **hand-maintained autodoc stubs**, which missed every
+module added during the refactors. **Done** — added the missing `automodule` blocks (rather than a
+blanket `sphinx-apidoc -f`, which would clobber the curated prose pages): `heat_generators.{results,
+json_encoder}`, `constants` (→ `districtheatingsim.rst`), `net_simulation_pandapipes.{net_migration,
+pipe_std_types,plot_data,result_validation}`, `utilities.{csv_schemas,schema}`, `osm.area_selection`,
+`net_generation.elevation_utils`, and the whole `technology_dialogs/` package (`_base`/`_schemas`/
+`_dispatcher`/`_simple`/`_combustion`/`_solar`/`_geothermal`/`_heat_pump`/`_storage`) alongside the
+`_04_technology_dialogs` façade in the EnergySystemTab stub. Also fixed the **1.0.0 → 2.0.0** badge
+(F3) and the install/run instructions in `index.rst` (bare `pip install districtheatingsim` → the
+git URL; in-tree `DistrictHeatingSim.py` → the `districtheatingsim` entry point). **Verified:**
+`sphinx -b html` builds (exit 0); all 12 new modules render into the HTML; the remaining build
+warnings are **pre-existing** docstring-formatting issues (math notation / indentation in
+`osmnx_steiner_network`, `controllers`, `thermal_storage`, the `*_error` pyqtSignal docstrings) —
+*not* introduced here, logged below as a post-release cleanup.
+- *POST-RELEASE:* clean the pre-existing autodoc docstring warnings (reST `|x|` substitutions read
+  as undefined in `osmnx_steiner_network.create_steiner_tree` / `controllers.*.is_converged`,
+  "Inline emphasis" in the `calculation_error`/`download_error` signal docstrings, "Unexpected
+  indentation" in `thermal_storage.current_storage_temperatures`).
 ### F6. PyInstaller build + specs untested after the refactors (found 2026-06-16)
 **Severity: pre-release (the chosen distribution channel — see F1).** With PyPI off the table,
 the **PyInstaller exe is the primary user-facing artifact**, but the build path
@@ -978,9 +987,11 @@ release mechanics themselves (section F). See the **Release plan** below.
    stale 1.0.0 docs badge).~~ **Done 2026-06-16** (bumped 1.0.3 → **2.0.0**, major).
 8. **F4** — check the GitHub Actions status for the latest push (CI is now gating). *Currently
    green per Jonas; re-confirm after pushing the C16–C22 / F2–F3 commits.*
-9. **F5** — docs sweep (regenerate autodoc stubs; fix the badge + the bad `pip install` in
-   `index.rst`). Do this *last*, once the API churn above has stopped (see Pre-release).
+9. ~~**F5** — docs sweep (regenerate autodoc stubs; fix the badge + the bad `pip install` in
+   `index.rst`).~~ **Done 2026-06-16** (12 missing autodoc modules added; install/run docs fixed;
+   `sphinx -b html` builds clean of new errors).
 10. **F6** — test the PyInstaller build + specs (the chosen distribution channel). After F2/F3.
+    *The only remaining before-release item.*
 
 ### After the new release (Weiterentwicklung)
 - **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
