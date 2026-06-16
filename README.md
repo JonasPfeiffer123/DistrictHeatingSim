@@ -68,10 +68,11 @@ To install DistrictHeatingSim, follow the steps below. The software is tested on
     ```sh
     pip install .
     ```
-4. Run the application by executing the main script:
+4. Run the application using the installed entry point:
     ```sh
-    python src/districtheatingsim/DistrictHeatingSim.py
+    districtheatingsim
     ```
+    (equivalently `python -m districtheatingsim`)
 
 ### Troubleshooting
 - If you encounter errors during installation or while running the application, ensure that all required Python modules are installed. All dependencies are declared in `pyproject.toml` and (re)installed via:
@@ -86,7 +87,7 @@ By following these steps, you should be able to successfully install and run Dis
 
 ## Usage
 
-Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districtheatingsim/
+Start DistrictHeatingSim with the `districtheatingsim` command (installed by `pip install .`), or `python -m districtheatingsim`.
 
 ![Project Management](images/project_management_tab.png)
 
