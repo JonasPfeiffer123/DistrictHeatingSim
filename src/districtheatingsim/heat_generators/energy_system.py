@@ -444,7 +444,7 @@ class EnergySystem:
 
         return self.results
 
-    def optimize_mix(self, weights: dict, num_restarts: int = 5):
+    def optimize_mix(self, weights: dict, num_restarts: int = 5, unmet_demand_penalty: float = 1e6):
         """
         Optimize energy mix for multi-objective performance.
 
@@ -452,10 +452,13 @@ class EnergySystem:
         :type weights: dict
         :param num_restarts: Number of random restarts, defaults to 5
         :type num_restarts: int
+        :param unmet_demand_penalty: Penalty weight on the uncovered-demand fraction added to the
+            objective, defaults to 1e6 (see EnergySystemOptimizer for the rationale)
+        :type unmet_demand_penalty: float
         :return: Optimized energy system
         :rtype: EnergySystem
         """
-        optimizer = EnergySystemOptimizer(self, weights, num_restarts)
+        optimizer = EnergySystemOptimizer(self, weights, num_restarts, unmet_demand_penalty)
         self.optimized_energy_system = optimizer.optimize()
 
         return self.optimized_energy_system
@@ -954,7 +957,13 @@ class EnergySystemOptimizer:
        Uses SLSQP with random restarts for multi-objective optimization.
     """
 
-    def __init__(self, initial_energy_system: "EnergySystem", weights: dict[str, float], num_restarts: int = 5):
+    def __init__(
+        self,
+        initial_energy_system: "EnergySystem",
+        weights: dict[str, float],
+        num_restarts: int = 5,
+        unmet_demand_penalty: float = 1e6,
+    ):
         """
         Initialize multi-objective optimizer.
 
@@ -964,12 +973,21 @@ class EnergySystemOptimizer:
         :type weights: dict
         :param num_restarts: Number of random restarts, defaults to 5
         :type num_restarts: int
+        :param unmet_demand_penalty: Penalty weight applied to the uncovered-demand fraction
+            (Restwärmebedarf / Jahreswärmebedarf) and added to the objective, defaults to 1e6.
+            Without it the objective (WGK + emissions + primary-energy, all divided by the full
+            annual demand) is minimised by *shrinking* generators: less generation → the uncovered
+            load lands in the cost-free "Ungedeckter Bedarf" row → every term falls toward 0, so the
+            optimum is an empty/non-covering system (verified: a CHP collapses to 0 kW / 0 % coverage).
+            A large penalty makes covering demand strictly dominate the cost saving from undersizing.
+        :type unmet_demand_penalty: float
 
         :raises ValueError: If required weights missing or negative
         """
         self.initial_energy_system = initial_energy_system
         self.weights = weights
         self.num_restarts = num_restarts
+        self.unmet_demand_penalty = unmet_demand_penalty
 
         # Validate optimization weights
         required_weights = ["WGK_Gesamt", "specific_emissions_Gesamt", "primärenergiefaktor_Gesamt"]
@@ -1067,11 +1085,20 @@ class EnergySystemOptimizer:
                     # Calculate energy system performance with given parameters
                     results = fresh_energy_system.calculate_mix(variables, variables_order)
 
+                    # Penalise uncovered demand so the optimiser cannot lower the objective by
+                    # undersizing generators (the uncovered load would otherwise land in the
+                    # cost-free "Ungedeckter Bedarf" row and drag every term toward 0). The penalty
+                    # is proportional to the uncovered *fraction*, so it stays well-defined even when
+                    # full coverage is physically impossible (it then minimises the gap, then cost).
+                    jahresbedarf = results["Jahreswärmebedarf"]
+                    unmet_fraction = max(results["Restwärmebedarf"], 0.0) / jahresbedarf if jahresbedarf > 0 else 0.0
+
                     # Calculate weighted multi-objective value
                     weighted_sum = (
                         self.weights["WGK_Gesamt"] * results["WGK_Gesamt"]
                         + self.weights["specific_emissions_Gesamt"] * results["specific_emissions_Gesamt"]
                         + self.weights["primärenergiefaktor_Gesamt"] * results["primärenergiefaktor_Gesamt"]
+                        + self.unmet_demand_penalty * unmet_fraction
                     )
 
                     return weighted_sum
