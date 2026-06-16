@@ -582,22 +582,30 @@ modelling facts (no code bugs — design choices / data / missing model):
    `_05_cost_tab`). A diameter→€/m table would let the optimizer (and the user) trade
    pump energy against pipe capex properly. Possible future feature.
 
-### C16. Energy-system optimizer has no demand-coverage constraint (found 2026-06-15, OPEN — verify)
-**Severity: pre-release blocker (pending verification).** `EnergySystemOptimizer.optimize`
-calls `scipy_minimize(objective_function, …, method="SLSQP", bounds=bounds, …)` with
-**only `bounds` — no `constraints` and no unmet-demand penalty** (`energy_system.py:1070`;
-objective at `:1056-1060`). The objective is the pure weighted sum
-`WGK_Gesamt + specific_emissions_Gesamt + primärenergiefaktor_Gesamt`, all three minimized
-by *shrinking* generator capacities toward their lower bound: less generation → lower
-absolute cost → the uncovered load lands in the cost-free "Ungedeckter Bedarf" row, so
-`WGK_Gesamt` (divided by the full `Jahreswärmebedarf`) falls. The optimizer is therefore
-structurally biased toward undersized/empty systems. **Verify against a real optimization
-run before changing the model** — if the result collapses, this is the highest-value
-correctness fix. Fix: add a penalty `∝ results["Restwärmebedarf"]` to the objective, or
-pass an inequality constraint `Restwärmebedarf ≤ tol` to SLSQP.
+### C16. Energy-system optimizer has no demand-coverage constraint (verified + fixed 2026-06-16)
+**Was a pre-release blocker.** `EnergySystemOptimizer.optimize` called
+`scipy_minimize(objective_function, …, method="SLSQP", bounds=bounds, …)` with **only
+`bounds` — no `constraints` and no unmet-demand penalty**. The objective was the pure weighted
+sum `WGK_Gesamt + specific_emissions_Gesamt + primärenergiefaktor_Gesamt`, all three minimized
+by *shrinking* generator capacities: less generation → the uncovered load lands in the
+cost-free "Ungedeckter Bedarf" row → every term (divided by the full `Jahreswärmebedarf`) falls
+toward 0. Structurally biased toward undersized/empty systems.
+- **Verified (2026-06-16) before changing the model.** Direct objective probe of a CHP-only
+  system across capacities: WGK/emissions/PEF all fall monotonically as the CHP shrinks (CHP=10 kW
+  → WGK 5.3, only 4.4 % of demand covered), and reach **0** at a capacity so large the CHP never
+  runs (min_Teillast). A seeded real SLSQP run (start 300 kW, bounds 0–1000) optimized to **0.00 kW
+  / 0 % coverage / objective 0** — the optimizer literally optimized the system out of existence.
+- **Fixed (penalty approach, Jonas's call).** Added `unmet_demand_penalty` (constructor +
+  `optimize_mix` param, default **1e6**); the objective now adds
+  `unmet_demand_penalty · max(Restwärmebedarf, 0)/Jahreswärmebedarf`. Proportional to the uncovered
+  *fraction*, so it stays well-defined when full coverage is physically impossible (minimises the
+  gap, then cost). Re-verified seeded: CHP-only → **296.8 kW / 67.4 %** (max achievable with one
+  CHP); CHP+GasBoiler → CHP **128.7 kW / 100 %** covered. Pinned by
+  `tests/test_energy_system.py::TestOptimizerCoverage` (seeded; asserts capacity > 50 kW and
+  coverage > 50 %, ranges not exact values — SLSQP/platform drift). 71 domain-core tests green.
 - *POST-RELEASE follow-up:* the SLSQP random restarts draw from the global unseeded
-  `np.random` (`:1028-1030`), so `optimize_mix` is non-deterministic / un-golden-masterable.
-  Accept an optional seed / `np.random.Generator`.
+  `np.random` (`:1042-1045`), so `optimize_mix` is non-deterministic / un-golden-masterable.
+  Accept an optional seed / `np.random.Generator` (the new test seeds the global RNG as a stopgap).
 
 ### C17. Heat-pump electricity overstated at part load → wrong emissions/WGK (fixed 2026-06-16)
 Two HP techs did not rescale electricity to the capped heat output (both were untested):
@@ -924,8 +932,9 @@ release mechanics themselves (section F). See the **Release plan** below.
    the OSM-download *cancel* in `osm_dialogs_base` is carved out to post-release — see C22).
 3. ~~**C17** — river/geothermal HP electricity overstated at part load (untested → fix + test).~~
    **Done 2026-06-16.**
-4. **C16** — optimizer has no coverage constraint. Highest value, but **verify against a
-   real run first** before touching the model.
+4. ~~**C16** — optimizer has no coverage constraint. Highest value, but **verify against a
+   real run first** before touching the model.~~ **Verified + fixed 2026-06-16** (unmet-demand
+   penalty, default 1e6; the collapse was confirmed against a real seeded run first).
 
 **Release mechanics (section F):**
 5. **F1** — decide the distribution model (2 git deps block PyPI). *Your call — gates F2/F5.*
