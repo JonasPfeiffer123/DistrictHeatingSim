@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "districtheatingsim"
-version = "1.0.3"
+version = "2.0.0"
 description = "A simulation tool for district heating systems"
 readme = "README.md"
 license = {file = "LICENSE"}

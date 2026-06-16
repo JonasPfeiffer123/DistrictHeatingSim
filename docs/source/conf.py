@@ -6,8 +6,8 @@ sys.path.insert(0, os.path.abspath('../../src'))
 project = 'DistrictHeatingSim'
 copyright = '2025, Dipl.-Ing. (FH) Jonas Pfeiffer'
 author = 'Dipl.-Ing. (FH) Jonas Pfeiffer'
-release = '1.0.3'
-version = '1.0.3'
+release = '2.0.0'
+version = '2.0.0'
 
 # -- General configuration ---------------------------------------------------
 extensions = [

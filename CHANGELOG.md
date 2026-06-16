@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-16
+
+### Added
+- **1D thermal storage model**: `ThermalStorageAdapter` (network/seasonal) and
+  `BufferStorage` (CHP/biomass buffer) wrapping the published
+  [thermal-energy-storage-1d](https://github.com/JonasPfeiffer123/thermal-energy-storage-1d)
+  package, replacing the previous `STES` / `StratifiedThermalStorage` /
+  `SimpleThermalStorage` classes. Storage capital + maintenance cost now feeds the
+  system LCOH; dispatch, serialization and result plots are wired through it.
+- **Terrain/elevation support**: DEM (GeoTIFF) or OpenTopoData API → per-vertex
+  `height_m`, fed into the pandapipes geodetic head (`net_generation/elevation_utils.py`).
+- **3D network visualisation** and improved STANET CSV import.
+- **GUI entry point**: `districtheatingsim` console command (`[project.gui-scripts]`),
+  in addition to `python -m districtheatingsim`.
+- **Schema versioning & migration** for `project_settings.json`, the EnergySystem
+  JSON, the building combined-data JSON, `dialog_config.json` and the network GeoJSON,
+  via a shared `utilities/schema.py` helper (`_meta` block + registry).
+- **CSV column-contract validation** (`utilities/csv_schemas.py`): missing/renamed
+  columns now raise a clear up-front error naming every missing column.
+- **Soft negative-pressure (cavitation) warning** in the pipeflow result validation.
+
+### Changed
+- **BREAKING — pandapipes 0.13 → 0.14.** Pinned to `pandapipes==0.14.0`. The legacy
+  `KMR …` pipe std-types (`material="KMR"`) are re-anchored to ISOPLUS bonded-steel
+  pipes (`ISOPLUS_DRE…`, `material="P235GH/PUR/PEHD"`); the heat-loss/diameter columns
+  moved to `u_w_per_mk` / `inner_diameter_mm`. **Projects saved on 0.13 are migrated
+  automatically on load** (KMR → nearest ISOPLUS, diameter/u recovered, std-type
+  catalog refreshed). Diameter init now rounds *up* to satisfy `v_max` in a single pass.
+- **Central physical constants** (`districtheatingsim/constants.py`): `KELVIN_OFFSET`,
+  `CP_WATER_KJ_KGK`, CO₂ / primary-energy / BEW factors. Water `cp` unified to
+  4.18 kJ/kg·K (changed the former 4.2 sites in the pandapipes layer by ~0.5 %).
+- **EnergySystem results** are now `TechnologyResult` records (single source of truth);
+  the German parallel result lists are a projection, so they can no longer diverge.
+- `ProjectFolderManager` is the single owner of the TRY/COP file paths.
+- Domain core is now PyQt6-free (encoder moved to `heat_generators/json_encoder.py`),
+  so it imports and tests headless.
+
+### Fixed
+- **Energy-system optimizer no longer optimises the system out of existence**: a
+  penalty on uncovered demand stops SLSQP from minimising the objective by undersizing
+  generators (verified: a CHP previously collapsed to 0 kW / 0 % coverage).
+- **Heat-pump electricity at part load**: River and Geothermal heat pumps now rescale
+  electricity to the delivered (capped) heat output, fixing overstated
+  electricity/CO₂/primary-energy/WGK.
+- **CHP economics** keyed off an explicit `fuel_type` instead of the instance name
+  (an arbitrarily-named CHP no longer raises `UnboundLocalError`).
+- **`annuity()`** rejects the rate-instead-of-factor footgun (was silently ~0 cost).
+- Dialog capacity read/write key asymmetry and the CHP/Holzgas storage-cost default typo.
+- **GUI thread safety**: unified worker error signals, guards against concurrent
+  energy-system / network runs, threads stopped on app close, and cooperative `stop()`
+  (no `terminate()`) on geocode/generation restart to avoid truncated CSVs.
+- **Return-network geometry**: each vertex is offset perpendicular to its local
+  direction, so supply and return no longer overlap at angled segments.
+- **Windows cp1252 console**: non-ASCII diagnostic prints no longer crash the app /
+  diameter optimization (`UnicodeEncodeError`).
+- Removed pandas chained-assignment writes (silent no-ops under Copy-on-Write).
+- `NetworkGenerationData` numpy arrays and `secondary_producers` round-trip losslessly
+  through the project JSON (previously saved/loaded as strings, breaking the time series).
+- `preprocessData` raises a clear error when no main feed pump is found; EnergySystem
+  guards single-step durations, zero-demand profiles and inconsistent zero-cost sentinels.
+- Dead copy/paste buttons (`QClipboard()` constructor) and the ProjectTab geocode
+  auto-reload (signal/handler tuple mismatch).
+- Overpass building download HTTP 406 (missing User-Agent).
+- Network build is guarded against non-convergence / NaN/inf result states.
+- OS-agnostic TRY path in the photovoltaics example (Linux CI).
+
+### Refactored
+- **God-object decomposition**: `_04_technology_dialogs.py` → schema-driven
+  `technology_dialogs/` package; shared `OSMDownloadDialogBase`;
+  `interactive_network_plot.py` → a GUI-/Plotly-free `plot_data.py` data layer;
+  GUI-free islands extracted from `main_view` (`project_structure.py`).
+- **Domain logic pulled out of views** (B2): network recalculation/KPIs, infrastructure
+  annuity, variant KPI aggregation, geometry centroid — into tested, GUI-free functions.
+
+### Testing / CI
+- New domain-core + simulation golden-master test suite (**313 non-slow tests**),
+  deterministic fixtures, examples smoke suite.
+- GitHub Actions CI: **gating** pytest (3.11 + 3.12) and `ruff check` +
+  `ruff format --check` over the whole `src` tree (incl. GUI) + tests.
+
 ## [1.0.3] - 2026-03-18
 
 ### Added
