@@ -599,25 +599,34 @@ pass an inequality constraint `Restwärmebedarf ≤ tol` to SLSQP.
   `np.random` (`:1028-1030`), so `optimize_mix` is non-deterministic / un-golden-masterable.
   Accept an optional seed / `np.random.Generator`.
 
-### C17. Heat-pump electricity overstated at part load → wrong emissions/WGK (found 2026-06-15, OPEN)
-**Severity: pre-release.** Two HP techs do not rescale electricity to the capped heat
-output (both **untested**):
-- `RiverHeatPump.calculate_operation` caps `Wärmeleistung_kW = min(Last_L, Wärmeleistung_FW_WP)`
-  but takes `el_Leistung_kW`/`Kühlleistung_kW` from `calculate_heat_pump` at the **full
-  nominal** capacity and never rescales (`river_heat_pump.py:108-111`), unlike
-  `waste_heat_pump.py:131-133` which does. At load < nominal, `Strommenge_MWh`, CO₂,
-  primary energy and WGK are overstated.
-- `Geothermal.generate` writes the **extraction** power into the electricity array:
-  `el_Leistung_kW[t] = Wärmeleistung_kW[t] − (Wärmeleistung_kW[t]/Wärmeleistung)·el_Leistung`
-  reduces (at full load) to `Wärmeleistung − el_Leistung = Entzugsleistung`, not the
-  electrical power (`geothermal_heat_pump.py:200`). The storage-coupled per-timestep
-  dispatch path thus reports the wrong electricity; the bulk `calculate_operation` path is
-  correct.
-Fix: on the operating mask set `el_Leistung_kW = Wärmeleistung_kW / COP` (mirror
-WasteHeatPump); add a golden-master test for each (none exists today).
+### C17. Heat-pump electricity overstated at part load → wrong emissions/WGK (fixed 2026-06-16)
+Two HP techs did not rescale electricity to the capped heat output (both were untested):
+- **`RiverHeatPump.calculate_operation` (fixed).** It capped
+  `Wärmeleistung_kW = min(Last_L, Wärmeleistung_FW_WP)` but took
+  `el_Leistung_kW`/`Kühlleistung_kW` from `calculate_heat_pump` at the **full nominal**
+  capacity and never rescaled, so at load < nominal `Strommenge_MWh`, CO₂, primary energy
+  and WGK were overstated. Now, on the operating mask,
+  `el_Leistung_kW = Wärmeleistung_kW / COP` and the river extraction follows the energy
+  balance `Kühlleistung_kW = Wärmeleistung_kW − el_Leistung_kW`. (The per-timestep
+  `generate()` path delivers full nominal heat, so it was already consistent — no change.)
+- **`Geothermal.generate` (fixed).** It wrote the **extraction** power into the electricity
+  array: `el_Leistung_kW[t] = Wärmeleistung_kW[t] − (Wärmeleistung_kW[t]/Wärmeleistung)·el_Leistung`
+  reduced (since `Wärmeleistung_kW[t] == Wärmeleistung` here) to `Wärmeleistung − el_Leistung
+  = Entzugsleistung`, not the electrical power. Now `el_Leistung_kW[t] = Wärmeleistung_kW[t]
+  / COP[t]` (the dead `el_Leistung` local was removed). The bulk `calculate_operation` path
+  was already correct.
+- **Tests:** `tests/test_heat_generators.py::TestRiverHeatPumpPartLoad` (el scales to the
+  capped output; energy balance Q = extraction + el) and `::TestGeothermalElectricity`
+  (generate reports electrical, not extraction, power), both built on a small deterministic
+  COP grid (`_COP_GRID`, interpolates to COP 4.0). 13 heat-generator tests green; ruff clean.
 - *POST-RELEASE:* `calculate_COP` silently clamps the required flow temperature to
   source+75 K (`base_heat_pumps.py:118`) and zeros the COP out of table bounds (`:140-148`,
   `print` not `logging`) — warn/flag instead of silently clamping.
+- *POST-RELEASE (found 2026-06-16):* `Geothermal.generate`/`RiverHeatPump.generate` pass
+  **scalar** `VLT`/source temp into `calculate_COP` (which is array-shaped), so
+  `geothermal_heat_pump.py:188` raises a NumPy `DeprecationWarning` ("Conversion of an array
+  with ndim > 0 to a scalar … will error in future"). Harmless today, will break on a future
+  NumPy — wrap the scalar inputs as 1-element arrays (or give the HPs a scalar COP path).
 
 ### C18. `QClipboard()` instantiated directly → copy/paste buttons dead (fixed 2026-06-16)
 `layer_generation_dialog.py:594` and `:607` did `clipboard = QClipboard()`; `QClipboard`
@@ -913,7 +922,8 @@ release mechanics themselves (section F). See the **Release plan** below.
    robustness edges (1-step duration, zero-demand NaN, cost sentinels/None);
    `QThread.terminate()` CSV corruption.~~ **Done 2026-06-16** (C22: the 3 restart sites;
    the OSM-download *cancel* in `osm_dialogs_base` is carved out to post-release — see C22).
-3. **C17** — river/geothermal HP electricity overstated at part load (untested → fix + test).
+3. ~~**C17** — river/geothermal HP electricity overstated at part load (untested → fix + test).~~
+   **Done 2026-06-16.**
 4. **C16** — optimizer has no coverage constraint. Highest value, but **verify against a
    real run first** before touching the model.
 
