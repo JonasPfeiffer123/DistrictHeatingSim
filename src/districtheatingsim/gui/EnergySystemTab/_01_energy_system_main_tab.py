@@ -497,6 +497,8 @@ class EnergySystemTab(QWidget):
         self.COP_data = np.genfromtxt(self.COP_filename, delimiter=";")
 
         # Collect qext_kW values from pump results
+        flow_temp_circ_pump = None
+        return_temp_circ_pump = None
         qext_values = []
         for pump_type, pumps in pump_results.items():
             for _idx, pump_data in pumps.items():
@@ -506,6 +508,13 @@ class EnergySystemTab(QWidget):
                 if pump_type == "Heizentrale Haupteinspeisung":
                     flow_temp_circ_pump = pump_data["flow_temp"]
                     return_temp_circ_pump = pump_data["return_temp"]
+
+        if flow_temp_circ_pump is None or return_temp_circ_pump is None:
+            raise ValueError(
+                "Keine Haupteinspeisung ('Heizentrale Haupteinspeisung') in den Lastgang-Ergebnissen "
+                f"({self.csv_filename}) gefunden. Die Vor-/Rücklauftemperaturen der Hauptpumpe werden "
+                "für die Berechnung benötigt."
+            )
 
         if qext_values:
             qext_kW = np.sum(np.array(qext_values), axis=0)
@@ -564,7 +573,11 @@ class EnergySystemTab(QWidget):
             return
 
         if self.techTab.tech_objects:
-            self.preprocessData()
+            try:
+                self.preprocessData()
+            except (ValueError, KeyError) as e:
+                QMessageBox.warning(self, "Ungültige Eingabedaten", str(e))
+                return
 
             self.calculationThread = CalculateEnergySystemThread(self.energy_system, self.optimize, weights)
 
