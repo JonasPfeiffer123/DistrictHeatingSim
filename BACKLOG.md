@@ -859,6 +859,13 @@ Same root cause as B4.
   diagnostic: `project_tab.py:414-415,450-451,610-611,812-814` (the last returns "ist
   vorhanden" on any read error — masks a corrupt CSV); `comparison_tab.py:525-527,537-538,1080-1081`.
   Narrow them + at least `logging.warning`.
+- **Hardcoded backslashes in `examples/` paths (CI-relevant subset fixed 2026-06-16).** A
+  literal `"examples\\data\\TRY\\…"` in `examples/14_example_photovoltaics.py` failed the gating
+  `test_examples_smoke.py` on Linux CI (`FileNotFoundError` — `\` is not a separator on POSIX).
+  Fixed to forward slashes (the convention in 08/09/10/18_stanet). **Still backslashed (not in the
+  smoke set, so not CI-gated — fix when touched):** `20_leaflet_test.py:53` (Qt, excluded),
+  `benchmark_synthetic_net_generation.py:16-18,74` and `generate_synthetic_gis_data.py:95,98-100`
+  (dev/benchmark scripts). Forward slashes work on Windows too — no `os.path.join` churn needed.
 
 ## F. Release readiness & distribution (2026-06-15 audit)
 The mechanics of actually shipping a clean release. None of these are A–E code debt; they
