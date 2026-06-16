@@ -18,7 +18,9 @@ import pytest
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 from districtheatingsim.heat_generators.chp import CHP
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.geothermal_heat_pump import Geothermal
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
+from districtheatingsim.heat_generators.river_heat_pump import RiverHeatPump
 
 REL = 1e-5
 
@@ -173,3 +175,58 @@ class TestCHP:
         chp = self._make()
         chp.Wärmemenge_MWh = 0
         assert chp.calculate_heat_generation_costs(economic_parameters) == float("inf")
+
+
+# A 2x2 COP grid: rows = source temps [5, 15] °C, cols = flow temps [40, 60] °C.
+# Query (source=10, flow=50) bilinearly interpolates to COP = 4.0 exactly.
+_COP_GRID = np.array(
+    [
+        [0.0, 40.0, 60.0],
+        [5.0, 4.0, 3.0],
+        [15.0, 5.0, 4.0],
+    ]
+)
+
+
+class TestRiverHeatPumpPartLoad:
+    """C17: electricity must rescale to the demand-capped heat output."""
+
+    def test_electricity_scales_to_capped_heat_output(self):
+        hp = RiverHeatPump("Flusswärme", Wärmeleistung_FW_WP=100.0, Temperatur_FW_WP=10.0)
+        # Step 0: demand above nominal -> heat capped to 100 kW (full load).
+        # Step 1: demand 50 kW -> heat capped to 50 kW (part load).
+        Last_L = np.array([200.0, 50.0])
+        VLT_L = np.array([50.0, 50.0])
+        hp.calculate_operation(Last_L, VLT_L, _COP_GRID)
+
+        assert hp.COP[0] == pytest.approx(4.0)
+        assert hp.Wärmeleistung_kW[0] == pytest.approx(100.0)
+        assert hp.Wärmeleistung_kW[1] == pytest.approx(50.0)
+        # el = Q / COP at BOTH steps; the part-load step used to stay at the
+        # nominal 25 kW (overstated) before C17.
+        assert hp.el_Leistung_kW[0] == pytest.approx(25.0)
+        assert hp.el_Leistung_kW[1] == pytest.approx(12.5)
+        # Energy balance Q = river extraction + electricity on operating steps.
+        mask = hp.betrieb_mask
+        np.testing.assert_allclose(
+            hp.Wärmeleistung_kW[mask],
+            hp.Kühlleistung_kW[mask] + hp.el_Leistung_kW[mask],
+        )
+
+
+class TestGeothermalElectricity:
+    """C17: generate() must report electrical power, not ground-extraction power."""
+
+    def test_generate_reports_electrical_power(self):
+        geo = Geothermal("Erdsonden", Fläche=100.0, Bohrtiefe=100.0, Temperatur_Geothermie=10.0)
+        geo.init_operation(2)
+        q, el = geo.generate(0, VLT_L=50.0, COP_data=_COP_GRID)
+
+        assert geo.betrieb_mask[0]
+        assert geo.COP[0] == pytest.approx(4.0)
+        # Electricity is Q / COP (the smaller term), NOT the extraction power
+        # Q * (1 - 1/COP); before C17 el equalled the extraction power.
+        assert el == pytest.approx(q / 4.0)
+        extraction = q * (1 - 1 / 4.0)
+        assert el < extraction
+        assert el == pytest.approx(geo.Wärmeleistung_kW[0] / geo.COP[0])
