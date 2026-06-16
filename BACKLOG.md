@@ -889,14 +889,15 @@ districtheatingsim` as the equivalent). Verified: `pip install -e .` registers t
 `districtheatingsim` executable (`shutil.which` resolves it); the entry-point target imports +
 is callable; pyproject parses. (`gui-scripts` rather than `scripts` so the Windows launcher opens
 no console window.)
-### F3. Empty CHANGELOG + version bump
-**Severity: pre-release.** `CHANGELOG.md:8` `[Unreleased]` is empty despite everything since
-1.0.3 (pandapipes 0.14/ISOPLUS, central constants, `TechnologyResult`, the test suite +
-gating CI, ruff, thermal-storage adapter, C3–C14). Versions are consistent at 1.0.3 in
-`pyproject.toml:7` / `src/districtheatingsim/__init__.py:13` / `docs/source/conf.py:9` —
-**but the badge in `docs/source/index.rst:4` says 1.0.0.** Write the changelog from the
-"landed" notes + git log, then bump all four sites in one commit (a minor/major bump is
-warranted given the pandapipes break).
+### F3. Empty CHANGELOG + version bump (done 2026-06-16)
+`CHANGELOG.md` `[Unreleased]` was empty despite 114 commits since `v1.0.3`. **Done:** wrote the
+full release section from the git log + the "landed" notes (Added/Changed/Fixed/Refactored/
+Testing), with the pandapipes 0.13→0.14 migration flagged **BREAKING**. **Bumped 1.0.3 → 2.0.0**
+(major, Jonas's call — the pandapipes break + forced old-project migration) at all four sites
+(`pyproject.toml`, `__init__.py`, `docs/source/conf.py` release+version, and the stale **1.0.0**
+badge in `docs/source/index.rst`); the CHANGELOG header is now `[2.0.0] - 2026-06-16` with a fresh
+empty `[Unreleased]`. Verified: all four sites read 2.0.0 and `districtheatingsim.__version__`
+imports as `2.0.0`. (The bare `pip install districtheatingsim` in `index.rst:91` is left to F5.)
 ### F4. CI now gating but the run status is unconfirmed
 **Severity: pre-release.** `HEAD == origin/main == b03bf77` — everything is pushed, so the
 gating `ci.yml` (pytest 3.11/3.12 + `ruff check` + `ruff format --check`) triggered on the
@@ -916,6 +917,25 @@ the EnergySystemTab autodoc still points at the `_04_technology_dialogs` façade
 `technology_dialogs/` package. One `sphinx-apidoc -f -o source/ ../src/districtheatingsim`
 closes most of it (then re-add the hand-written prose pages it doesn't touch). Also fix the
 1.0.0 badge (F3) and the bare `pip install districtheatingsim` in `index.rst:91` (→ git URL).
+### F6. PyInstaller build + specs untested after the refactors (found 2026-06-16)
+**Severity: pre-release (the chosen distribution channel — see F1).** With PyPI off the table,
+the **PyInstaller exe is the primary user-facing artifact**, but the build path
+(`build.py`, `build_debug.py`, `DistrictHeatingSim.spec`, `DistrictHeatingSim_Release.spec`)
+has **not been re-run** since the 2026-06 refactors. Risks to verify before tagging:
+- **New modules bundled?** Many modules were added (`heat_generators.{results,json_encoder}`,
+  `constants.py`, `net_simulation_pandapipes.{plot_data,net_migration,result_validation,pipe_std_types}`,
+  `utilities.{schema,csv_schemas}`, `osm.area_selection`, `technology_dialogs/` package). Most ride
+  along inside already-collected packages, but the `datas=[…]` list in the specs is **hand-maintained
+  per sub-package** and can miss new ones.
+- **Git deps present?** `pyslpheat` and `thermal-energy-storage-1d` must be collected (no PyPI
+  metadata; may need `copy_metadata`/`collect_submodules` hooks like `osmnx` already has).
+- **pandapipes 0.14 data?** The specs copy `std_types/library` + `properties` dynamically — confirm
+  the **ISOPLUS** catalog loads in the frozen exe (the 0.14 std-types are the whole C11 migration).
+- **Smoke-run the exe**: launch, create/load a project, run a net + an energy-system calc.
+- The specs hardcode `src\\districtheatingsim\\DistrictHeatingSim.py` (backslashes) — Windows-only
+  build, harmless there, but note it if the build is ever attempted on Linux/mac.
+Do this *after* F2/F3 land (the entry point + version are what the build ships) and ideally wire a
+minimal `pyinstaller … --noconfirm` smoke into a manual/release workflow so it can't silently rot.
 
 ---
 
@@ -954,12 +974,13 @@ release mechanics themselves (section F). See the **Release plan** below.
    the git-URL path).
 6. ~~**F2** — add the `[project.gui-scripts]` entry point.~~ **Done 2026-06-16** (+ README run
    instructions; `pip install -e .` registers the `districtheatingsim` command).
-7. **F3** — write the CHANGELOG `[Unreleased]` section + bump the version (4 sites incl. the
-   stale 1.0.0 docs badge).
-8. **F4** — check the GitHub Actions status for `b03bf77` (CI is now gating; the
-   "never run / ahead of origin" note is stale).
+7. ~~**F3** — write the CHANGELOG `[Unreleased]` section + bump the version (4 sites incl. the
+   stale 1.0.0 docs badge).~~ **Done 2026-06-16** (bumped 1.0.3 → **2.0.0**, major).
+8. **F4** — check the GitHub Actions status for the latest push (CI is now gating). *Currently
+   green per Jonas; re-confirm after pushing the C16–C22 / F2–F3 commits.*
 9. **F5** — docs sweep (regenerate autodoc stubs; fix the badge + the bad `pip install` in
    `index.rst`). Do this *last*, once the API churn above has stopped (see Pre-release).
+10. **F6** — test the PyInstaller build + specs (the chosen distribution channel). After F2/F3.
 
 ### After the new release (Weiterentwicklung)
 - **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
