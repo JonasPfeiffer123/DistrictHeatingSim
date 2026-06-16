@@ -385,8 +385,9 @@ class VisualizationPresenter(QObject):
         :type inputfilename: str
         """
         if hasattr(self, "geocodingThread") and self.geocodingThread.isRunning():
-            self.geocodingThread.terminate()
-            self.geocodingThread.wait()
+            # Cooperative stop (waits for the current run to finish) instead of
+            # terminate(), which can kill the thread mid-write and truncate the CSV.
+            self.geocodingThread.stop()
         self.geocodingThread = GeocodingThread(inputfilename)
         self.geocodingThread.calculation_done.connect(self.on_geocode_done)
         self.geocodingThread.calculation_error.connect(self.on_geocode_error)
@@ -620,8 +621,9 @@ class VisualizationPresenter(QObject):
         :type inputs: dict
         """
         if hasattr(self, "netgenerationThread") and self.netgenerationThread.isRunning():
-            self.netgenerationThread.terminate()
-            self.netgenerationThread.wait()
+            # Cooperative stop instead of terminate(), which can kill the thread
+            # mid-write and leave a truncated output file.
+            self.netgenerationThread.stop()
         self.netgenerationThread = NetGenerationThread(inputs, self.model.base_path)
         self.netgenerationThread.calculation_done.connect(self.on_generation_done)
         self.netgenerationThread.calculation_error.connect(self.on_generation_error)
