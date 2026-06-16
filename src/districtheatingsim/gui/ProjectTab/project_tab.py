@@ -727,14 +727,16 @@ class ProjectPresenter:
         self.geocodingThread.start()
         self.view.progressBar.setRange(0, 0)
 
-    def on_geocode_done(self, fname):
+    def on_geocode_done(self, result):
         """
         Handle geocoding completion.
 
-        :param fname: Output filename.
-        :type fname: str
+        :param result: Tuple of (filename, summary_dict) emitted by GeocodingThread.
+        :type result: tuple
         """
         self.view.progressBar.setRange(0, 1)
+
+        fname, _summary = result
 
         # Automatically reload the updated CSV file to show the new coordinates
         if fname and os.path.exists(fname):
