@@ -6,7 +6,17 @@ Main Utilities package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.utilities.csv_schemas
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.utilities.path_utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.utilities.schema
    :members:
    :show-inheritance:
    :undoc-members:

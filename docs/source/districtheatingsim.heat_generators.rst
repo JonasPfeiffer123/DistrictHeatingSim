@@ -46,12 +46,22 @@ Heat generators package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.heat_generators.json_encoder
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.heat_generators.photovoltaics
    :members:
    :show-inheritance:
    :undoc-members:
 
 .. automodule:: districtheatingsim.heat_generators.power_to_heat
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.heat_generators.results
    :members:
    :show-inheritance:
    :undoc-members:

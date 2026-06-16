@@ -6,6 +6,11 @@ Main application
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.constants
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. toctree::
    :maxdepth: 2
    :caption: Core Components
