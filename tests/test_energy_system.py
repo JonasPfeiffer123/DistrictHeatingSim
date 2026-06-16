@@ -123,6 +123,29 @@ class TestEnergySystemNoStorage:
         assert no_storage_results["Wärmemengen"][1] == pytest.approx(1156.361999, rel=REL)
 
 
+class TestOptimizerCoverage:
+    """C16: the optimiser must not minimise the objective by undersizing generators."""
+
+    def test_optimizer_does_not_collapse_to_empty_system(self):
+        # Before C16 the objective (WGK + emissions + primary-energy, all / full annual
+        # demand) was minimised by shrinking the CHP: the uncovered load fell into the
+        # cost-free "Ungedeckter Bedarf" row and every term went to 0, so a seeded SLSQP
+        # run drove the capacity to the lower bound (0 kW, 0 % covered). The unmet-demand
+        # penalty must keep the optimum at a demand-covering size.
+        np.random.seed(42)
+        es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+        es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=300, opt_BHKW_min=0, opt_BHKW_max=1000))
+        weights = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 1.0, "primärenergiefaktor_Gesamt": 1.0}
+
+        opt = es.optimize_mix(weights, num_restarts=3)
+        chp = opt.technologies[0]
+        r = opt.calculate_mix()
+        covered = (r["Jahreswärmebedarf"] - r["Restwärmebedarf"]) / r["Jahreswärmebedarf"]
+
+        assert chp.th_Leistung_kW > 50.0  # not collapsed toward the 0 kW lower bound
+        assert covered > 0.5  # covers a meaningful share of demand (was ~0 before)
+
+
 class TestEnergySystemRobustness:
     """C21: domain-core edge cases that used to fail silently or opaquely."""
 
