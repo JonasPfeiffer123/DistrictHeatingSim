@@ -190,14 +190,18 @@ class Geothermal(HeatPump):
         # Calculate thermal extraction rate (assuming uniform distribution)
         Entzugsleistung = self.Entzugswärmemenge * 1000 / 8760  # kW
         Wärmeleistung = Entzugsleistung / (1 - (1 / self.COP[t]))
-        el_Leistung = Wärmeleistung - Entzugsleistung
 
         # Check operational constraints
         if self.active and self.VLT_WP[t] >= VLT and self.Fläche > 0 and self.Bohrtiefe > 0:
             # Geothermal system can operate
             self.betrieb_mask[t] = True
             self.Wärmeleistung_kW[t] = Wärmeleistung
-            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
+            # Electrical power, not extraction power (C17). The old expression
+            # reduced (Wärmeleistung_kW[t] == Wärmeleistung) to Wärmeleistung -
+            # el_Leistung == Entzugsleistung, writing the ground-extraction power
+            # into the electricity array. el = Q / COP scales correctly if the
+            # delivered heat is ever capped below nominal.
+            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] / self.COP[t]
         else:
             # System cannot operate - set outputs to zero
             self.betrieb_mask[t] = False

@@ -119,6 +119,16 @@ class RiverHeatPump(HeatPump):
             Last_L >= self.Wärmeleistung_FW_WP * self.min_Teillast,  # Minimum load requirement
         )
 
+        # Rescale electricity + river extraction to the demand-capped heat output
+        # (C17). calculate_heat_pump returns both at the nominal Wärmeleistung_FW_WP;
+        # without this the electricity (and hence emissions/WGK) is overstated
+        # whenever the delivered heat is throttled to demand. el = Q / COP, and the
+        # river extraction follows from the energy balance Q = extraction + el.
+        self.el_Leistung_kW[self.betrieb_mask] = self.Wärmeleistung_kW[self.betrieb_mask] / self.COP[self.betrieb_mask]
+        self.Kühlleistung_kW[self.betrieb_mask] = (
+            self.Wärmeleistung_kW[self.betrieb_mask] - self.el_Leistung_kW[self.betrieb_mask]
+        )
+
         # Set outputs to zero when not operating
         self.Wärmeleistung_kW[~self.betrieb_mask] = 0
         self.Kühlleistung_kW[~self.betrieb_mask] = 0
