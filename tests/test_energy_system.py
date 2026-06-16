@@ -123,6 +123,30 @@ class TestEnergySystemNoStorage:
         assert no_storage_results["Wärmemengen"][1] == pytest.approx(1156.361999, rel=REL)
 
 
+class TestEnergySystemRobustness:
+    """C21: domain-core edge cases that used to fail silently or opaquely."""
+
+    def test_single_timestep_duration_defaults_to_one_hour(self):
+        # A single-step profile carries no interval, so the np.diff that infers
+        # `duration` is empty — construction used to raise IndexError. It now
+        # falls back to 1 h instead of crashing.
+        ts = pd.date_range("2023-01-01", periods=1, freq="h").to_numpy()
+        z = tuple(np.zeros(1) for _ in range(5))
+        es = EnergySystem(
+            ts, np.array([100.0]), np.array([85.0]), np.array([50.0]), z, np.zeros((2, 2)), _ECONOMIC_PARAMS
+        )
+        assert es.duration == 1.0
+
+    def test_zero_demand_raises(self):
+        # An all-zero load profile gives Jahreswärmebedarf == 0; every share/WGK
+        # term divides by it, so the result set used to go silently NaN/inf.
+        # calculate_mix now fails loud.
+        es = _make_energy_system(np.zeros(8760), _ECONOMIC_PARAMS)
+        es.add_technology(GasBoiler("Gaskessel_1", thermal_capacity_kW=500))
+        with pytest.raises(ValueError, match="Jahreswärmebedarf"):
+            es.calculate_mix()
+
+
 # ===========================================================================
 # 2. EnergySystem — with small network storage (ThermalStorageAdapter)
 # ===========================================================================

@@ -97,7 +97,13 @@ class EnergySystem:
 
         self.results = {}
 
-        self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, "h"))[0]
+        # Hours per time step, inferred from the first interval. A single-step
+        # profile carries no interval to infer from — fall back to 1 h (hourly
+        # resolution) instead of crashing on the empty np.diff.
+        if len(self.time_steps) >= 2:
+            self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, "h"))[0]
+        else:
+            self.duration = 1.0
 
     def add_technology(self, tech) -> None:
         """
@@ -280,6 +286,15 @@ class EnergySystem:
             variables_order = []
 
         self.initialize_results()
+
+        # Every share / WGK / emissions term divides by Jahreswärmebedarf; a zero
+        # (empty or all-zero load profile) would silently turn the whole result set
+        # to NaN/inf. Fail loud instead.
+        if self.results["Jahreswärmebedarf"] <= 0:
+            raise ValueError(
+                "Jahreswärmebedarf ist 0 (leeres oder Null-Lastprofil) — die "
+                "Wärmegestehungskosten und Anteile sind nicht definiert."
+            )
 
         # Initialize optimization variables
         self.set_optimization_variables(variables, variables_order)

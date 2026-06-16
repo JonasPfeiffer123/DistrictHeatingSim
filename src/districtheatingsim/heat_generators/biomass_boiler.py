@@ -249,7 +249,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.load_economic_parameters(economic_parameters)
 
         if self.Wärmemenge_MWh == 0:
-            return 0
+            return float("inf")
 
         # Calculate component investment costs
         self.Investitionskosten_Kessel = self.spez_Investitionskosten * self.thermal_capacity_kW

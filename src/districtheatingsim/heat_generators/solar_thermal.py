@@ -248,7 +248,7 @@ class SolarThermal(BaseHeatGenerator):
         self.load_economic_parameters(economic_parameters)
 
         if self.Wärmemenge_MWh == 0:
-            return 0
+            return float("inf")
 
         # Calculate investment costs
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
