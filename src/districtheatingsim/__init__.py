@@ -10,5 +10,5 @@ This package provides tools for:
 - Economic analysis and visualization
 """
 
-__version__ = "1.0.3"
+__version__ = "2.0.0"
 __author__ = "Dipl.-Ing. (FH) Jonas Pfeiffer"
