@@ -619,21 +619,26 @@ WasteHeatPump); add a golden-master test for each (none exists today).
   source+75 K (`base_heat_pumps.py:118`) and zeros the COP out of table bounds (`:140-148`,
   `print` not `logging`) — warn/flag instead of silently clamping.
 
-### C18. `QClipboard()` instantiated directly → copy/paste buttons dead (found 2026-06-15, OPEN)
-**Severity: pre-release (verified crash).** `layer_generation_dialog.py:594` and `:607` do
-`clipboard = QClipboard()`; `QClipboard` has no public constructor in PyQt6 (`TypeError: …
-cannot be instantiated`), so the "Koordinaten kopieren/einfügen" buttons raise on click —
-the feature is dead. Fix: `QApplication.clipboard()` at both sites.
+### C18. `QClipboard()` instantiated directly → copy/paste buttons dead (fixed 2026-06-16)
+`layer_generation_dialog.py:594` and `:607` did `clipboard = QClipboard()`; `QClipboard`
+has no public constructor in PyQt6 (`TypeError: … cannot be instantiated`), so the
+"Koordinaten kopieren/einfügen" buttons raised on click — the feature was dead.
+**Fixed:** both sites now use `QApplication.clipboard()` (the canonical singleton accessor);
+the unused `from PyQt6.QtGui import QClipboard` import was dropped and `QApplication` added
+to the QtWidgets import. Verified: module imports offscreen, ruff check + format clean.
+(Qt-glue with no behaviour-test seam — smoke-import + lint, as for the other GUI fixes.)
 
-### C19. ProjectTab geocoding handler/signal mismatch → no auto-reload (found 2026-06-15, OPEN)
-**Severity: pre-release (verified).** `GeocodingThread.calculation_done` is
-`pyqtSignal(object)` and emits the tuple `(self.inputfilename, result_dict)`
-(`gui/LeafletTab/net_generation_threads.py:247,276`; `process_data` returns a dict,
-`geocoding/geocoding.py:55`), and the LeafletTab handler unpacks it. But ProjectTab's
-`on_geocode_done(self, fname)` (`gui/ProjectTab/project_tab.py:730`) treats the whole tuple
-as a path → `os.path.exists(tuple)` raises `TypeError` (swallowed by Qt). After
-"Geokoordinaten berechnen" the table is never reloaded and no success message shows (the
-CSV *is* written). Fix: unpack `fname, _summary = result` like the leaflet handler.
+### C19. ProjectTab geocoding handler/signal mismatch → no auto-reload (fixed 2026-06-16)
+`GeocodingThread.calculation_done` is `pyqtSignal(object)` and emits the tuple
+`(self.inputfilename, result_dict)` (`gui/LeafletTab/net_generation_threads.py:247,276`;
+`process_data` returns a dict, `geocoding/geocoding.py:55`), and the LeafletTab handler
+unpacks it. But ProjectTab's `on_geocode_done(self, fname)`
+(`gui/ProjectTab/project_tab.py:730`) treated the whole tuple as a path →
+`os.path.exists(tuple)` raised `TypeError` (swallowed by Qt). After "Geokoordinaten
+berechnen" the table was never reloaded and no success message showed (the CSV *was*
+written). **Fixed:** `on_geocode_done(self, result)` now unpacks `fname, _summary = result`
+(mirroring `leaflet_tab.on_geocode_done`) before the reload. Verified: module imports
+offscreen, ruff check + format clean. (Same Qt-glue caveat as C18.)
 
 ### C20. `preprocessData` UnboundLocalError if the main feed pump isn't named exactly (found 2026-06-15, OPEN)
 **Severity: pre-release (verified) — same class as fixed C6.** In
@@ -875,8 +880,8 @@ release mechanics themselves (section F). See the **Release plan** below.
 
 ### Before the new release
 **Correctness bugs (all verified at file:line on 2026-06-15):**
-1. **C18 / C19** — quick wins: `QClipboard()` dead buttons; ProjectTab geocode handler
-   mismatch (no auto-reload). Trivial, fix first.
+1. ~~**C18 / C19** — quick wins: `QClipboard()` dead buttons; ProjectTab geocode handler
+   mismatch (no auto-reload).~~ **Done 2026-06-16.**
 2. **C20 / C21 / C22** — `preprocessData` UnboundLocalError (C6 class); EnergySystem
    robustness edges (1-step duration, zero-demand NaN, cost sentinels/None);
    `QThread.terminate()` CSV corruption.
