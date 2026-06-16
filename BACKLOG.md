@@ -172,6 +172,14 @@ tests. This is the safety net that makes every refactor below low-risk.
     controller) only *moves* LOC and risks breaking signal/stylesheet wiring that can't be
     regression-tested here. Deliberately left until a GUI behaviour-test harness exists;
     the testable GUI-free logic around it has now been harvested (slices 1+2).
+  - **Newly-surfaced god-objects (2026-06-15 audit, OPEN):** three large GUI files are *not*
+    in the original B1 list but hold extractable logic — `gui/ProjectTab/project_tab.py`
+    (1278 LOC; geocoding/CSV logic duplicated with its worker — see B2),
+    `gui/EnergySystemTab/_11_generator_schematic.py` (1264 LOC — note its `delete_selected`
+    at `:841-900` tears down + rebuilds the whole scene, losing manually-dragged layout;
+    delete only the selected item + its linked partner/pipes/label instead), and
+    `gui/ComparisonTab/comparison_tab.py` (1126 LOC). Same caveat as `main_view`: extract the
+    GUI-free islands, leave the Qt glue. Post-release.
 ### B2. MVP violations
 The main frame is clean, but the MVP pattern is applied inconsistently and domain
 logic leaks into the views. Concrete findings (2026-06 survey):
@@ -215,6 +223,16 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      has an in-place `reset_index` side effect to untangle first) and the
      `KostenBerechnungDialog` cost math (`Σ quantity·spec_cost`, tightly coupled to Qt
      input parsing).
+   - *(2026-06-15 audit)* `ProjectModel.create_csv_from_geojson`
+     (`gui/ProjectTab/project_tab.py:132-239`) embeds reverse-geocoding + CRS transform +
+     GeoJSON parsing in the view, duplicated almost verbatim in the worker
+     `GeoJSONToCSVThread.run` (`net_generation_threads.py:327-453`). Extract one GUI-free
+     `geojson_to_building_csv(...)` and call it from both.
+   - *(2026-06-15 audit)* config-name↔filename convention duplicated across tabs:
+     `_filename_to_config_name` is byte-identical in `comparison_tab.py:39` and
+     `_01_energy_system_main_tab.py:54`, and only the main tab has the `/`→`-` sanitiser
+     (`_config_name_to_filename`), so a config named "A/B" doesn't round-trip in the
+     comparison tab. Extract one shared `EnergySystemTab/config_naming.py`.
 3. **Cross-component reach-through.** `main_view` drives other tabs by calling their
    presenters directly (`buildingTab.presenter.load_csv(...)`,
    `projectTab.presenter.save_csv(...)`).
@@ -564,6 +582,90 @@ modelling facts (no code bugs — design choices / data / missing model):
    `_05_cost_tab`). A diameter→€/m table would let the optimizer (and the user) trade
    pump energy against pipe capex properly. Possible future feature.
 
+### C16. Energy-system optimizer has no demand-coverage constraint (found 2026-06-15, OPEN — verify)
+**Severity: pre-release blocker (pending verification).** `EnergySystemOptimizer.optimize`
+calls `scipy_minimize(objective_function, …, method="SLSQP", bounds=bounds, …)` with
+**only `bounds` — no `constraints` and no unmet-demand penalty** (`energy_system.py:1070`;
+objective at `:1056-1060`). The objective is the pure weighted sum
+`WGK_Gesamt + specific_emissions_Gesamt + primärenergiefaktor_Gesamt`, all three minimized
+by *shrinking* generator capacities toward their lower bound: less generation → lower
+absolute cost → the uncovered load lands in the cost-free "Ungedeckter Bedarf" row, so
+`WGK_Gesamt` (divided by the full `Jahreswärmebedarf`) falls. The optimizer is therefore
+structurally biased toward undersized/empty systems. **Verify against a real optimization
+run before changing the model** — if the result collapses, this is the highest-value
+correctness fix. Fix: add a penalty `∝ results["Restwärmebedarf"]` to the objective, or
+pass an inequality constraint `Restwärmebedarf ≤ tol` to SLSQP.
+- *POST-RELEASE follow-up:* the SLSQP random restarts draw from the global unseeded
+  `np.random` (`:1028-1030`), so `optimize_mix` is non-deterministic / un-golden-masterable.
+  Accept an optional seed / `np.random.Generator`.
+
+### C17. Heat-pump electricity overstated at part load → wrong emissions/WGK (found 2026-06-15, OPEN)
+**Severity: pre-release.** Two HP techs do not rescale electricity to the capped heat
+output (both **untested**):
+- `RiverHeatPump.calculate_operation` caps `Wärmeleistung_kW = min(Last_L, Wärmeleistung_FW_WP)`
+  but takes `el_Leistung_kW`/`Kühlleistung_kW` from `calculate_heat_pump` at the **full
+  nominal** capacity and never rescales (`river_heat_pump.py:108-111`), unlike
+  `waste_heat_pump.py:131-133` which does. At load < nominal, `Strommenge_MWh`, CO₂,
+  primary energy and WGK are overstated.
+- `Geothermal.generate` writes the **extraction** power into the electricity array:
+  `el_Leistung_kW[t] = Wärmeleistung_kW[t] − (Wärmeleistung_kW[t]/Wärmeleistung)·el_Leistung`
+  reduces (at full load) to `Wärmeleistung − el_Leistung = Entzugsleistung`, not the
+  electrical power (`geothermal_heat_pump.py:200`). The storage-coupled per-timestep
+  dispatch path thus reports the wrong electricity; the bulk `calculate_operation` path is
+  correct.
+Fix: on the operating mask set `el_Leistung_kW = Wärmeleistung_kW / COP` (mirror
+WasteHeatPump); add a golden-master test for each (none exists today).
+- *POST-RELEASE:* `calculate_COP` silently clamps the required flow temperature to
+  source+75 K (`base_heat_pumps.py:118`) and zeros the COP out of table bounds (`:140-148`,
+  `print` not `logging`) — warn/flag instead of silently clamping.
+
+### C18. `QClipboard()` instantiated directly → copy/paste buttons dead (found 2026-06-15, OPEN)
+**Severity: pre-release (verified crash).** `layer_generation_dialog.py:594` and `:607` do
+`clipboard = QClipboard()`; `QClipboard` has no public constructor in PyQt6 (`TypeError: …
+cannot be instantiated`), so the "Koordinaten kopieren/einfügen" buttons raise on click —
+the feature is dead. Fix: `QApplication.clipboard()` at both sites.
+
+### C19. ProjectTab geocoding handler/signal mismatch → no auto-reload (found 2026-06-15, OPEN)
+**Severity: pre-release (verified).** `GeocodingThread.calculation_done` is
+`pyqtSignal(object)` and emits the tuple `(self.inputfilename, result_dict)`
+(`gui/LeafletTab/net_generation_threads.py:247,276`; `process_data` returns a dict,
+`geocoding/geocoding.py:55`), and the LeafletTab handler unpacks it. But ProjectTab's
+`on_geocode_done(self, fname)` (`gui/ProjectTab/project_tab.py:730`) treats the whole tuple
+as a path → `os.path.exists(tuple)` raises `TypeError` (swallowed by Qt). After
+"Geokoordinaten berechnen" the table is never reloaded and no success message shows (the
+CSV *is* written). Fix: unpack `fname, _summary = result` like the leaflet handler.
+
+### C20. `preprocessData` UnboundLocalError if the main feed pump isn't named exactly (found 2026-06-15, OPEN)
+**Severity: pre-release (verified) — same class as fixed C6.** In
+`_01_energy_system_main_tab.py:506-508`, `flow_temp_circ_pump`/`return_temp_circ_pump` are
+assigned only inside `if pump_type == "Heizentrale Haupteinspeisung"`, then used
+unconditionally to build `EnergySystem` at `:521`. A results CSV without that exact key
+(renamed feed, multi-producer net) → `UnboundLocalError`. Fix: initialise both to a default
+before the loop and raise a clear error if no main feed is found.
+
+### C21. Domain robustness edges in EnergySystem (found 2026-06-15, OPEN)
+**Severity: pre-release (edge cases, no crash on the happy path).**
+- `EnergySystem.duration = (np.diff(time_steps[:2]) / np.timedelta64(1,"h"))[0]`
+  (`energy_system.py:100`) raises `IndexError` for a single-timestep profile — guard
+  `len(time_steps) < 2`.
+- `aggregate_results` divides every share/WGK/emissions term by
+  `results["Jahreswärmebedarf"]`, which is 0 for an all-zero/empty load profile → the whole
+  result set goes NaN/inf silently. Early-out or raise a clear `ValueError` in
+  `calculate_mix` when `Jahreswärmebedarf <= 0`.
+- Zero-heat cost sentinels are inconsistent (`chp.py`/`biomass_boiler.py`/`solar_thermal.py`
+  return `0`, while GasBoiler/PowerToHeat/storage return `inf`), and CHP's
+  `calculate_heat_generation_costs` falls off the end returning `None` when `self.BEW` is
+  neither `"Ja"` nor `"Nein"` (`chp.py:361-364`) → `None` flows into the WGK result. Unify
+  on `inf` and add an `else: raise`/default on the BEW branch.
+
+### C22. `QThread.terminate()` can corrupt the in-flight geocoding CSV (found 2026-06-15, OPEN — C1 leftover)
+**Severity: pre-release.** Restarting geocoding/generation calls `terminate()` + `wait()`
+(`gui/ProjectTab/project_tab.py:722`, `gui/LeafletTab/leaflet_tab.py:388,623`,
+`gui/LeafletTab/osm_dialogs_base.py:155`). `QThread.terminate()` kills the thread at an
+arbitrary point — here it can abort mid-write of the geocoded CSV, leaving a truncated file.
+C1 moved other threads to cooperative `stop()`/`isInterruptionRequested()`; these sites still
+hard-terminate. Fix: use the cooperative `stop()` the threads already define.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -697,6 +799,62 @@ harmless.) The earlier `error_log.txt` flag was a non-issue — it was never tra
 only ignored. The 52 MB Görlitz example project is large but acceptable. Nothing to do.
 ### E2. Naming/method-name inconsistencies
 Same root cause as B4.
+### E3. Cross-platform & defensive-coding hygiene (found 2026-06-15, OPEN)
+**Severity: post-release (Windows-first app; bites Linux/CI dev).**
+- Hardcoded backslashes in `gui/ProjectTab/project_tab.py` (`required_files` +
+  `os.path.join(base_path, "Wärmenetz\\Wärmenetz.geojson")` at
+  `:286,298,304,308-312,319,879,885`) — `os.path.join` won't split `\` on POSIX, so the
+  progress tracker reports every step missing and the dimensioned-network check always fails.
+  Use `os.path.join("Wärmenetz", "Wärmenetz.geojson")`.
+- Broad `except Exception: pass` swallowers that turn failures into wrong/blank UI with no
+  diagnostic: `project_tab.py:414-415,450-451,610-611,812-814` (the last returns "ist
+  vorhanden" on any read error — masks a corrupt CSV); `comparison_tab.py:525-527,537-538,1080-1081`.
+  Narrow them + at least `logging.warning`.
+
+## F. Release readiness & distribution (2026-06-15 audit)
+The mechanics of actually shipping a clean release. None of these are A–E code debt; they
+gate the release itself.
+### F1. Two git dependencies block PyPI distribution
+**Severity: release blocker — decision needed.** `pyproject.toml:27-28` pulls `pyslpheat`
+and `thermal-energy-storage-1d` via `@ git+https://…`. PyPI rejects any distribution whose
+metadata carries a direct (`git+`) URL, so `pip install districtheatingsim` from PyPI is
+impossible as-is; only the source/git-URL install works (and silently requires `git`).
+**Decide the channel before tagging:** publish both deps to PyPI and switch to version
+specifiers, or commit to "GitHub-source / PyInstaller-exe only" and drop any PyPI intent.
+### F2. No console/GUI entry point
+**Severity: pre-release.** There is no `[project.scripts]`/`[project.gui-scripts]` in
+`pyproject.toml`; after `pip install` there is no `districtheatingsim` command (only
+`python -m districtheatingsim`, which works — `src/districtheatingsim/__main__.py` exists).
+The README even tells users to run the in-tree `DistrictHeatingSim.py`, which won't exist
+for a pip install. Add `districtheatingsim = "districtheatingsim.DistrictHeatingSim:main"`
+under `[project.gui-scripts]` and fix the README run instruction.
+### F3. Empty CHANGELOG + version bump
+**Severity: pre-release.** `CHANGELOG.md:8` `[Unreleased]` is empty despite everything since
+1.0.3 (pandapipes 0.14/ISOPLUS, central constants, `TechnologyResult`, the test suite +
+gating CI, ruff, thermal-storage adapter, C3–C14). Versions are consistent at 1.0.3 in
+`pyproject.toml:7` / `src/districtheatingsim/__init__.py:13` / `docs/source/conf.py:9` —
+**but the badge in `docs/source/index.rst:4` says 1.0.0.** Write the changelog from the
+"landed" notes + git log, then bump all four sites in one commit (a minor/major bump is
+warranted given the pandapipes break).
+### F4. CI now gating but the run status is unconfirmed
+**Severity: pre-release.** `HEAD == origin/main == b03bf77` — everything is pushed, so the
+gating `ci.yml` (pytest 3.11/3.12 + `ruff check` + `ruff format --check`) triggered on the
+last push. The earlier CLAUDE.md/BACKLOG note "main is ahead of origin / CI never run" is
+**stale** and should be corrected. The risky step is `pip install -e .[dev]` (2 git clones +
+heavy scientific stack on Ubuntu). Check the GitHub Actions result for `b03bf77`; if red, fix
+before tagging. (`rasterio`/elevation extra is *not* a CI failure point — imported lazily,
+not at test-collection time.)
+### F5. Docs sweep (the BACKLOG pre-release item, now scoped)
+**Severity: pre-release.** Prose docs (`thermal_storage.rst`, README) are current (no
+KMR/STES residue). The rot is in the **hand-maintained autodoc stubs**, which silently miss
+every module added during the refactors: `heat_generators.results` (the `TechnologyResult`
+source of truth) + `json_encoder`, `constants.py`,
+`net_simulation_pandapipes.{pipe_std_types,net_migration,result_validation,plot_data}`,
+`utilities.{schema,csv_schemas}`, `osm.area_selection`, `net_generation.elevation_utils`, and
+the EnergySystemTab autodoc still points at the `_04_technology_dialogs` façade not the
+`technology_dialogs/` package. One `sphinx-apidoc -f -o source/ ../src/districtheatingsim`
+closes most of it (then re-add the hand-written prose pages it doesn't touch). Also fix the
+1.0.0 badge (F3) and the bare `pip install districtheatingsim` in `index.rst:91` (→ git URL).
 
 ---
 
@@ -707,26 +865,50 @@ Same root cause as B4.
 `TestNetworkInitialization`), C3–C13, D1, D2, D3. The domain core + the simulation
 pipeline are now well-tested and lint-clean; the easy low-risk wins are harvested.
 
-**What's left, by leverage:**
-1. **C14 — negative-pressure validation** (new): result validators only check NaN/inf,
-   so a physically-impossible (negative absolute pressure) run passes silently. Add a
-   soft warning. Small; warn-vs-raise decision pending. Highest correctness value left.
-2. **B1 remainder** — `main_view.py` (~1232); big LOC win but untested GUI god-object.
-3. ~~**C1 — threading** deep isolation~~ **mostly done 2026-06**: energy-system worker
-   now computes on a deep copy (producer→swap); net workers got the double-start guard.
-   Only deep-copying the pandapipes net per run is deferred (cost/risk — see C1).
-4. **Quick wins:** ~~hardcoded "Variante 1" (D1 leftover)~~ done; ~~E1 (`.gitignore`
-   casing)~~ done; ~~C11 minor (0.13 circ-pump cross-check)~~ dropped. Cluster cleared.
-5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming),
-   ~~D4 (serialization versioning strategy)~~ **done**, ~~D3 leftover~~ won't-do,
-   ~~A1: decide on `ruff format`~~ **adopted + gating**. Only A1 leftover: the gating CI
-   jobs are still unverified on GitHub until the first push.
+**The 2026-06 cluster (C14, threading isolation, quick wins, D4) is cleared.** A ground-up
+re-audit on **2026-06-15** found the remaining work splits cleanly into *before* the planned
+clean release and *after* (Weiterentwicklung). Most A–E debt is closed; what's left is
+concentrated in newly-found correctness bugs in the un-refactored modules (C16–C22) and the
+release mechanics themselves (section F). See the **Release plan** below.
+
+## Release plan (2026-06-15 audit)
+
+### Before the new release
+**Correctness bugs (all verified at file:line on 2026-06-15):**
+1. **C18 / C19** — quick wins: `QClipboard()` dead buttons; ProjectTab geocode handler
+   mismatch (no auto-reload). Trivial, fix first.
+2. **C20 / C21 / C22** — `preprocessData` UnboundLocalError (C6 class); EnergySystem
+   robustness edges (1-step duration, zero-demand NaN, cost sentinels/None);
+   `QThread.terminate()` CSV corruption.
+3. **C17** — river/geothermal HP electricity overstated at part load (untested → fix + test).
+4. **C16** — optimizer has no coverage constraint. Highest value, but **verify against a
+   real run first** before touching the model.
+
+**Release mechanics (section F):**
+5. **F1** — decide the distribution model (2 git deps block PyPI). *Your call — gates F2/F5.*
+6. **F2** — add the `[project.gui-scripts]` entry point.
+7. **F3** — write the CHANGELOG `[Unreleased]` section + bump the version (4 sites incl. the
+   stale 1.0.0 docs badge).
+8. **F4** — check the GitHub Actions status for `b03bf77` (CI is now gating; the
+   "never run / ahead of origin" note is stale).
+9. **F5** — docs sweep (regenerate autodoc stubs; fix the badge + the bad `pip install` in
+   `index.rst`). Do this *last*, once the API churn above has stopped (see Pre-release).
+
+### After the new release (Weiterentwicklung)
+- **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
+  `comparison_tab`, `main_view`); B2 dedup (extract `geojson_to_building_csv`, `config_naming`);
+  B4/E2 DE/EN naming sweep.
+- **Modelling / features:** diameter→€/m cost model (C15.3); reconsider the `v_max=2.0`
+  default (C15.1); optimizer reproducibility seed (C16 note); WP 75 K clamp warning (C17 note).
+- **Hygiene:** E3 (cross-platform paths, except-swallowing); schematic `delete_selected`
+  rebuild (B1 note).
 
 ## Pre-release (do last, only once the above are settled)
-- **Update the docs.** Sweep `docs/` (Sphinx/readthedocs) + the README for everything
-  the refactors changed (constants, `TechnologyResult`, the pandapipes 0.14 / ISOPLUS
-  pipe model, the thermal-storage adapter, the new test/CI workflow). Only worth doing
-  once the API churn above has stopped — otherwise it rots again immediately.
+- **Update the docs — now scoped as F5.** Sweep `docs/` (Sphinx/readthedocs) + the README
+  for everything the refactors changed (constants, `TechnologyResult`, the pandapipes 0.14 /
+  ISOPLUS pipe model, the thermal-storage adapter, the new test/CI workflow); regenerate the
+  autodoc stubs (they miss every new module — see F5). Only worth doing once the API churn
+  from the C16–C22 fixes has stopped — otherwise it rots again immediately.
 - **Clean release + history reset.** Long-term plan (Jonas): once the optimizations are
   in, cut a clean release and collapse the long history (squash to a baseline commit or
   start a fresh orphan branch / fresh repo state). Do the docs update *before* this so
