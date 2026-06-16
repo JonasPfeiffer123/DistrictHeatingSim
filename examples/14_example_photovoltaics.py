@@ -10,7 +10,7 @@ from districtheatingsim.heat_generators.photovoltaics import Calculate_PV
 
 if __name__ == '__main__':
     # Define the input parameters for the photovoltaic calculation.
-    TRY_data = "examples\\data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat"
+    TRY_data = "examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     Gross_area = 100 # m²
     Longitude = 11.581981
     STD_Longitude = 15
