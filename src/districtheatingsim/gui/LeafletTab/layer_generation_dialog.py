@@ -13,8 +13,8 @@ import os
 import pandas as pd
 from pyproj import Transformer
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QClipboard
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -591,7 +591,7 @@ class LayerGenerationDialog(QDialog):
             y = self.coordTable.item(row, 1).text()
             coordinates_text += f"{x},{y}\n"
 
-        clipboard = QClipboard()
+        clipboard = QApplication.clipboard()
         clipboard.setText(coordinates_text.strip())
         QMessageBox.information(
             self, "Erfolg", f"{self.coordTable.rowCount()} Koordinate(n) in die Zwischenablage kopiert."
@@ -604,7 +604,7 @@ class LayerGenerationDialog(QDialog):
         Parses coordinate data from clipboard and adds valid coordinate
         pairs to the table.
         """
-        clipboard = QClipboard()
+        clipboard = QApplication.clipboard()
         text = clipboard.text().strip()
 
         if not text:
