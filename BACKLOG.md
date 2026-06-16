@@ -640,36 +640,63 @@ written). **Fixed:** `on_geocode_done(self, result)` now unpacks `fname, _summar
 (mirroring `leaflet_tab.on_geocode_done`) before the reload. Verified: module imports
 offscreen, ruff check + format clean. (Same Qt-glue caveat as C18.)
 
-### C20. `preprocessData` UnboundLocalError if the main feed pump isn't named exactly (found 2026-06-15, OPEN)
-**Severity: pre-release (verified) — same class as fixed C6.** In
-`_01_energy_system_main_tab.py:506-508`, `flow_temp_circ_pump`/`return_temp_circ_pump` are
-assigned only inside `if pump_type == "Heizentrale Haupteinspeisung"`, then used
-unconditionally to build `EnergySystem` at `:521`. A results CSV without that exact key
-(renamed feed, multi-producer net) → `UnboundLocalError`. Fix: initialise both to a default
-before the loop and raise a clear error if no main feed is found.
+### C20. `preprocessData` UnboundLocalError if the main feed pump isn't named exactly (fixed 2026-06-16)
+Same class as fixed C6. In `_01_energy_system_main_tab.py:506-508`,
+`flow_temp_circ_pump`/`return_temp_circ_pump` were assigned only inside
+`if pump_type == "Heizentrale Haupteinspeisung"`, then used unconditionally to build
+`EnergySystem`. A results CSV without that exact key (renamed feed, multi-producer net) →
+`UnboundLocalError`. **Fixed:** both are initialised to `None` before the loop; if no main
+feed is found, `preprocessData` raises a clear `ValueError` naming the CSV. The call site in
+`start_calculation` now wraps `preprocessData()` in `try/except (ValueError, KeyError)` and
+surfaces the message via `QMessageBox.warning` + `return` (no crash, no orphaned thread).
+Verified: module imports offscreen, ruff check + format clean. (GUI orchestration with no
+behaviour-test seam.)
 
-### C21. Domain robustness edges in EnergySystem (found 2026-06-15, OPEN)
-**Severity: pre-release (edge cases, no crash on the happy path).**
-- `EnergySystem.duration = (np.diff(time_steps[:2]) / np.timedelta64(1,"h"))[0]`
-  (`energy_system.py:100`) raises `IndexError` for a single-timestep profile — guard
-  `len(time_steps) < 2`.
-- `aggregate_results` divides every share/WGK/emissions term by
-  `results["Jahreswärmebedarf"]`, which is 0 for an all-zero/empty load profile → the whole
-  result set goes NaN/inf silently. Early-out or raise a clear `ValueError` in
-  `calculate_mix` when `Jahreswärmebedarf <= 0`.
-- Zero-heat cost sentinels are inconsistent (`chp.py`/`biomass_boiler.py`/`solar_thermal.py`
-  return `0`, while GasBoiler/PowerToHeat/storage return `inf`), and CHP's
-  `calculate_heat_generation_costs` falls off the end returning `None` when `self.BEW` is
-  neither `"Ja"` nor `"Nein"` (`chp.py:361-364`) → `None` flows into the WGK result. Unify
-  on `inf` and add an `else: raise`/default on the BEW branch.
+### C21. Domain robustness edges in EnergySystem (fixed 2026-06-16)
+GUI-free domain-core edge cases that used to fail silently or opaquely. All three fixed +
+unit-tested:
+- **Single-timestep duration (fixed).** `EnergySystem.duration = (np.diff(time_steps[:2]) /
+  np.timedelta64(1,"h"))[0]` raised `IndexError` for a single-timestep profile (empty
+  `np.diff`). Now guarded by `len(self.time_steps) >= 2`, falling back to `1.0` h (hourly
+  resolution) instead of crashing in `__init__`.
+- **Zero-demand guard (fixed).** `aggregate_results` divides every share/WGK/emissions term
+  by `results["Jahreswärmebedarf"]`, which is 0 for an all-zero/empty load profile → the whole
+  result set went NaN/inf silently. `calculate_mix` now raises a clear `ValueError` right after
+  `initialize_results()` when `Jahreswärmebedarf <= 0`.
+- **Cost sentinels unified + CHP `None` fall-through (fixed).** The zero-Wärmemenge sentinel
+  is now `inf` in `chp.py`/`biomass_boiler.py`/`solar_thermal.py` (was `0`), matching
+  GasBoiler/PowerToHeat/storage so an idle generator never shows a misleading `0` WGK. (Safe:
+  the `WGK_Gesamt` aggregation in `aggregate_results:231` is gated on `Wärmemenge > 1e-6`, so
+  the sentinel only affects the per-tech display record, not the system total — golden masters
+  unchanged.) CHP's `calculate_heat_generation_costs` used to fall off the end returning `None`
+  when `self.BEW` was neither `"Ja"` nor `"Nein"` (`chp.py:361-364`) → `None` flowed into WGK;
+  now an `else: raise ValueError`.
+- **Tests:** `tests/test_energy_system.py::TestEnergySystemRobustness` (single-step duration,
+  zero-demand raise) + `tests/test_heat_generators.py::TestCHP` (`test_invalid_bew_raises`,
+  `test_zero_heat_amount_cost_is_inf`). 68 domain-core tests green.
 
-### C22. `QThread.terminate()` can corrupt the in-flight geocoding CSV (found 2026-06-15, OPEN — C1 leftover)
-**Severity: pre-release.** Restarting geocoding/generation calls `terminate()` + `wait()`
-(`gui/ProjectTab/project_tab.py:722`, `gui/LeafletTab/leaflet_tab.py:388,623`,
-`gui/LeafletTab/osm_dialogs_base.py:155`). `QThread.terminate()` kills the thread at an
-arbitrary point — here it can abort mid-write of the geocoded CSV, leaving a truncated file.
-C1 moved other threads to cooperative `stop()`/`isInterruptionRequested()`; these sites still
-hard-terminate. Fix: use the cooperative `stop()` the threads already define.
+### C22. `QThread.terminate()` can corrupt the in-flight geocoding CSV (restart sites fixed 2026-06-16; OSM-cancel left)
+**Severity: pre-release — C1 leftover.** Restarting geocoding/generation called `terminate()`
++ `wait()`. `QThread.terminate()` kills the thread at an arbitrary point — it can abort
+mid-write of the geocoded CSV / generated output, leaving a truncated file. C1 moved other
+threads to cooperative `stop()`/`isInterruptionRequested()`; these sites still hard-terminated.
+**Fixed (the three restart sites):** `gui/ProjectTab/project_tab.py:722` and
+`gui/LeafletTab/leaflet_tab.py:388,623` now call the cooperative `stop()` the threads already
+define (`GeocodingThread.stop`, `NetGenerationThread.stop` — `requestInterruption()` + `wait()`).
+The blocking `run()` doesn't poll `isInterruptionRequested()`, so `stop()` simply *waits* for the
+current run to finish writing cleanly before the new one starts — the right "restart" semantics
+and no mid-write kill. Verified: both modules import offscreen, ruff clean.
+**Left (deliberately): `osm_dialogs_base.py:155` (`_onDownloadCanceled`).** This is a genuinely
+different case: (1) it is a user *cancel*, not a restart, so a cooperative `stop()` that *waits*
+would freeze the UI for the whole in-flight osmnx/Overpass download; (2) the OSM download threads
+(`OSMStreetDownloadThread`/`OSMBuildingDownloadThread`) have **no** interruption seam — `run()` is
+a single blocking `download_func(...)` call that can't poll for cancellation; (3) the corruption-
+safe "detach + let it finish in the background" pattern risks a *"QThread destroyed while running"*
+crash if the dialog's thread ref is reassigned. Every option (terminate=corrupt, wait=freeze,
+detach=GC-crash) has a real downside and there is no GUI behaviour-test seam to verify the fix.
+Correct fix needs a small refactor (write the download to a temp path + atomic rename on success,
+so a killed/abandoned download never leaves a consumable partial file) — post-release, with the
+other `net_generation_threads.py` thread-audit work (C9 follow-up).
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
@@ -882,9 +909,10 @@ release mechanics themselves (section F). See the **Release plan** below.
 **Correctness bugs (all verified at file:line on 2026-06-15):**
 1. ~~**C18 / C19** — quick wins: `QClipboard()` dead buttons; ProjectTab geocode handler
    mismatch (no auto-reload).~~ **Done 2026-06-16.**
-2. **C20 / C21 / C22** — `preprocessData` UnboundLocalError (C6 class); EnergySystem
+2. ~~**C20 / C21 / C22** — `preprocessData` UnboundLocalError (C6 class); EnergySystem
    robustness edges (1-step duration, zero-demand NaN, cost sentinels/None);
-   `QThread.terminate()` CSV corruption.
+   `QThread.terminate()` CSV corruption.~~ **Done 2026-06-16** (C22: the 3 restart sites;
+   the OSM-download *cancel* in `osm_dialogs_base` is carved out to post-release — see C22).
 3. **C17** — river/geothermal HP electricity overstated at part load (untested → fix + test).
 4. **C16** — optimizer has no coverage constraint. Highest value, but **verify against a
    real run first** before touching the model.
