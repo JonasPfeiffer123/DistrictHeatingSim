@@ -870,20 +870,25 @@ Same root cause as B4.
 ## F. Release readiness & distribution (2026-06-15 audit)
 The mechanics of actually shipping a clean release. None of these are A–E code debt; they
 gate the release itself.
-### F1. Two git dependencies block PyPI distribution
-**Severity: release blocker — decision needed.** `pyproject.toml:27-28` pulls `pyslpheat`
-and `thermal-energy-storage-1d` via `@ git+https://…`. PyPI rejects any distribution whose
-metadata carries a direct (`git+`) URL, so `pip install districtheatingsim` from PyPI is
-impossible as-is; only the source/git-URL install works (and silently requires `git`).
-**Decide the channel before tagging:** publish both deps to PyPI and switch to version
-specifiers, or commit to "GitHub-source / PyInstaller-exe only" and drop any PyPI intent.
-### F2. No console/GUI entry point
-**Severity: pre-release.** There is no `[project.scripts]`/`[project.gui-scripts]` in
-`pyproject.toml`; after `pip install` there is no `districtheatingsim` command (only
-`python -m districtheatingsim`, which works — `src/districtheatingsim/__main__.py` exists).
-The README even tells users to run the in-tree `DistrictHeatingSim.py`, which won't exist
-for a pip install. Add `districtheatingsim = "districtheatingsim.DistrictHeatingSim:main"`
-under `[project.gui-scripts]` and fix the README run instruction.
+### F1. Two git dependencies block PyPI distribution (decided 2026-06-16)
+`pyproject.toml:27-28` pulls `pyslpheat` and `thermal-energy-storage-1d` via `@ git+https://…`.
+PyPI rejects any distribution whose metadata carries a direct (`git+`) URL, so
+`pip install districtheatingsim` from PyPI is impossible as-is; only the source/git-URL install
+works (and silently requires `git`). **Decision (Jonas, 2026-06-16): GitHub-source /
+PyInstaller-exe only — no PyPI for now** (the two deps stay unpublished). The `git+` deps stay
+as-is (fine for `pip install git+…` / `pip install .` / editable). Consequences: keep the install
+docs on the GitHub/git-URL path and drop any bare `pip install districtheatingsim` PyPI hint
+(F5: `index.rst:91`). Revisit only if PyPI distribution is wanted later (then publish both deps).
+### F2. No console/GUI entry point (fixed 2026-06-16)
+There was no `[project.scripts]`/`[project.gui-scripts]` in `pyproject.toml`; after `pip install`
+there was no `districtheatingsim` command (only `python -m districtheatingsim`). The README told
+users to run the in-tree `DistrictHeatingSim.py`, which doesn't exist for a pip install.
+**Fixed:** added `[project.gui-scripts]` `districtheatingsim = "districtheatingsim.DistrictHeatingSim:main"`
+and updated the two README run instructions to the `districtheatingsim` command (`python -m
+districtheatingsim` as the equivalent). Verified: `pip install -e .` registers the
+`districtheatingsim` executable (`shutil.which` resolves it); the entry-point target imports +
+is callable; pyproject parses. (`gui-scripts` rather than `scripts` so the Windows launcher opens
+no console window.)
 ### F3. Empty CHANGELOG + version bump
 **Severity: pre-release.** `CHANGELOG.md:8` `[Unreleased]` is empty despite everything since
 1.0.3 (pandapipes 0.14/ISOPLUS, central constants, `TechnologyResult`, the test suite +
@@ -944,8 +949,11 @@ release mechanics themselves (section F). See the **Release plan** below.
    penalty, default 1e6; the collapse was confirmed against a real seeded run first).
 
 **Release mechanics (section F):**
-5. **F1** — decide the distribution model (2 git deps block PyPI). *Your call — gates F2/F5.*
-6. **F2** — add the `[project.gui-scripts]` entry point.
+5. ~~**F1** — decide the distribution model (2 git deps block PyPI).~~ **Decided 2026-06-16:
+   GitHub-source / PyInstaller-exe only — no PyPI for now** (git deps stay; keep install docs on
+   the git-URL path).
+6. ~~**F2** — add the `[project.gui-scripts]` entry point.~~ **Done 2026-06-16** (+ README run
+   instructions; `pip install -e .` registers the `districtheatingsim` command).
 7. **F3** — write the CHANGELOG `[Unreleased]` section + bump the version (4 sites incl. the
    stale 1.0.0 docs badge).
 8. **F4** — check the GitHub Actions status for `b03bf77` (CI is now gating; the

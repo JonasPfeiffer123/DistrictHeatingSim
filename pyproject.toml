@@ -62,6 +62,9 @@ dev = [
     "ruff>=0.6",
 ]
 
+[project.gui-scripts]
+districtheatingsim = "districtheatingsim.DistrictHeatingSim:main"
+
 [project.urls]
 Homepage = "https://github.com/JonasPfeiffer123/DistrictHeatingSim"
 Documentation = "https://districtheatingsim.readthedocs.io"
