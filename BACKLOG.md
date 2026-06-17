@@ -926,25 +926,39 @@ warnings are **pre-existing** docstring-formatting issues (math notation / inden
   as undefined in `osmnx_steiner_network.create_steiner_tree` / `controllers.*.is_converged`,
   "Inline emphasis" in the `calculation_error`/`download_error` signal docstrings, "Unexpected
   indentation" in `thermal_storage.current_storage_temperatures`).
-### F6. PyInstaller build + specs untested after the refactors (found 2026-06-16)
-**Severity: pre-release (the chosen distribution channel — see F1).** With PyPI off the table,
-the **PyInstaller exe is the primary user-facing artifact**, but the build path
-(`build.py`, `build_debug.py`, `DistrictHeatingSim.spec`, `DistrictHeatingSim_Release.spec`)
-has **not been re-run** since the 2026-06 refactors. Risks to verify before tagging:
-- **New modules bundled?** Many modules were added (`heat_generators.{results,json_encoder}`,
-  `constants.py`, `net_simulation_pandapipes.{plot_data,net_migration,result_validation,pipe_std_types}`,
-  `utilities.{schema,csv_schemas}`, `osm.area_selection`, `technology_dialogs/` package). Most ride
-  along inside already-collected packages, but the `datas=[…]` list in the specs is **hand-maintained
-  per sub-package** and can miss new ones.
-- **Git deps present?** `pyslpheat` and `thermal-energy-storage-1d` must be collected (no PyPI
-  metadata; may need `copy_metadata`/`collect_submodules` hooks like `osmnx` already has).
-- **pandapipes 0.14 data?** The specs copy `std_types/library` + `properties` dynamically — confirm
-  the **ISOPLUS** catalog loads in the frozen exe (the 0.14 std-types are the whole C11 migration).
-- **Smoke-run the exe**: launch, create/load a project, run a net + an energy-system calc.
-- The specs hardcode `src\\districtheatingsim\\DistrictHeatingSim.py` (backslashes) — Windows-only
-  build, harmless there, but note it if the build is ever attempted on Linux/mac.
-Do this *after* F2/F3 land (the entry point + version are what the build ships) and ideally wire a
-minimal `pyinstaller … --noconfirm` smoke into a manual/release workflow so it can't silently rot.
+### F6. PyInstaller build + specs reviewed and reorganised (build run still pending — 2026-06-16)
+**Severity: pre-release (the chosen distribution channel — see F1).** With PyPI off the table the
+**PyInstaller exe is the primary user-facing artifact**, but the six build files had not been
+revisited since the 2026-06 refactors. Reviewed all six; **fixed the real bugs and deduplicated**:
+- **🔴 pyslpheat data was missing from the build (real bug, fixed).** `pyslpheat` ships `data/`
+  (BDEW/VDI profile CSVs, TRY files) + `images/` that PyInstaller's import-following does **not**
+  collect — the frozen exe's heat-demand calc would have failed at runtime. The specs now call
+  `collect_data_files('pyslpheat')` + `collect_data_files('thermal_energy_storage_model')` (the
+  real import name of `thermal-energy-storage-1d`). Verified: `get_datas()` pulls **30** pyslpheat
+  entries incl. `bdew/hourly_coefficients.csv`, the VDI 4655 load profiles and TRY `.dat` files.
+- **🔴 cp1252 console crash (C13 class, fixed).** `build.py`/`build_debug.py` printed `✓✗⚠ℹ→` →
+  `UnicodeEncodeError` on a fresh Windows console. Now `build_common.configure_utf8_stdout()` +
+  ASCII markers (`[OK]`/`[WARN]`/`[FAIL]`/`[INFO]`).
+- **🔴 wrong exe path** in `build_debug.py` (`dist/DistrictHeatingSim.exe` → `dist/DistrictHeatingSim/…`).
+- **🟠 deduplicated.** The two specs were ~95% identical and `build.py`/`build_debug.py` duplicated
+  the cleanup/move helpers verbatim. New **`spec_common.py`** (shared `datas`/`hiddenimports`/excludes,
+  the data collection, OS-agnostic entry path) imported by both specs; new **`build_common.py`**
+  (UTF-8 setup, `run_pyinstaller`, cleanup, `move_user_data_outside`, `post_build`) used by both thin
+  scripts.
+- **🟠 dead code removed.** The `datas_inside/outside_internal` split in both specs partitioned
+  `a.datas` then concatenated it straight back — a no-op (the real "move outside" is the post-build
+  step). Replaced with `COLLECT(exe, a.binaries, a.datas, …)`. Also dropped the vestigial
+  `numpy_financial` hiddenimport (its only consumers, `renovation_analysis`/`SanierungsanalysefuerGUI`,
+  no longer exist) and the leftover verbose `('v',…)` EXE option from the **release** spec.
+- **🟡 guide rewritten.** `PYINSTALLER_BUILD_GUIDE_EN.md` was stale (referenced a non-existent
+  `requirements.txt`, "188 MB" Görlitz (actually ~55 MB), two conflicting PyInstaller-version footers,
+  and a `run_debug.bat` that didn't match the actual file — the real one *runs* the built exe, it is
+  not a build launcher). Rewritten to the reorganised layout.
+All new/changed Python modules import clean + ruff check/format clean.
+**STILL PENDING — the actual build run (the real verification):** run `python build.py`, launch the
+exe, create/load a project, run a net + an energy-system calc, and confirm pyslpheat/ISOPLUS data load.
+This is the heavy, manual, Windows-only GUI test left to Jonas. Backslash entry path is now OS-agnostic
+(`os.path.join`), though the build remains Windows-only in practice.
 
 ---
 
@@ -990,8 +1004,9 @@ release mechanics themselves (section F). See the **Release plan** below.
 9. ~~**F5** — docs sweep (regenerate autodoc stubs; fix the badge + the bad `pip install` in
    `index.rst`).~~ **Done 2026-06-16** (12 missing autodoc modules added; install/run docs fixed;
    `sphinx -b html` builds clean of new errors).
-10. **F6** — test the PyInstaller build + specs (the chosen distribution channel). After F2/F3.
-    *The only remaining before-release item.*
+10. **F6** — PyInstaller build + specs **reviewed/reorganised + bugs fixed 2026-06-16** (pyslpheat
+    data collection, cp1252 prints, spec/script dedup via `spec_common.py`/`build_common.py`, guide
+    rewrite). *Remaining: the actual build run + manual exe smoke test (Windows-only, Jonas).*
 
 ### After the new release (Weiterentwicklung)
 - **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
