@@ -43,7 +43,7 @@ DistrictHeatingSim Documentation
       
       Thermo-hydraulic simulation with pandapipes
 
-.. figure:: _static/images/project_management.png
+.. figure:: _static/images/project_management_tab.png
    :alt: Project Management
    :width: 80%
    :align: center
@@ -59,7 +59,7 @@ DistrictHeatingSim Documentation
 
    **Figure 3:** Building load profiles based on building data and weather conditions.
 
-.. figure:: _static/images/leaflet_map.png
+.. figure:: _static/images/leaflet_map_tab.png
    :alt: Leaflet Map
    :width: 80%
    :align: center
@@ -67,7 +67,7 @@ DistrictHeatingSim Documentation
 
    **Figure 4:** Interactive map visualization of district heating networks using Leaflet.
 
-.. figure:: _static/images/net_simulation_pandapipes_2.png
+.. figure:: _static/images/net_simulation_tab.png
    :alt: Network Simulation with pandapipes
    :width: 80%
    :align: center
