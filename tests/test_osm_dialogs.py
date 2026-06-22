@@ -118,3 +118,18 @@ class TestHighwayFilter:
         d.highwayCheckboxes["primary"].setChecked(True)
         d.updateFilters()
         assert d.custom_filter == '["highway"~"primary"]'
+
+    def test_unclassified_and_track_offered(self, tmp_path):
+        # Village streets are often tagged "unclassified" or "track" (e.g. Ödernitz);
+        # both must be selectable so they get pulled.
+        d = _street_dialog(tmp_path)
+        assert "unclassified" in d.highwayCheckboxes
+        assert "track" in d.highwayCheckboxes
+
+    def test_unclassified_on_track_off_by_default(self, tmp_path):
+        d = _street_dialog(tmp_path)
+        assert d.highwayCheckboxes["unclassified"].isChecked()
+        assert not d.highwayCheckboxes["track"].isChecked()
+        # default filter therefore covers unclassified but not track
+        assert "unclassified" in d.custom_filter
+        assert "track" not in d.custom_filter

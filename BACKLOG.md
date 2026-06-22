@@ -757,6 +757,18 @@ Four issues around the pipe-type selectors, all user-reported and fixed for v2.0
   tinted (`_capture_baseline` at each `_fill_table`; `_update_row_highlight` on edit; cleared on the
   next calculation). GUI-only — verified by the helper test + manual GUI run.
 
+### C24. OSM highway filter missed `unclassified` / `track` streets (fixed 2026-06-18)
+The street-download UI only offered 6 highway types (`primary|secondary|tertiary|residential|
+living_street|service`), so streets tagged `unclassified` (a normal minor public road, very common
+in villages) or `track` were silently dropped. Verified live against **Ödernitz** (Niesky): the
+Helmut-Just-Straße and Brunnenstraße have `unclassified` segments, and Apfelallee/Wilhelminenthal
+are fully `unclassified` — all were missing; Ullersdorfer Straße is a `track`. **Fixed:** added
+`unclassified` and `track` to the offered highway types in both dialogs (`osm_dialogs.py`,
+`layer_generation_dialog.py`) and to the default filter strings, in **both** download paths — the
+OSMnx custom-filter and the direct Overpass tag query (`examples/02`). `unclassified` is checked by
+default; `track` is offered but **off** by default (most tracks are field/forest paths without
+buildings). Pinned by `tests/test_osm_dialogs.py::TestHighwayFilter` (offered + default state).
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,

@@ -63,7 +63,7 @@ class LayerGenerationDialog(QDialog):
         self.project_crs = project_crs
         self.waiting_for_map_click = False
         self.custom_filter = (
-            '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'  # Default filter
+            '["highway"~"primary|secondary|tertiary|residential|living_street|service|unclassified"]'  # Default filter
         )
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
         self.initUI()
@@ -146,11 +146,14 @@ class LayerGenerationDialog(QDialog):
             ("residential", "Wohnstraßen (residential)"),
             ("living_street", "Verkehrsberuhigte Bereiche (living_street)"),
             ("service", "Erschließungsstraßen (service)"),
+            ("unclassified", "Unklassifizierte Straßen (unclassified)"),
+            ("track", "Wirtschaftswege (track)"),
         ]
 
         for key, label in highway_types:
             checkbox = QCheckBox(label)
-            checkbox.setChecked(True)  # All checked by default
+            # All checked by default except track (agricultural/forest tracks rarely carry buildings).
+            checkbox.setChecked(key != "track")
             checkbox.stateChanged.connect(self.updateFilters)
             self.highwayCheckboxes[key] = checkbox
             osmnxContentLayout.addWidget(checkbox)

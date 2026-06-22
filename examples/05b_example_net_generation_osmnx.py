@@ -95,7 +95,7 @@ def main():
     
     # Custom filter for specific highway types (like OSM download tags)
     # Uncomment to use custom filter instead of network_type:
-    # custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
+    # custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service|unclassified|track"]'
     custom_filter = None  # Use network_type instead
     
     # -------------------------------------------------------------------------

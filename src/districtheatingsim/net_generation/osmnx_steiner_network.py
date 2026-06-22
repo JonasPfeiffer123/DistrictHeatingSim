@@ -55,7 +55,7 @@ def download_street_graph(
     :raises ConnectionError: If OSMnx cannot download data from OpenStreetMap
 
     .. note::
-       Custom filters use regex: '["highway"~"primary|secondary|tertiary|residential|service"]'
+       Custom filters use regex: '["highway"~"primary|secondary|tertiary|residential|service|unclassified|track"]'
     """
     if buildings.empty:
         raise ValueError("Buildings GeoDataFrame is empty")
