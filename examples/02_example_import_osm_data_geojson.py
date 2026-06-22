@@ -31,7 +31,7 @@ def osm_street_query():
             ("highway", "tertiary"),
             ("highway", "residential"),
             ("highway", "living_street"),
-            {"highway", "service"}
+            ("highway", "service")
         ]
     element_type = "way"
 
