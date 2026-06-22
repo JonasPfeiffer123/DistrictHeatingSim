@@ -132,18 +132,29 @@ class TestOptimizerCoverage:
         # cost-free "Ungedeckter Bedarf" row and every term went to 0, so a seeded SLSQP
         # run drove the capacity to the lower bound (0 kW, 0 % covered). The unmet-demand
         # penalty must keep the optimum at a demand-covering size.
-        np.random.seed(42)
         es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
         es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=300, opt_BHKW_min=0, opt_BHKW_max=1000))
         weights = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 1.0, "primärenergiefaktor_Gesamt": 1.0}
 
-        opt = es.optimize_mix(weights, num_restarts=3)
+        opt = es.optimize_mix(weights, num_restarts=3, seed=42)
         chp = opt.technologies[0]
         r = opt.calculate_mix()
         covered = (r["Jahreswärmebedarf"] - r["Restwärmebedarf"]) / r["Jahreswärmebedarf"]
 
         assert chp.th_Leistung_kW > 50.0  # not collapsed toward the 0 kW lower bound
         assert covered > 0.5  # covers a meaningful share of demand (was ~0 before)
+
+    def test_seed_makes_optimization_reproducible(self):
+        # C16 follow-up: the random restarts now draw from a local Generator seeded via the
+        # `seed` param, so two runs with the same seed yield the same optimized capacity.
+        weights = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 1.0, "primärenergiefaktor_Gesamt": 1.0}
+
+        def _run():
+            es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+            es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=300, opt_BHKW_min=0, opt_BHKW_max=1000))
+            return es.optimize_mix(weights, num_restarts=2, seed=7).technologies[0].th_Leistung_kW
+
+        assert _run() == pytest.approx(_run())
 
 
 class TestEnergySystemRobustness:

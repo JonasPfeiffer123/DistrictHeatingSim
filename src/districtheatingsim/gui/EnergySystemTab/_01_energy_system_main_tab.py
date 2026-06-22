@@ -36,27 +36,12 @@ from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread i
 from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
 from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
+from districtheatingsim.gui.EnergySystemTab.config_naming import config_name_to_filename, filename_to_config_name
 from districtheatingsim.gui.utilities import stop_qthreads
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 from districtheatingsim.utilities.test_reference_year import import_TRY
-
-
-def _config_name_to_filename(config_name: str) -> str:
-    """Convert a display config name to the corresponding JSON filename."""
-    if config_name == "Standard":
-        return "Ergebnisse.json"
-    safe = config_name.replace("/", "-").replace("\\", "-").replace(":", "-")
-    return f"Ergebnisse_{safe}.json"
-
-
-def _filename_to_config_name(filename: str) -> str:
-    """Convert a JSON filename back to a display config name."""
-    if filename == "Ergebnisse.json":
-        return "Standard"
-    # Strip "Ergebnisse_" prefix and ".json" suffix
-    return filename[len("Ergebnisse_") : -len(".json")]
 
 
 class EnergySystemTab(QWidget):
@@ -299,7 +284,7 @@ class EnergySystemTab(QWidget):
                 configs.append(("Standard", "Ergebnisse.json"))
             for f in files:
                 if f.startswith("Ergebnisse_") and f.endswith(".json"):
-                    configs.append((_filename_to_config_name(f), f))
+                    configs.append((filename_to_config_name(f), f))
         if not configs:
             configs = [("Standard", "Ergebnisse.json")]
         return configs
@@ -363,7 +348,7 @@ class EnergySystemTab(QWidget):
         if self.base_path:
             self.folder_manager.set_active_energy_config(self.base_path, name)
         # Load the config if a file already exists for it
-        filepath = os.path.join(self._ergebnisse_dir(), _config_name_to_filename(name))
+        filepath = os.path.join(self._ergebnisse_dir(), config_name_to_filename(name))
         if os.path.exists(filepath):
             self.load_results_JSON(show_dialog=False)
 
@@ -431,7 +416,7 @@ class EnergySystemTab(QWidget):
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        filepath = os.path.join(self._ergebnisse_dir(), _config_name_to_filename(name))
+        filepath = os.path.join(self._ergebnisse_dir(), config_name_to_filename(name))
         try:
             if os.path.exists(filepath):
                 os.remove(filepath)
@@ -828,7 +813,7 @@ class EnergySystemTab(QWidget):
         """Return the full path to the active config's JSON file."""
         ergebnisse_dir = self._ergebnisse_dir()
         os.makedirs(ergebnisse_dir, exist_ok=True)
-        return os.path.join(ergebnisse_dir, _config_name_to_filename(self._active_config_name))
+        return os.path.join(ergebnisse_dir, config_name_to_filename(self._active_config_name))
 
     def save_results_JSON(self, show_dialog=True):
         """

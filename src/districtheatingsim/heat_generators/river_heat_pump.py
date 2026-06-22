@@ -150,9 +150,15 @@ class RiverHeatPump(HeatPump):
         VLT = kwargs.get("VLT_L", 0)
         COP_data = kwargs.get("COP_data", None)
 
-        # Calculate performance for current time step
-        self.Kühlleistung_kW[t], self.el_Leistung_kW[t], self.VLT_WP[t], self.COP[t] = self.calculate_heat_pump(
-            VLT, COP_data
+        # Calculate performance for current time step. calculate_heat_pump is array-shaped
+        # (it calls calculate_COP); pass the scalar VLT as a 1-element array and take [0] to
+        # avoid the NumPy ndim>0->scalar deprecation.
+        kuehl_t, el_t, vlt_wp_t, cop_t = self.calculate_heat_pump(np.atleast_1d(VLT), COP_data)
+        self.Kühlleistung_kW[t], self.el_Leistung_kW[t], self.VLT_WP[t], self.COP[t] = (
+            kuehl_t[0],
+            el_t[0],
+            vlt_wp_t[0],
+            cop_t[0],
         )
 
         # Check operational constraints
