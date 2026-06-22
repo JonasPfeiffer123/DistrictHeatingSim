@@ -955,10 +955,31 @@ revisited since the 2026-06 refactors. Reviewed all six; **fixed the real bugs a
   and a `run_debug.bat` that didn't match the actual file — the real one *runs* the built exe, it is
   not a build launcher). Rewritten to the reorganised layout.
 All new/changed Python modules import clean + ruff check/format clean.
-**STILL PENDING — the actual build run (the real verification):** run `python build.py`, launch the
-exe, create/load a project, run a net + an energy-system calc, and confirm pyslpheat/ISOPLUS data load.
-This is the heavy, manual, Windows-only GUI test left to Jonas. Backslash entry path is now OS-agnostic
-(`os.path.join`), though the build remains Windows-only in practice.
+
+**Build run done (2026-06-17) — three runtime crashes found + fixed:**
+- **numpy 2.x not fully bundled.** The frozen exe crashed at startup with
+  `ModuleNotFoundError: No module named 'numpy._core._exceptions'` — PyInstaller 6.5.0 (released
+  before numpy 2.0) ships a stale numpy hook that misses the `numpy._core` submodules of numpy 2.3.5.
+  Fixed: `HIDDENIMPORTS += collect_submodules("numpy")` in `spec_common.py`. (A newer PyInstaller +
+  pyinstaller-hooks-contrib would also fix it.)
+- **thermal-energy-storage-1d editable install not bundled.** Next crash:
+  `ImportError: cannot import name 'ConstantAmbientLoss' from 'thermal_energy_storage_model'
+  (unknown location)`. The dep is installed **editable** (PEP 660, at `C:\Users\jonas\thermal-energy-
+  storage-1d`); PyInstaller can't resolve its custom import finder, so it bundled only `py.typed`.
+  `collect_submodules` returned the names but PyInstaller still couldn't find the source. Fixed by
+  copying the whole package dir in as **data** (`get_datas()` → `(_tes_dir, "thermal_energy_storage_model")`),
+  so its modules are importable from `_internal`. (pyslpheat is a normal site-packages install and was
+  bundled fine — modules + its data via `collect_data_files`.)
+- **UPX disabled.** Set `upx=False` in both specs — UPX wasn't installed (harmless "UPX is not
+  available" log line) and UPX-packed exes frequently trip Windows Defender/AV false positives, so off
+  is the right default for a distributed exe.
+After these, the debug exe **starts and runs** (reaches the Qt event loop, no import errors). Verified
+in the real build: `_internal/pyslpheat/data/bdew/*.csv` + VDI profiles bundled, all new domain modules
+present, `_internal/thermal_energy_storage_model/{__init__,losses,…}.py` present.
+**STILL PENDING — the manual GUI functional test** (Windows-only, Jonas): launch, create/load a project,
+run a net + an energy-system calc end-to-end. *Note:* the debug build's verbose-import EXE option
+(`('v',…)`) makes a headless/piped launch crawl — irrelevant to the no-console release build.
+Backslash entry path is now OS-agnostic (`os.path.join`), though the build remains Windows-only.
 
 ---
 
@@ -1004,9 +1025,10 @@ release mechanics themselves (section F). See the **Release plan** below.
 9. ~~**F5** — docs sweep (regenerate autodoc stubs; fix the badge + the bad `pip install` in
    `index.rst`).~~ **Done 2026-06-16** (12 missing autodoc modules added; install/run docs fixed;
    `sphinx -b html` builds clean of new errors).
-10. **F6** — PyInstaller build + specs **reviewed/reorganised + bugs fixed 2026-06-16** (pyslpheat
-    data collection, cp1252 prints, spec/script dedup via `spec_common.py`/`build_common.py`, guide
-    rewrite). *Remaining: the actual build run + manual exe smoke test (Windows-only, Jonas).*
+10. **F6** — PyInstaller build + specs reviewed/reorganised + bugs fixed (2026-06-16) **and the build
+    run + fixed (2026-06-17)**: numpy 2.x `collect_submodules`, thermal-energy-storage-1d editable
+    dir-copy, `upx=False`. The debug exe now starts/runs with no import errors. *Remaining: the manual
+    GUI functional test (load project + run net/energy-system), Windows-only, Jonas.*
 
 ### After the new release (Weiterentwicklung)
 - **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
