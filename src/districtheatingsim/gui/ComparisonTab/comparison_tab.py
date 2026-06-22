@@ -33,14 +33,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from districtheatingsim.gui.EnergySystemTab.config_naming import filename_to_config_name
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
-
-
-def _filename_to_config_name(filename: str) -> str:
-    """Convert a JSON filename to a display config name."""
-    if filename == "Ergebnisse.json":
-        return "Standard"
-    return filename[len("Ergebnisse_") : -len(".json")]
 
 
 def format_kpi_range(variant_data: list[dict], key: str, fmt: str, *, empty: str = "--") -> str:
@@ -83,7 +77,7 @@ def _discover_variant_configs(variant_path: str) -> list:
         configs.append(("Standard", "Ergebnisse.json"))
     for f in files:
         if f.startswith("Ergebnisse_") and f.endswith(".json"):
-            configs.append((_filename_to_config_name(f), f))
+            configs.append((filename_to_config_name(f), f))
     return configs
 
 

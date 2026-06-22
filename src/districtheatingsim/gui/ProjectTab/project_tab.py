@@ -283,40 +283,40 @@ class ProjectPresenter:
             {
                 "name": "Schritt 1: Gebäudedaten Quartier definieren",
                 "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'. Die CSV kann manuell erstellt, aus GeoJSON importiert oder durch Geocoding mit Koordinaten angereichert werden.",
-                "required_files": ["..\\Definition Quartier IST\\Quartier IST.csv"],
+                "required_files": ["../Definition Quartier IST/Quartier IST.csv"],
                 "csv_creation_status": "not_checked",  # Will be updated dynamically
                 "geocoding_status": "not_checked",  # Will be updated dynamically
             },
             {
                 "name": "Schritt 2: Gebäude-Lastgang generieren",
                 "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
-                "required_files": ["Lastgang\\Gebäude Lastgang.json"],
+                "required_files": ["Lastgang/Gebäude Lastgang.json"],
             },
             {
                 "name": "Schritt 3: Straßendaten herunterladen",
                 "description": "Führen Sie eine OSM-Straßenabfrage im Tab 'Wärmenetz generieren' durch.",
-                "required_files": ["..\\Eingangsdaten allgemein\\Straßen.geojson"],
+                "required_files": ["../Eingangsdaten allgemein/Straßen.geojson"],
             },
             {
                 "name": "Schritt 3: Wärmenetz Daten erstellen",
                 "description": "Generieren Sie das Wärmenetz im Tab 'Wärmenetz generieren'.",
-                "required_files": ["Wärmenetz\\Wärmenetz.geojson"],
+                "required_files": ["Wärmenetz/Wärmenetz.geojson"],
             },
             {
                 "name": "Schritt 4: Thermohydraulische Berechnung",
                 "description": "Führen Sie die Thermohydraulische Berechnung mit den generierten Netzdaten durch.",
                 "required_files": [
-                    "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
-                    "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
-                    "Wärmenetz\\Konfiguration Netzinitialisierung.json",
-                    "Lastgang\\Lastgang.csv",
+                    "Wärmenetz/Ergebnisse Netzinitialisierung.p",
+                    "Wärmenetz/Ergebnisse Netzinitialisierung.csv",
+                    "Wärmenetz/Konfiguration Netzinitialisierung.json",
+                    "Lastgang/Lastgang.csv",
                 ],
                 "check_dimensioned_network": True,  # Special check for dimensioned flag in Wärmenetz.geojson
             },
             {
                 "name": "Schritt 5: Erzeugermix auslegen und berechnen",
                 "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
-                "required_files": ["Ergebnisse\\calculated_heat_generation.csv", "Ergebnisse\\Ergebnisse.json"],
+                "required_files": ["Ergebnisse/calculated_heat_generation.csv", "Ergebnisse/Ergebnisse.json"],
             },
         ]
 
@@ -879,13 +879,13 @@ class ProjectPresenter:
 
                 # Special check for dimensioned network flag in Wärmenetz.geojson
                 if step.get("check_dimensioned_network", False):
-                    network_file = os.path.join(base_path, "Wärmenetz\\Wärmenetz.geojson")
+                    network_file = os.path.join(base_path, "Wärmenetz/Wärmenetz.geojson")
                     network_dimensioned = self.check_network_dimensioned(network_file)
 
                     if not network_dimensioned:
                         # Add virtual missing file indicator
                         step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
-                        step["missing_files"].append("Wärmenetz\\Wärmenetz.geojson (nicht dimensioniert)")
+                        step["missing_files"].append("Wärmenetz/Wärmenetz.geojson (nicht dimensioniert)")
                         step["completed"] = False
                     else:
                         step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]

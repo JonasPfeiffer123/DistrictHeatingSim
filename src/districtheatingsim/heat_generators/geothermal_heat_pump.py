@@ -184,8 +184,10 @@ class Geothermal(HeatPump):
         VLT = kwargs.get("VLT_L", 0)
         COP_data = kwargs.get("COP_data", None)
 
-        # Calculate COP for current conditions
-        self.COP[t], self.VLT_WP[t] = self.calculate_COP(VLT, self.Temperatur_Geothermie, COP_data)
+        # Calculate COP for current conditions. calculate_COP is array-shaped; pass the scalar
+        # VLT as a 1-element array and take [0] to avoid the NumPy ndim>0->scalar deprecation.
+        cop_t, vlt_wp_t = self.calculate_COP(np.atleast_1d(VLT), self.Temperatur_Geothermie, COP_data)
+        self.COP[t], self.VLT_WP[t] = cop_t[0], vlt_wp_t[0]
 
         # Calculate thermal extraction rate (assuming uniform distribution)
         Entzugsleistung = self.Entzugswärmemenge * 1000 / 8760  # kW

@@ -444,7 +444,7 @@ class EnergySystem:
 
         return self.results
 
-    def optimize_mix(self, weights: dict, num_restarts: int = 5, unmet_demand_penalty: float = 1e6):
+    def optimize_mix(self, weights: dict, num_restarts: int = 5, unmet_demand_penalty: float = 1e6, seed=None):
         """
         Optimize energy mix for multi-objective performance.
 
@@ -455,10 +455,13 @@ class EnergySystem:
         :param unmet_demand_penalty: Penalty weight on the uncovered-demand fraction added to the
             objective, defaults to 1e6 (see EnergySystemOptimizer for the rationale)
         :type unmet_demand_penalty: float
+        :param seed: Seed for the random-restart draws; ``None`` (default) is non-deterministic,
+            an int makes ``optimize_mix`` reproducible.
+        :type seed: int or None
         :return: Optimized energy system
         :rtype: EnergySystem
         """
-        optimizer = EnergySystemOptimizer(self, weights, num_restarts, unmet_demand_penalty)
+        optimizer = EnergySystemOptimizer(self, weights, num_restarts, unmet_demand_penalty, seed)
         self.optimized_energy_system = optimizer.optimize()
 
         return self.optimized_energy_system
@@ -963,6 +966,7 @@ class EnergySystemOptimizer:
         weights: dict[str, float],
         num_restarts: int = 5,
         unmet_demand_penalty: float = 1e6,
+        seed=None,
     ):
         """
         Initialize multi-objective optimizer.
@@ -988,6 +992,9 @@ class EnergySystemOptimizer:
         self.weights = weights
         self.num_restarts = num_restarts
         self.unmet_demand_penalty = unmet_demand_penalty
+        # Local RNG so the random restarts are controllable (seed=None stays non-deterministic);
+        # avoids seeding the global np.random and lets optimize_mix be golden-mastered.
+        self.rng = np.random.default_rng(seed)
 
         # Validate optimization weights
         required_weights = ["WGK_Gesamt", "specific_emissions_Gesamt", "primärenergiefaktor_Gesamt"]
@@ -1059,7 +1066,7 @@ class EnergySystemOptimizer:
 
             # Generate random initial values within parameter bounds
             random_initial_values = [
-                np.random.uniform(low=bound[0], high=bound[1]) if bound[1] > bound[0] else bound[0] for bound in bounds
+                self.rng.uniform(low=bound[0], high=bound[1]) if bound[1] > bound[0] else bound[0] for bound in bounds
             ]
 
             logging.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
