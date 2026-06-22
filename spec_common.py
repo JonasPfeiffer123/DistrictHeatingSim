@@ -9,7 +9,7 @@ EXE flags.
 
 import os
 
-from PyInstaller.utils.hooks import collect_data_files, copy_metadata
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 
 # Entry script (OS-agnostic; the build is Windows-only but keep the separator portable).
 ENTRY_SCRIPT = os.path.join("src", "districtheatingsim", "DistrictHeatingSim.py")
@@ -74,6 +74,13 @@ HIDDENIMPORTS = [
     "scipy.sparse.csgraph",
 ]
 
+# numpy 2.x renamed numpy.core -> numpy._core; the numpy hook bundled with PyInstaller
+# 6.5.0 (released before numpy 2.0) misses some _core submodules, so the frozen exe
+# crashed with "No module named 'numpy._core._exceptions'". Force the full numpy
+# submodule tree in. (A newer PyInstaller + pyinstaller-hooks-contrib would also fix
+# this via its updated numpy hook.)
+HIDDENIMPORTS += collect_submodules("numpy")
+
 # App resource folders bundled as plain data. Whole-directory copies, so new modules
 # added inside them are picked up automatically. ``move_user_data_outside()`` in
 # build_common.py later lifts data/project_data/images/leaflet out of _internal so
@@ -129,11 +136,20 @@ def get_datas():
     # osmnx checks its own version → needs its dist metadata.
     datas += copy_metadata("osmnx")
 
-    # The two git dependencies ship non-.py data that import-following does NOT collect:
-    # pyslpheat bundles its BDEW/VDI profile CSVs (data/) + images/, and the 1D storage
-    # model may ship coefficient tables. Without these the frozen exe's heat-demand /
-    # storage calculations fail at runtime. collect_data_files grabs them.
+    # pyslpheat (normal site-packages install) ships non-.py data that import-following
+    # does NOT collect: BDEW/VDI profile CSVs (data/) + images/. Without these the frozen
+    # exe's heat-demand calc fails at runtime. Its .py modules ARE collected normally.
     datas += collect_data_files("pyslpheat")
-    datas += collect_data_files("thermal_energy_storage_model")
+
+    # thermal-energy-storage-1d (import name thermal_energy_storage_model) is installed
+    # *editable* (PEP 660, outside site-packages). PyInstaller's analysis can't resolve its
+    # custom import finder, so it bundled only py.typed — the exe crashed on
+    # "cannot import name 'ConstantAmbientLoss'". Copy the whole package directory in as
+    # data so all its modules (incl. __init__/losses/model/solver) are importable from
+    # _internal. (On a normal git install this dir lives in site-packages; the copy is
+    # still correct and harmless.)
+    import thermal_energy_storage_model as _tes
+
+    datas += [(os.path.dirname(_tes.__file__), "thermal_energy_storage_model")]
 
     return datas

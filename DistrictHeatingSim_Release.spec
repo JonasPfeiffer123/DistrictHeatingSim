@@ -25,6 +25,8 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+# upx=False on purpose: UPX-packed binaries frequently trigger Windows Defender / AV
+# false positives on a distributed exe (and UPX isn't installed in the build env anyway).
 exe = EXE(
     pyz,
     a.scripts,
@@ -33,7 +35,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -49,7 +51,7 @@ coll = COLLECT(
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name="DistrictHeatingSim",
 )
