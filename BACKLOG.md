@@ -780,6 +780,21 @@ when one of its neighbours is inside, so boundary-crossing streets are retained)
 An der Bahn, Fichtenweg) that were dropped before are now included. No unit-test seam (live osmnx/
 Overpass call); verified manually.
 
+### C26. Zero-demand building crashed profile generation (fixed 2026-06-18)
+A building CSV with a `Wärmebedarf` of `0.0` made `generate_profiles_from_csv` crash: pyslpheat's
+`bdew.py` (and VDI) raise `ValueError("Provide annual_heat_kWh > 0 …")`. **Fixed:** a building with
+no/invalid/NaN annual demand now contributes an **all-zero profile** — pyslpheat is still called with
+a 1 kWh placeholder (to get the building-independent time steps + temperatures), then the demand
+arrays are zeroed. Covers BDEW and VDI. Pinned by `tests/test_heat_requirement_csv.py` (skipif TRY
+absent). *Downstream:* a 0-demand building becomes a `qext=0` heat consumer — expected to be fine in
+pandapipes (no flow), but worth confirming on the real net run.
+- **Pre-existing, separate (OPEN — won't-happen-in-practice per Jonas, 2026-06-18):** mixing VDI
+  types (EFH/MFH → 15-min, 35040 steps) and BDEW types (commercial → hourly, 8760 steps) in one CSV
+  under `calc_method="Datensatz"` makes `np.array(total_heat_W)` raise *"inhomogeneous shape"* (ragged
+  rows). Jonas confirmed VDI and BDEW are never mixed in one project (two different systems), so this
+  is only a latent edge case. *Note:* even a pure-VDI run yields a 35040-long demand profile but an
+  8760-long temperature array — a resolution mismatch worth tidying if VDI is exercised further.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,

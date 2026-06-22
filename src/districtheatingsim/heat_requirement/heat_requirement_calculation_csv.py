@@ -106,7 +106,7 @@ def generate_profiles_from_csv(
         YEU_total_heat_kWh = data["Wärmebedarf"].values.astype(float)
         data["Gebäudetyp"].values.astype(str)
         data["Subtyp"].values.astype(str)
-        ww_demand = data["WW_Anteil"].values.astype(float)
+        data["WW_Anteil"].values.astype(float)
         data["Normaußentemperatur"].values.astype(float)
     except KeyError as e:
         raise KeyError(f"Missing column in CSV: {e}. Please check CSV file completeness.") from e
@@ -146,6 +146,11 @@ def generate_profiles_from_csv(
         current_subtype = str(data.at[idx, "Subtyp"])
         current_ww_demand = float(data.at[idx, "WW_Anteil"])
 
+        # A building with no (or invalid/NaN) annual demand contributes an all-zero profile.
+        # pyslpheat rejects annual_heat_kWh <= 0, so we still call it with a 1 kWh placeholder to
+        # obtain the correctly-shaped time steps + temperatures, then zero the demand arrays below.
+        zero_demand = not (float(YEU) > 0)
+
         # Determine calculation method
         if calc_method == "Datensatz":
             try:
@@ -158,10 +163,12 @@ def generate_profiles_from_csv(
 
         # Execute appropriate calculation method
         if current_calc_method == "VDI4655":
-            # Split total demand into heating and hot water components
-            YEU_heating_kWh = YEU_total_heat_kWh * (1 - ww_demand)
-            YEU_hot_water_kWh = YEU_total_heat_kWh * ww_demand
-            heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
+            # Split total demand into heating and hot water components.
+            if zero_demand:
+                heating, hot_water = 1.0, 1.0  # placeholder shape; zeroed after the call
+            else:
+                heating = YEU * (1 - current_ww_demand)
+                hot_water = YEU * current_ww_demand
 
             # Calculate VDI 4655 profiles via pyslpheat
             df_vdi = vdi4655_calculate(
@@ -203,9 +210,9 @@ def generate_profiles_from_csv(
                 else None
             )
 
-            # Calculate BDEW profiles via pyslpheat
+            # Calculate BDEW profiles via pyslpheat (1 kWh placeholder for a zero-demand building).
             df_bdew = bdew_calculate(
-                annual_heat_kWh=YEU,
+                annual_heat_kWh=(1.0 if zero_demand else YEU),
                 profile_type=current_building_type,
                 subtype=current_subtype,
                 TRY_file_path=TRY,
@@ -220,6 +227,12 @@ def generate_profiles_from_csv(
             hourly_heat_demand_heating_kW = df_bdew["Q_heat_kWh"].values
             hourly_heat_demand_warmwater_kW = df_bdew["Q_dhw_kWh"].values
             hourly_air_temperatures = df_bdew["temperature_C"].values
+
+        # A zero-demand building keeps the time steps + temperatures but an all-zero profile.
+        if zero_demand:
+            hourly_heat_demand_total_kW = np.zeros_like(hourly_heat_demand_total_kW)
+            hourly_heat_demand_heating_kW = np.zeros_like(hourly_heat_demand_heating_kW)
+            hourly_heat_demand_warmwater_kW = np.zeros_like(hourly_heat_demand_warmwater_kW)
 
         # Ensure non-negative demand values (clip physical impossible negative values)
         hourly_heat_demand_total_kW = np.clip(hourly_heat_demand_total_kW, 0, None)
