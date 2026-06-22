@@ -175,11 +175,19 @@ tests. This is the safety net that makes every refactor below low-risk.
   - **Newly-surfaced god-objects (2026-06-15 audit, OPEN):** three large GUI files are *not*
     in the original B1 list but hold extractable logic — `gui/ProjectTab/project_tab.py`
     (1278 LOC; geocoding/CSV logic duplicated with its worker — see B2),
-    `gui/EnergySystemTab/_11_generator_schematic.py` (1264 LOC — note its `delete_selected`
-    at `:841-900` tears down + rebuilds the whole scene, losing manually-dragged layout;
-    delete only the selected item + its linked partner/pipes/label instead), and
+    `gui/EnergySystemTab/_11_generator_schematic.py` (1264 LOC — its `delete_selected`
+    ~~tears down + rebuilds the whole scene, losing manually-dragged layout~~ **fixed 2026-06-17
+    (pulled into v2.0.0)**: now removes only the selected component + its linked partner + their
+    pipes/label, leaving every other item's position untouched; the full-rebuild path is gone), and
     `gui/ComparisonTab/comparison_tab.py` (1126 LOC). Same caveat as `main_view`: extract the
-    GUI-free islands, leave the Qt glue. Post-release.
+    GUI-free islands, leave the Qt glue. *The full god-object decompositions stay post-release.*
+    - **Move-crash (found + fixed 2026-06-17, pulled into v2.0.0):** dragging a component **froze
+      the app and crashed with no error** — `ComponentItem.itemChange` called `self.setPos(value)`
+      *inside* the `ItemPositionChange` handler, which re-entered `itemChange` recursively (infinite
+      recursion). Fixed by splitting it: `ItemPositionChange` now only snaps to grid (returns the
+      value, never calls `setPos`); the pipe/label/connection-point updates moved to
+      `ItemPositionHasChanged` (fires after the move, so no recursion). GUI-only, no test seam —
+      verified manually in the running app.
 ### B2. MVP violations
 The main frame is clean, but the MVP pattern is applied inconsistently and domain
 logic leaks into the views. Concrete findings (2026-06 survey):
@@ -223,11 +231,13 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      has an in-place `reset_index` side effect to untangle first) and the
      `KostenBerechnungDialog` cost math (`Σ quantity·spec_cost`, tightly coupled to Qt
      input parsing).
-   - *(2026-06-15 audit)* `ProjectModel.create_csv_from_geojson`
-     (`gui/ProjectTab/project_tab.py:132-239`) embeds reverse-geocoding + CRS transform +
-     GeoJSON parsing in the view, duplicated almost verbatim in the worker
-     `GeoJSONToCSVThread.run` (`net_generation_threads.py:327-453`). Extract one GUI-free
-     `geojson_to_building_csv(...)` and call it from both.
+   - ~~*(2026-06-15 audit)* `ProjectModel.create_csv_from_geojson` … duplicated … in
+     `GeoJSONToCSVThread.run`~~ **done 2026-06-17 (pulled into v2.0.0)**: extracted the GUI-free
+     `geocoding/building_csv.py::geojson_to_building_csv(...)` (reverse-geocoding + CRS transform +
+     GeoJSON parsing + CSV write, with optional `progress`/`should_stop` hooks and an injectable
+     `geocoder`/`transformer` for testing). `centroid_of` moved there too (re-exported from
+     `project_tab` for compat). Both the model method and the worker `run()` are now thin callers;
+     pinned by `tests/test_building_csv.py` (5).
    - ~~*(2026-06-15 audit)* config-name↔filename convention duplicated across tabs~~ **done
      2026-06-17**: extracted `gui/EnergySystemTab/config_naming.py`
      (`config_name_to_filename` / `filename_to_config_name`); both tabs import it, so the byte-
@@ -571,7 +581,13 @@ modelling facts (no code bugs — design choices / data / missing model):
 
    Dropping the **default `v_max=2.0`** to a more typical DH 1.0 m/s cuts the pump
    differential ~75 % (7.48 → 1.84 bar) for ~33 % more pipe material — the classic
-   pump-energy vs pipe-capex trade-off. Worth reconsidering the 2.0 default.
+   pump-energy vs pipe-capex trade-off. **Update 2026-06-17 (checked for v2.0.0):** this note
+   was *stale* — the production defaults are **already 1.0** (`init_diameter_types`
+   `v_max_pipe=1.0`, `optimize_diameter_types` `v_max=1.0`, the GUI `dialog_config.json`
+   `v_max_pipe=1.0`), lowered during the C14 work; the golden master already reflects 1.0, so no
+   regeneration was needed. The only remaining `2.0` was the **unused** `optimize_diameter_parameters`
+   (no callers in src/examples/tests) → set to 1.0 for consistency. Going *below* 1.0 would be a
+   further modelling decision, not done. (Dead `optimize_diameter_parameters` is a removal candidate.)
 2. **Elevation is implemented but the Görlitz example carries none.** The DEM pipeline
    (`net_generation/elevation_utils.py`: GeoTIFF or OpenTopoData API → Z-coords →
    `height_m` → geodetic head in pandapipes) is fully wired via the `dem_path` arg of
@@ -723,6 +739,24 @@ Correct fix needs a small refactor (write the download to a temp path + atomic r
 so a killed/abandoned download never leaves a consumable partial file) — post-release, with the
 other `net_generation_threads.py` thread-audit work (C9 follow-up).
 
+### C23. Pipe-type UI: KMR residue, non-ISOPLUS clutter, wheel-scroll, no change cue (fixed 2026-06-18)
+Four issues around the pipe-type selectors, all user-reported and fixed for v2.0.0:
+- **KMR material filter (C11 residue).** `dialog_config.json` still had
+  `diameter_optimization.material_filter = ["KMR", "FL", "HK"]`, so "Wärmenetz generieren" defaulted
+  to `material_filter="KMR"` → `init_diameter_types` filtered the std-types to the (now non-existent)
+  KMR material → `ValueError: No standard pipe types found for material filter: KMR`. Set to
+  `["P235GH/PUR/PEHD"]` (the ISOPLUS material).
+- **Only ISOPLUS pipes selectable.** The initial-pipe combo (`network_config_tab.py`) and the pipe
+  table (`pipe_config_table.py`) listed *all* pandapipes std-types (gas/water utility pipes too).
+  New `pipe_std_types.isoplus_std_type_names(df)` (filters by the `material` column, falls back to the
+  `ISOPLUS` name prefix; unit-tested) now feeds both selectors.
+- **Wheel-scroll changed the selection.** Scrolling while hovering a combo cycled its value. New
+  `gui/utilities.NoScrollComboBox` ignores wheel events (the table/page scrolls instead; value still
+  changes via click); used for the table + initial-pipe combos.
+- **No change cue.** Pipe rows whose std-type/DN/k were edited since the last calculation are now
+  tinted (`_capture_baseline` at each `_fill_table`; `_update_row_highlight` on edit; cleared on the
+  next calculation). GUI-only — verified by the helper test + manual GUI run.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -863,10 +897,13 @@ Same root cause as B4.
   `required_files` literals and the two `Wärmenetz\\Wärmenetz.geojson` sites now use forward
   slashes (portable on both Windows and POSIX), so the progress tracker / dimensioned-network
   check work on Linux/CI. (Pulled into v2.0.0.)
-- *(still open)* Broad `except Exception: pass` swallowers that turn failures into wrong/blank UI with no
-  diagnostic: `project_tab.py:414-415,450-451,610-611,812-814` (the last returns "ist
-  vorhanden" on any read error — masks a corrupt CSV); `comparison_tab.py:525-527,537-538,1080-1081`.
-  Narrow them + at least `logging.warning`.
+- ~~Broad `except Exception: pass` swallowers~~ **fixed 2026-06-17 (pulled into v2.0.0)**: the
+  silent swallowers in `project_tab.py` (CSV-status → masked a corrupt/locked CSV as "ist
+  vorhanden"; network-dimensioned read; CRS auto-suggest; CSV fast-path probe; sample-coord
+  extraction) and `comparison_tab.py` (`update_kpis`, `update_charts`, variant network-KPI read)
+  now `logging.warning`/`logging.debug` the exception (file/parse ones narrowed to
+  `OSError`/`csv.Error`/`json.JSONDecodeError`/`ValueError`/`KeyError`; best-effort ones kept broad
+  but logged at debug). `import logging` added to both files.
 - **Hardcoded backslashes in `examples/` paths (CI-relevant subset fixed 2026-06-16).** A
   literal `"examples\\data\\TRY\\…"` in `examples/14_example_photovoltaics.py` failed the gating
   `test_examples_smoke.py` on Linux CI (`FileNotFoundError` — `\` is not a separator on POSIX).
@@ -989,6 +1026,26 @@ run a net + an energy-system calc end-to-end. *Note:* the debug build's verbose-
 (`('v',…)`) makes a headless/piped launch crawl — irrelevant to the no-console release build.
 Backslash entry path is now OS-agnostic (`os.path.join`), though the build remains Windows-only.
 
+### F7. Read the Docs build broken — config referenced removed requirements files (fixed 2026-06-22)
+**Severity: pre-release (the public docs site `districtheatingsim.readthedocs.io` had not built in a
+while).** RTD failed at `pip install … -r requirements.txt` (exit 1): the `pyproject.toml` migration
+(`d6f105a`) deleted both `requirements.txt` and `documentation_requirements.txt`, but `.readthedocs.yaml`
+still pointed at them. **Fixed:** `.readthedocs.yaml` now installs the package with its `[docs]` extra
+straight from `pyproject.toml` (`method: pip` / `path: .` / `extra_requirements: [docs]`) — single
+source of truth, no standalone requirements files.
+- **Full runtime install is deliberate, not mocking.** autodoc imports the real modules, and the
+  codebase uses PEP 604 unions in runtime-evaluated annotations (e.g.
+  `base_heat_generator.get_plot_data -> dict[str, list | np.ndarray]`, `utilities.py:140`,
+  `LineString | None`). A docs-only + `autodoc_mock_imports` build was prototyped and **rejected**: it
+  crashed the import of ~40 modules (the whole `heat_generators` domain core cascades off
+  `base_heat_generator.py:163`) because `list | <Mock>` raises `TypeError` at function-definition time.
+  Salvaging it would need `from __future__ import annotations` across the domain core, which
+  `NetworkDataClass` blocks (it reads `cls.__annotations__` at runtime, lines 453/472/476).
+- **Verified** in a clean venv with the full runtime: `sphinx -b html` → exit 0, **0 autodoc import
+  failures**, all modules render. Residual warnings are the **pre-existing** cosmetic docstring/reST
+  nits already logged under F5 POST-RELEASE, plus the deprecated `display_version` sphinx_rtd_theme
+  option in `conf.py` (one line, harmless).
+
 ---
 
 ## Suggested order
@@ -1038,17 +1095,17 @@ release mechanics themselves (section F). See the **Release plan** below.
     dir-copy, `upx=False`. The debug exe now starts/runs with no import errors. *Remaining: the manual
     GUI functional test (load project + run net/energy-system), Windows-only, Jonas.*
 
-**Pulled forward into v2.0.0 (2026-06-17):** E3 `project_tab` backslash paths, B2 `config_naming`
-extraction + sanitiser, C16 optimizer `seed`, C17 `generate()` scalar→`calculate_COP` deprecation.
+**Pulled forward into v2.0.0 (2026-06-17):** E3 `project_tab` backslash paths + except-swallowers,
+B2 `config_naming` + `geojson_to_building_csv` extractions, C16 optimizer `seed`, C17 `generate()`
+scalar→`calculate_COP` deprecation, the schematic `delete_selected` rebuild, and the `v_max` default
+consistency (C15.1 — already 1.0 in production).
 
 ### After the new release (Weiterentwicklung)
-- **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
-  `comparison_tab`, `main_view`); B2 dedup (extract `geojson_to_building_csv`);
+- **Architecture:** B1 remaining god-object *decompositions* (`project_tab`, `_11_generator_schematic`,
+  `comparison_tab`, `main_view` — extract the GUI-free islands, leave the Qt glue);
   B4/E2 DE/EN naming sweep.
-- **Modelling / features:** diameter→€/m cost model (C15.3); reconsider the `v_max=2.0`
-  default (C15.1); WP 75 K clamp warning (C17 note).
-- **Hygiene:** E3 remaining (except-swallowing in `project_tab`/`comparison_tab`); schematic
-  `delete_selected` rebuild (B1 note).
+- **Modelling / features:** diameter→€/m cost model (C15.3); going *below* `v_max=1.0` if wanted
+  (C15.1); WP 75 K clamp warning (C17 note); remove the dead `optimize_diameter_parameters`.
 
 ## Pre-release (do last, only once the above are settled)
 - **Update the docs — now scoped as F5.** Sweep `docs/` (Sphinx/readthedocs) + the README

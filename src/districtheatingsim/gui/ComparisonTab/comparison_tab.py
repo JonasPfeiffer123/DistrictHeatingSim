@@ -8,6 +8,7 @@ visualization of economic and technical metrics.
 """
 
 import json
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -516,7 +517,8 @@ class ComparisonDashboard(QWidget):
             for widget_key, data_key, fmt, empty in kpi_specs:
                 text = format_kpi_range(self.variant_data, data_key, fmt, empty=empty)
                 self.kpi_widgets[widget_key].value_label.setText(text)
-        except Exception:
+        except Exception as e:
+            logging.warning("KPI-Aktualisierung fehlgeschlagen: %s", e)
             for widget in self.kpi_widgets.values():
                 widget.value_label.setText("--")
 
@@ -528,8 +530,8 @@ class ComparisonDashboard(QWidget):
             self.update_co2_chart()
             self.update_pe_chart()
             self.update_network_chart()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("Diagramm-Aktualisierung fehlgeschlagen: %s", e)
 
     def update_cost_chart(self):
         """Update cost comparison chart."""
@@ -1071,8 +1073,8 @@ class ComparisonTab(QWidget):
             network_data["Verteilverluste"] = kpi_results.get("rel. Verteilverluste [%]", 0)
             network_data["Pumpenenergie"] = kpi_results.get("Pumpenstrom [MWh]", 0)
             network_data["Anzahl_Gebäude"] = kpi_results.get("Anzahl angeschlossene Gebäude", 0)
-        except Exception:
-            pass
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
+            logging.warning("Konnte Netz-KPIs der Variante nicht lesen: %s", e)
         return network_data
 
     def process_variant_results(self, results):

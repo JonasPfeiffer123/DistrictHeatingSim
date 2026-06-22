@@ -840,64 +840,49 @@ class SchematicScene(CustomGraphicsScene):
 
     def delete_selected(self):
         """
-        Deletes the selected component, ensuring that connected generators and storage are deleted together.
+        Delete the selected component (and its linked storage/generator partner), together
+        with the pipes and label attached to them.
+
+        Only the affected items are removed; every other component keeps its
+        manually-arranged position. (Previously this tore the whole scene down with
+        ``delete_all()`` and re-added the survivors, which reset all positions.)
         """
-        if self.selected_item and isinstance(self.selected_item, ComponentItem) and self.selected_item != self.consumer:
-            # Erstelle eine Liste mit Generatoren und zugehörigen Speichern
-            generators_with_storage = []
-            generators_without_storage = []
+        if not (
+            self.selected_item and isinstance(self.selected_item, ComponentItem) and self.selected_item != self.consumer
+        ):
+            return
 
-            # Durchlaufe alle Items in der Szene und sortiere sie in die entsprechenden Listen
-            for item in self.items():
-                if isinstance(item, ComponentItem) and item.item_type != "Storage" and item != self.consumer:
-                    linked_storage = self.find_linked_storage(item)
-                    if linked_storage:
-                        generators_with_storage.append((item, linked_storage))
-                    else:
-                        generators_without_storage.append(item)
+        # The selected item plus its linked partner (generator <-> storage) are deleted together.
+        components_to_delete = [self.selected_item]
+        if self.selected_item.item_type == "Storage":
+            partner = self.find_linked_generator(self.selected_item)
+        else:
+            partner = self.find_linked_storage(self.selected_item)
+        if partner is not None and partner != self.consumer:
+            components_to_delete.append(partner)
 
-            # Prüfe, ob der ausgewählte Item ein Speicher ist und lösche auch den zugehörigen Generator
-            if self.selected_item.item_type == "Storage":
-                # Finde den Generator, der mit dem Speicher verbunden ist
-                linked_generator = self.find_linked_generator(self.selected_item)
-                if linked_generator:
-                    generators_with_storage = [
-                        (gen, storage)
-                        for gen, storage in generators_with_storage
-                        if gen != linked_generator and storage != self.selected_item
-                    ]
-                else:
-                    generators_with_storage = [
-                        (gen, storage) for gen, storage in generators_with_storage if storage != self.selected_item
-                    ]
-            else:
-                # Der ausgewählte Item ist ein Generator, lösche auch den zugehörigen Speicher
-                linked_storage = self.find_linked_storage(self.selected_item)
-                if linked_storage:
-                    generators_with_storage = [
-                        (gen, storage)
-                        for gen, storage in generators_with_storage
-                        if gen != self.selected_item and storage != linked_storage
-                    ]
-                else:
-                    generators_without_storage = [
-                        item for item in generators_without_storage if item != self.selected_item
-                    ]
+        delete_set = set(components_to_delete)
 
-            # Lösche alles außer dem Consumer
-            self.delete_all()
+        # Remove every pipe attached to a component being deleted (leave all other pipes,
+        # including the consumer's parallel supply/return lines, intact).
+        for pipe in [item for item in self.items() if isinstance(item, Pipe)]:
+            p1 = pipe.point1.parent if isinstance(pipe.point1, ConnectionPoint) else None
+            p2 = pipe.point2.parent if isinstance(pipe.point2, ConnectionPoint) else None
+            if p1 in delete_set or p2 in delete_set:
+                self.removeItem(pipe)
+                if pipe in self.pipes:
+                    self.pipes.remove(pipe)
 
-            # Füge die Generatoren und Speicher in der ursprünglichen Reihenfolge wieder hinzu
-            for generator, _storage in sorted(generators_with_storage, key=lambda i: i[0].pos().x()):
-                self.add_generator_with_storage(generator.item_type, generator.item_name)
+        # Remove the components themselves, plus their label and background rect.
+        for comp in components_to_delete:
+            if comp.label:
+                self.removeItem(comp.label)
+            if getattr(comp, "background_rect", None):
+                self.removeItem(comp.background_rect)
+            self.removeItem(comp)
 
-            for generator in sorted(generators_without_storage, key=lambda i: i.pos().x()):
-                self.add_generator(generator.item_type, generator.item_name)
-
-            # Setze das ausgewählte Item zurück
-            self.selected_item = None
-
-            self.update_scene_size()
+        self.selected_item = None
+        self.update_scene_size()
 
     def delete_all(self):
         """
@@ -1109,39 +1094,39 @@ class ComponentItem(QGraphicsItem):
             if isinstance(scene, SchematicScene):
                 value = scene.snap_to_grid(value)  # Snap to grid when moved
 
-            if self.scene():  # Check if the item is in a scene
-                # Aktualisiere alle Pipes, die mit dem Item verbunden sind
-                for pipe in self.scene().items():
+        elif change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
+            scene = self.scene()
+            if scene:
+                # Aktualisiere nur die Pipes, die direkt mit diesem Item verbunden sind.
+                for pipe in scene.items():
                     if isinstance(pipe, Pipe):
-                        pipe.update_path()  # Update the path of all pipes
+                        connected_to_self = False
+                        if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == self:
+                            connected_to_self = True
+                        if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == self:
+                            connected_to_self = True
 
-                # Aktualisiere die Position des Labels mit intelligenter Kollisionsvermeidung
-                if self.label:
-                    # Temporär die neue Position setzen für die Kollisionsprüfung
-                    old_pos = self.pos()
-                    self.setPos(value)  # Temporär neue Position setzen
+                        if not connected_to_self:
+                            continue
 
-                    # Finde optimale Label-Position
-                    optimal_position = self.scene().find_optimal_label_position(self, self.label)
+                        pipe.update_path()
+
+                # Aktualisiere die Position des Labels mit intelligenter Kollisionsvermeidung.
+                if self.label and hasattr(scene, "find_optimal_label_position"):
+                    optimal_position = scene.find_optimal_label_position(self, self.label)
                     self.label.setPos(optimal_position)
-
-                    # Position zurücksetzen (wird von PyQt automatisch auf 'value' gesetzt)
-                    self.setPos(old_pos)
 
                     padding = 12
 
                     # Aktualisiere die Position und Größe der Hintergrundbox (background_rect)
                     if hasattr(self, "background_rect") and self.background_rect:
                         label_rect = self.label.boundingRect()
-
-                        # Berechne die Szene-Position des Labels
                         scene_label_pos = self.label.scenePos()
                         background_rect_x = scene_label_pos.x() - padding / 2
                         background_rect_y = scene_label_pos.y() - padding / 2
                         background_rect_width = label_rect.width() + padding
                         background_rect_height = label_rect.height() + padding
 
-                        # Setze die neue Position und Größe des Hintergrundrechtecks
                         self.background_rect.setRect(
                             background_rect_x, background_rect_y, background_rect_width, background_rect_height
                         )
@@ -1235,7 +1220,13 @@ class Pipe(QGraphicsPathItem):
         intermediate_point = QPointF(start_pos.x(), end_pos.y())
 
         # Adjust path to avoid collisions
-        if self.check_collision(intermediate_point):
+        excluded_items = set()
+        if isinstance(self.point1, ConnectionPoint) and isinstance(self.point1.parent, ComponentItem):
+            excluded_items.add(self.point1.parent)
+        if isinstance(self.point2, ConnectionPoint) and isinstance(self.point2.parent, ComponentItem):
+            excluded_items.add(self.point2.parent)
+
+        if self.check_collision(intermediate_point, excluded_items):
             # If a collision is detected in the vertical segment, adjust the path
             adjusted_point = QPointF(start_pos.x() + 20, start_pos.y())  # Move right or left to avoid collision
             self.path.lineTo(adjusted_point)
@@ -1250,15 +1241,18 @@ class Pipe(QGraphicsPathItem):
         # Apply the updated path to the Pipe
         self.setPath(self.path)
 
-    def check_collision(self, point):
+    def check_collision(self, point, excluded_items=None):
         """Check if the given point collides with any item (generator, consumer, storage)"""
         # Only check for collisions if the pipe is part of a scene
         if self.scene() is None:
             return False
 
+        if excluded_items is None:
+            excluded_items = set()
+
         # Loop through the items in the scene and check for collisions
         for item in self.scene().items():
-            if isinstance(item, ComponentItem):
+            if isinstance(item, ComponentItem) and item not in excluded_items:
                 if item.contains(item.mapFromScene(point)):
                     return True
         return False
