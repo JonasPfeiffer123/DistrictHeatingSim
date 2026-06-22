@@ -15,6 +15,20 @@ from PyQt6.QtGui import QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import QComboBox, QListView
 
 
+class NoScrollComboBox(QComboBox):
+    """
+    A QComboBox that ignores mouse-wheel events.
+
+    Inside a scroll area or table, hovering over a normal combo box and scrolling
+    accidentally cycles its selection. This variant lets the wheel event pass through
+    to the container (so the table/page scrolls instead); the value still changes via
+    clicking and the popup list.
+    """
+
+    def wheelEvent(self, event):
+        event.ignore()
+
+
 class CheckableComboBox(QComboBox):
     """
     Custom combo box widget with checkable items for multiple selection.

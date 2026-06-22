@@ -366,7 +366,7 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
 
 
 def optimize_diameter_parameters(
-    net, element: str = "pipe", v_max: float = 2.0, dx: float = 0.001, safety_factor: float = 1.5
+    net, element: str = "pipe", v_max: float = 1.0, dx: float = 0.001, safety_factor: float = 1.5
 ) -> pp.pandapipesNet:
     """
     Optimize network element diameters to meet maximum velocity constraints using continuous adjustment.

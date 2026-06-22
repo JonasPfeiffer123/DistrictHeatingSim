@@ -8,7 +8,14 @@ build:
 sphinx:
   configuration: docs/source/conf.py
 
+# Install the package itself with its full runtime stack plus the docs extra,
+# from pyproject.toml (the standalone requirements.txt / documentation_requirements.txt
+# were removed in the pyproject migration). autodoc imports the real modules, so the
+# runtime deps must be present — the docs would otherwise lose ~40 modules whose
+# PEP 604 annotations (e.g. `list | np.ndarray`) are evaluated at import time.
 python:
   install:
-    - requirements: requirements.txt
-    - requirements: documentation_requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
