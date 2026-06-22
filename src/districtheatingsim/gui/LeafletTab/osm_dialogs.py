@@ -59,7 +59,7 @@ class DownloadOSMDataDialog(OSMDownloadDialogBase):
         :type project_crs: str
         """
         super().__init__(base_path, config_manager, parent, parent_pres, project_crs=project_crs)
-        self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
+        self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service|unclassified"]'
         self.initUI()
 
     def initUI(self):
@@ -164,12 +164,16 @@ class DownloadOSMDataDialog(OSMDownloadDialogBase):
             ("residential", "Wohnstraßen (residential)"),
             ("living_street", "Verkehrsberuhigte Bereiche (living_street)"),
             ("service", "Erschließungsstraßen (service)"),
+            ("unclassified", "Unklassifizierte Straßen (unclassified)"),
+            ("track", "Wirtschaftswege (track)"),
         ]
 
         for key, label in highway_types:
             checkbox = QCheckBox(label)
-            # Default: primary, secondary, tertiary, residential, living_street, service checked
-            checkbox.setChecked(key in ["primary", "secondary", "tertiary", "residential", "living_street", "service"])
+            # Default: everything except track (agricultural/forest tracks rarely carry buildings).
+            checkbox.setChecked(
+                key in ["primary", "secondary", "tertiary", "residential", "living_street", "service", "unclassified"]
+            )
             checkbox.stateChanged.connect(self.updateFilters)
             self.highwayCheckboxes[key] = checkbox
             streetTypeLayout.addWidget(checkbox)
