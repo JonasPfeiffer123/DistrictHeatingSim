@@ -8,9 +8,9 @@ Project management tab with MVP architecture for CSV file editing and project tr
 
 import csv
 import json
+import logging
 import os
 
-from geopy.geocoders import Nominatim
 from pyproj import Transformer
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction, QFileSystemModel
@@ -35,41 +35,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from districtheatingsim.geocoding.building_csv import centroid_of, geojson_to_building_csv
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
-
-
-def centroid_of(coordinates):
-    """
-    Recursively average a (possibly nested) GeoJSON coordinate array.
-
-    Handles a bare ``[x, y]`` point as well as the nested arrays of LineString /
-    Polygon / MultiPolygon geometries by averaging the centroids of the parts.
-    GUI-free pure logic (extracted from ``ProjectModel.calculate_centroid`` so it
-    is unit-testable — BACKLOG B2).
-
-    :param coordinates: A ``[x, y]`` point or a nested list of such arrays.
-    :return: ``(x, y)`` centroid, or ``(None, None)`` if no point is found.
-    :rtype: tuple
-    """
-    # Base case: a single [x, y] point.
-    if isinstance(coordinates[0], float):
-        return coordinates[0], coordinates[1]
-
-    x_sum = y_sum = 0.0
-    total_points = 0
-    for item in coordinates:
-        x, y = centroid_of(item)
-        if x is not None and y is not None:
-            x_sum += x
-            y_sum += y
-            total_points += 1
-    if total_points > 0:
-        return x_sum / total_points, y_sum / total_points
-    return None, None
 
 
 class ProjectModel:
@@ -131,112 +102,17 @@ class ProjectModel:
 
     def create_csv_from_geojson(self, geojson_file_path, output_file_path, default_values, project_crs="EPSG:25833"):
         """
-        Create CSV from GeoJSON data with default values.
+        Create the building CSV from a GeoJSON (thin wrapper over the GUI-free
+        :func:`districtheatingsim.geocoding.building_csv.geojson_to_building_csv`).
 
         :param geojson_file_path: Input GeoJSON file path.
-        :type geojson_file_path: str
         :param output_file_path: Output CSV file path.
-        :type output_file_path: str
         :param default_values: Default values for building parameters.
-        :type default_values: dict
+        :param project_crs: CRS of the GeoJSON coordinates.
         :return: Output file path.
         :rtype: str
         """
-        try:
-            with open(geojson_file_path) as geojson_file:
-                data = json.load(geojson_file)
-
-            # Initialize geocoder and transformer once
-            geolocator = Nominatim(user_agent="DistrictHeatingSim")
-            transformer = Transformer.from_crs(project_crs, "epsg:4326", always_xy=True)
-
-            with open(output_file_path, "w", encoding="utf-8-sig", newline="") as csvfile:
-                fieldnames = [
-                    "Land",
-                    "Bundesland",
-                    "Stadt",
-                    "Adresse",
-                    "Wärmebedarf",
-                    "Gebäudetyp",
-                    "Subtyp",
-                    "WW_Anteil",
-                    "Typ_Heizflächen",
-                    "VLT_max",
-                    "Steigung_Heizkurve",
-                    "RLT_max",
-                    "Normaußentemperatur",
-                    "UTM_X",
-                    "UTM_Y",
-                ]
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
-                writer.writeheader()
-
-                for feature in data["features"]:
-                    centroid = self.calculate_centroid(feature["geometry"]["coordinates"])
-
-                    # Reverse geocode each building individually
-                    land = default_values.get("Land", "Deutschland")
-                    bundesland = default_values.get("Bundesland", "")
-                    stadt = default_values.get("Stadt", "")
-                    adresse = default_values.get("Adresse", "")
-
-                    if centroid[0] is not None and centroid[1] is not None:
-                        try:
-                            # Transform UTM to WGS84
-                            lon, lat = transformer.transform(centroid[0], centroid[1])
-
-                            # Reverse geocode with timeout
-                            location = geolocator.reverse(f"{lat}, {lon}", language="de", timeout=10)
-
-                            if location and location.raw.get("address"):
-                                address_data = location.raw["address"]
-
-                                # Extract address components
-                                land = address_data.get("country", land)
-                                bundesland = address_data.get("state", bundesland)
-                                stadt = (
-                                    address_data.get("city")
-                                    or address_data.get("town")
-                                    or address_data.get("village")
-                                    or address_data.get("municipality")
-                                    or stadt
-                                )
-
-                                # Build street address
-                                street_parts = []
-                                if "road" in address_data:
-                                    street_parts.append(address_data["road"])
-                                if "house_number" in address_data:
-                                    street_parts.append(address_data["house_number"])
-
-                                if street_parts:
-                                    adresse = " ".join(street_parts)
-
-                        except Exception:
-                            pass  # Reverse geocoding failed for this building — skip
-
-                    writer.writerow(
-                        {
-                            "Land": land,
-                            "Bundesland": bundesland,
-                            "Stadt": stadt,
-                            "Adresse": adresse,
-                            "Wärmebedarf": default_values["Wärmebedarf"],
-                            "Gebäudetyp": default_values["Gebäudetyp"],
-                            "Subtyp": default_values["Subtyp"],
-                            "WW_Anteil": default_values["WW_Anteil"],
-                            "Typ_Heizflächen": default_values["Typ_Heizflächen"],
-                            "VLT_max": default_values["VLT_max"],
-                            "Steigung_Heizkurve": default_values["Steigung_Heizkurve"],
-                            "RLT_max": default_values["RLT_max"],
-                            "Normaußentemperatur": default_values["Normaußentemperatur"],
-                            "UTM_X": centroid[0],
-                            "UTM_Y": centroid[1],
-                        }
-                    )
-            return output_file_path
-        except Exception as e:
-            raise Exception(f"Fehler beim Erstellen der CSV-Datei: {str(e)}") from e
+        return geojson_to_building_csv(geojson_file_path, output_file_path, default_values, project_crs)
 
     def calculate_centroid(self, coordinates):
         """
@@ -411,8 +287,8 @@ class ProjectPresenter:
             suggested = suggest_crs_from_location(lon, lat)
             self.folder_manager.set_project_crs(suggested)
             self.view.set_crs(suggested)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("CRS-Vorschlag aus den Koordinaten fehlgeschlagen: %s", e)
 
     def import_csv(self):
         """
@@ -447,8 +323,9 @@ class ProjectPresenter:
                 # Already in the right format – load directly
                 self.load_csv(fname)
                 return
-        except Exception:
-            pass  # Fall through to mapping dialog on any error
+        except Exception as e:
+            # Best-effort fast path; fall through to the mapping dialog on any error.
+            logging.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
 
         # Show column-mapping dialog
         dialog = CsvImportDialog(fname, parent=self.view)
@@ -607,8 +484,9 @@ class ProjectPresenter:
                         centroid = self.model.calculate_centroid(first_feature["geometry"]["coordinates"])
                         if centroid[0] is not None and centroid[1] is not None:
                             sample_coords = centroid
-            except Exception:
-                pass  # Could not extract sample coordinates — continue without them
+            except Exception as e:
+                # Best-effort; continue without sample coordinates.
+                logging.debug("Konnte Beispielkoordinaten nicht extrahieren: %s", e)
 
             dialog = OSMImportDialog(
                 self.view, sample_utm_coords=sample_coords, project_crs=self.folder_manager.project_crs
@@ -812,8 +690,10 @@ class ProjectPresenter:
 
                 return "ist vorhanden"  # Has headers but no valid coordinate data
 
-        except Exception:
-            # If we can't read the CSV, assume it exists but is problematic
+        except (OSError, csv.Error, UnicodeDecodeError, ValueError) as e:
+            # If we can't read the CSV, assume it exists but is problematic — but log it,
+            # so a corrupt/locked CSV is not silently reported as "ist vorhanden".
+            logging.warning("Konnte CSV-Status von %s nicht lesen: %s", csv_file_path, e)
             return "ist vorhanden"
 
     def check_network_dimensioned(self, network_file_path):
@@ -838,7 +718,8 @@ class ProjectPresenter:
             state = metadata.get("state", "")
             return state == "dimensioned"
 
-        except Exception:
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
+            logging.warning("Konnte Netz-Status von %s nicht lesen: %s", network_file_path, e)
             return False
 
     def update_progress_tracker(self):
