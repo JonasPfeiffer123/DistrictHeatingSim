@@ -77,13 +77,18 @@ def download_street_graph(
     buffer_degrees = buffer_meters / 111000.0
     area_polygon = all_points_wgs84.union_all().buffer(buffer_degrees)
 
-    # Download street graph
+    # Download street graph. truncate_by_edge keeps streets that cross the polygon boundary
+    # (otherwise an edge with one endpoint outside the polygon is dropped, losing boundary streets).
     if custom_filter:
         logger.info(f"Using custom filter: {custom_filter}")
-        street_graph = ox.graph_from_polygon(area_polygon, custom_filter=custom_filter, simplify=True)
+        street_graph = ox.graph_from_polygon(
+            area_polygon, custom_filter=custom_filter, simplify=True, truncate_by_edge=True
+        )
     else:
         logger.info(f"Using network_type: {network_type}")
-        street_graph = ox.graph_from_polygon(area_polygon, network_type=network_type, simplify=True)
+        street_graph = ox.graph_from_polygon(
+            area_polygon, network_type=network_type, simplify=True, truncate_by_edge=True
+        )
 
     # Project to target CRS
     street_graph = ox.project_graph(street_graph, to_crs=target_crs)
