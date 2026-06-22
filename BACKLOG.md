@@ -228,11 +228,14 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      GeoJSON parsing in the view, duplicated almost verbatim in the worker
      `GeoJSONToCSVThread.run` (`net_generation_threads.py:327-453`). Extract one GUI-free
      `geojson_to_building_csv(...)` and call it from both.
-   - *(2026-06-15 audit)* config-name↔filename convention duplicated across tabs:
-     `_filename_to_config_name` is byte-identical in `comparison_tab.py:39` and
-     `_01_energy_system_main_tab.py:54`, and only the main tab has the `/`→`-` sanitiser
-     (`_config_name_to_filename`), so a config named "A/B" doesn't round-trip in the
-     comparison tab. Extract one shared `EnergySystemTab/config_naming.py`.
+   - ~~*(2026-06-15 audit)* config-name↔filename convention duplicated across tabs~~ **done
+     2026-06-17**: extracted `gui/EnergySystemTab/config_naming.py`
+     (`config_name_to_filename` / `filename_to_config_name`); both tabs import it, so the byte-
+     identical `_filename_to_config_name` duplication is gone and both now sanitise identically
+     ("A/B" → "A-B" everywhere, not just on save — the comparison tab previously lacked the
+     sanitiser). The slash→dash transform is inherently lossy (can't round-trip a `/` in a
+     filename), now documented + pinned by `tests/test_config_naming.py` (3). (Pulled into v2.0.0.)
+     The `geojson_to_building_csv` extraction above is still open.
 3. **Cross-component reach-through.** `main_view` drives other tabs by calling their
    presenters directly (`buildingTab.presenter.load_csv(...)`,
    `projectTab.presenter.save_csv(...)`).
@@ -603,9 +606,12 @@ toward 0. Structurally biased toward undersized/empty systems.
   CHP); CHP+GasBoiler → CHP **128.7 kW / 100 %** covered. Pinned by
   `tests/test_energy_system.py::TestOptimizerCoverage` (seeded; asserts capacity > 50 kW and
   coverage > 50 %, ranges not exact values — SLSQP/platform drift). 71 domain-core tests green.
-- *POST-RELEASE follow-up:* the SLSQP random restarts draw from the global unseeded
-  `np.random` (`:1042-1045`), so `optimize_mix` is non-deterministic / un-golden-masterable.
-  Accept an optional seed / `np.random.Generator` (the new test seeds the global RNG as a stopgap).
+- ~~*POST-RELEASE follow-up:* the SLSQP random restarts draw from the global unseeded `np.random`~~
+  **done 2026-06-17**: `EnergySystemOptimizer`/`optimize_mix` take an optional `seed` and the restarts
+  now draw from a local `np.random.default_rng(seed)` (no global side effect; `seed=None` stays
+  non-deterministic). `optimize_mix` is now reproducible — pinned by
+  `TestOptimizerCoverage::test_seed_makes_optimization_reproducible` (and the coverage test uses
+  `seed=42` instead of seeding the global RNG). (Pulled into v2.0.0.)
 
 ### C17. Heat-pump electricity overstated at part load → wrong emissions/WGK (fixed 2026-06-16)
 Two HP techs did not rescale electricity to the capped heat output (both were untested):
@@ -630,11 +636,13 @@ Two HP techs did not rescale electricity to the capped heat output (both were un
 - *POST-RELEASE:* `calculate_COP` silently clamps the required flow temperature to
   source+75 K (`base_heat_pumps.py:118`) and zeros the COP out of table bounds (`:140-148`,
   `print` not `logging`) — warn/flag instead of silently clamping.
-- *POST-RELEASE (found 2026-06-16):* `Geothermal.generate`/`RiverHeatPump.generate` pass
-  **scalar** `VLT`/source temp into `calculate_COP` (which is array-shaped), so
-  `geothermal_heat_pump.py:188` raises a NumPy `DeprecationWarning` ("Conversion of an array
-  with ndim > 0 to a scalar … will error in future"). Harmless today, will break on a future
-  NumPy — wrap the scalar inputs as 1-element arrays (or give the HPs a scalar COP path).
+- ~~*POST-RELEASE (found 2026-06-16):* `Geothermal.generate`/`RiverHeatPump.generate` pass
+  **scalar** `VLT` into the array-shaped `calculate_COP` → NumPy `DeprecationWarning`~~ **fixed
+  2026-06-17**: both `generate()` paths now pass the scalar as `np.atleast_1d(VLT)` and take `[0]`,
+  so the "ndim > 0 to scalar" deprecation is gone (it would have become an error on a future
+  NumPy). Pinned by running `TestGeothermalElectricity`/`TestRiverHeatPumpPartLoad` with the
+  deprecation promoted to an error. (Pulled into v2.0.0.) *(The 75 K clamp warning above stays
+  post-release.)*
 
 ### C18. `QClipboard()` instantiated directly → copy/paste buttons dead (fixed 2026-06-16)
 `layer_generation_dialog.py:594` and `:607` did `clipboard = QClipboard()`; `QClipboard`
@@ -848,14 +856,14 @@ harmless.) The earlier `error_log.txt` flag was a non-issue — it was never tra
 only ignored. The 52 MB Görlitz example project is large but acceptable. Nothing to do.
 ### E2. Naming/method-name inconsistencies
 Same root cause as B4.
-### E3. Cross-platform & defensive-coding hygiene (found 2026-06-15, OPEN)
+### E3. Cross-platform & defensive-coding hygiene (partially fixed 2026-06-17)
 **Severity: post-release (Windows-first app; bites Linux/CI dev).**
-- Hardcoded backslashes in `gui/ProjectTab/project_tab.py` (`required_files` +
-  `os.path.join(base_path, "Wärmenetz\\Wärmenetz.geojson")` at
-  `:286,298,304,308-312,319,879,885`) — `os.path.join` won't split `\` on POSIX, so the
-  progress tracker reports every step missing and the dimensioned-network check always fails.
-  Use `os.path.join("Wärmenetz", "Wärmenetz.geojson")`.
-- Broad `except Exception: pass` swallowers that turn failures into wrong/blank UI with no
+- ~~Hardcoded backslashes in `gui/ProjectTab/project_tab.py` (`required_files` +
+  `os.path.join(base_path, "Wärmenetz\\Wärmenetz.geojson")`)~~ — **fixed 2026-06-17**: all the
+  `required_files` literals and the two `Wärmenetz\\Wärmenetz.geojson` sites now use forward
+  slashes (portable on both Windows and POSIX), so the progress tracker / dimensioned-network
+  check work on Linux/CI. (Pulled into v2.0.0.)
+- *(still open)* Broad `except Exception: pass` swallowers that turn failures into wrong/blank UI with no
   diagnostic: `project_tab.py:414-415,450-451,610-611,812-814` (the last returns "ist
   vorhanden" on any read error — masks a corrupt CSV); `comparison_tab.py:525-527,537-538,1080-1081`.
   Narrow them + at least `logging.warning`.
@@ -1030,14 +1038,17 @@ release mechanics themselves (section F). See the **Release plan** below.
     dir-copy, `upx=False`. The debug exe now starts/runs with no import errors. *Remaining: the manual
     GUI functional test (load project + run net/energy-system), Windows-only, Jonas.*
 
+**Pulled forward into v2.0.0 (2026-06-17):** E3 `project_tab` backslash paths, B2 `config_naming`
+extraction + sanitiser, C16 optimizer `seed`, C17 `generate()` scalar→`calculate_COP` deprecation.
+
 ### After the new release (Weiterentwicklung)
 - **Architecture:** B1 remaining god-objects (`project_tab`, `_11_generator_schematic`,
-  `comparison_tab`, `main_view`); B2 dedup (extract `geojson_to_building_csv`, `config_naming`);
+  `comparison_tab`, `main_view`); B2 dedup (extract `geojson_to_building_csv`);
   B4/E2 DE/EN naming sweep.
 - **Modelling / features:** diameter→€/m cost model (C15.3); reconsider the `v_max=2.0`
-  default (C15.1); optimizer reproducibility seed (C16 note); WP 75 K clamp warning (C17 note).
-- **Hygiene:** E3 (cross-platform paths, except-swallowing); schematic `delete_selected`
-  rebuild (B1 note).
+  default (C15.1); WP 75 K clamp warning (C17 note).
+- **Hygiene:** E3 remaining (except-swallowing in `project_tab`/`comparison_tab`); schematic
+  `delete_selected` rebuild (B1 note).
 
 ## Pre-release (do last, only once the above are settled)
 - **Update the docs — now scoped as F5.** Sweep `docs/` (Sphinx/readthedocs) + the README
