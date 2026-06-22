@@ -26,6 +26,30 @@ import numpy as np
 _KMR_PATTERN = re.compile(r"^KMR\s+(\d+)/[^-]*-(\d+)v$")
 _ISOPLUS_PATTERN = re.compile(r"^ISOPLUS_DRE(\d+)(_\w+)$")
 
+# Material of the ISOPLUS bonded-steel pipes — the only pipe family relevant for district
+# heating networks. Other pandapipes std-types (gas/water utility pipes) are filtered out
+# of the UI pipe selectors.
+ISOPLUS_MATERIAL = "P235GH/PUR/PEHD"
+
+
+def isoplus_std_type_names(std_types) -> list[str]:
+    """
+    Filter a pandapipes pipe-std-type table to the ISOPLUS bonded-steel types.
+
+    :param std_types: DataFrame from ``pp.std_types.available_std_types(net, "pipe")``
+        (or ``None``).
+    :return: The names of the ISOPLUS pipe std-types, preferring the ``material`` column
+        and falling back to the ``ISOPLUS`` name prefix if that column is absent.
+    :rtype: list[str]
+    """
+    if std_types is None or len(std_types.index) == 0:
+        return []
+    if "material" in std_types.columns:
+        names = std_types.index[std_types["material"] == ISOPLUS_MATERIAL].tolist()
+        if names:
+            return names
+    return [name for name in std_types.index if str(name).startswith("ISOPLUS")]
+
 
 def kmr_to_isoplus_std_type(name) -> str | None:
     """

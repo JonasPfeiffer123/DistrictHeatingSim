@@ -29,7 +29,7 @@
   },
   "diameter_optimization": {
     "v_max_pipe": 1.0,
-    "material_filter": ["KMR", "FL", "HK"],
+    "material_filter": ["P235GH/PUR/PEHD"],
     "k_mm": 0.1
   }
 }

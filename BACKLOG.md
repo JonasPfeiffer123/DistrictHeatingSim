@@ -739,6 +739,24 @@ Correct fix needs a small refactor (write the download to a temp path + atomic r
 so a killed/abandoned download never leaves a consumable partial file) — post-release, with the
 other `net_generation_threads.py` thread-audit work (C9 follow-up).
 
+### C23. Pipe-type UI: KMR residue, non-ISOPLUS clutter, wheel-scroll, no change cue (fixed 2026-06-18)
+Four issues around the pipe-type selectors, all user-reported and fixed for v2.0.0:
+- **KMR material filter (C11 residue).** `dialog_config.json` still had
+  `diameter_optimization.material_filter = ["KMR", "FL", "HK"]`, so "Wärmenetz generieren" defaulted
+  to `material_filter="KMR"` → `init_diameter_types` filtered the std-types to the (now non-existent)
+  KMR material → `ValueError: No standard pipe types found for material filter: KMR`. Set to
+  `["P235GH/PUR/PEHD"]` (the ISOPLUS material).
+- **Only ISOPLUS pipes selectable.** The initial-pipe combo (`network_config_tab.py`) and the pipe
+  table (`pipe_config_table.py`) listed *all* pandapipes std-types (gas/water utility pipes too).
+  New `pipe_std_types.isoplus_std_type_names(df)` (filters by the `material` column, falls back to the
+  `ISOPLUS` name prefix; unit-tested) now feeds both selectors.
+- **Wheel-scroll changed the selection.** Scrolling while hovering a combo cycled its value. New
+  `gui/utilities.NoScrollComboBox` ignores wheel events (the table/page scrolls instead; value still
+  changes via click); used for the table + initial-pipe combos.
+- **No change cue.** Pipe rows whose std-type/DN/k were edited since the last calculation are now
+  tinted (`_capture_baseline` at each `_fill_table`; `_update_row_highlight` on edit; cleared on the
+  next calculation). GUI-only — verified by the helper test + manual GUI run.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
