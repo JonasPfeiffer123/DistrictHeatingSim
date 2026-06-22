@@ -12,6 +12,8 @@ import numpy as np
 import pytest
 
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
+    ISOPLUS_MATERIAL,
+    isoplus_std_type_names,
     kmr_to_isoplus_std_type,
     nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
@@ -290,6 +292,31 @@ class TestResolvePipeU:
 
         s = pd.Series({"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3})
         assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)
+
+
+class TestIsoplusStdTypeNames:
+    """Only the ISOPLUS bonded-steel pipes are offered in the UI pipe selectors."""
+
+    def test_filters_by_material(self):
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {"material": [ISOPLUS_MATERIAL, "PE", ISOPLUS_MATERIAL, "GGG"]},
+            index=["ISOPLUS_DRE100_2x", "80_PE", "ISOPLUS_DRE125_2x", "80_GGG"],
+        )
+        assert isoplus_std_type_names(df) == ["ISOPLUS_DRE100_2x", "ISOPLUS_DRE125_2x"]
+
+    def test_falls_back_to_name_prefix_without_material_column(self):
+        import pandas as pd
+
+        df = pd.DataFrame(index=["ISOPLUS_DRE100_2x", "80_PE", "ISOPLUS_DRE125_2x"])
+        assert isoplus_std_type_names(df) == ["ISOPLUS_DRE100_2x", "ISOPLUS_DRE125_2x"]
+
+    def test_none_and_empty(self):
+        import pandas as pd
+
+        assert isoplus_std_type_names(None) == []
+        assert isoplus_std_type_names(pd.DataFrame(index=[])) == []
 
 
 class TestNetworkDataArrayCoercion:

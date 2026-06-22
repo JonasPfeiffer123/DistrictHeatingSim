@@ -9,6 +9,9 @@ Tab for network configuration parameters in district heating systems.
 import pandapipes as pp
 from PyQt6.QtWidgets import QCheckBox, QComboBox, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
+from districtheatingsim.gui.utilities import NoScrollComboBox
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import isoplus_std_type_names
+
 
 class NetworkConfigTab(QWidget):
     """
@@ -260,8 +263,9 @@ class NetworkConfigTab(QWidget):
         :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
-        self.initialpipetypeInput = QComboBox(self)
-        pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
+        self.initialpipetypeInput = NoScrollComboBox(self)
+        std_types = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe")
+        pipetypes = isoplus_std_type_names(std_types)  # only ISOPLUS pipes are relevant for DH
         self.initialpipetypeInput.addItems(pipetypes)
         layout.addWidget(self.initialpipetypeInput)
 

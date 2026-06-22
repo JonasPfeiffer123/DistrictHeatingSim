@@ -13,10 +13,9 @@ import logging
 
 import pandapipes as pp
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QBrush, QColor, QFont
 from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QComboBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -28,7 +27,14 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
+from districtheatingsim.gui.utilities import NoScrollComboBox
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
+    isoplus_std_type_names,
+    resolve_pipe_u_w_per_m2k,
+)
+
+# Background tint for a pipe row whose values were edited since the last calculation.
+_CHANGED_ROW_COLOR = "#fff3cd"
 
 
 class PipeConfigTable(QWidget):
@@ -50,6 +56,9 @@ class PipeConfigTable(QWidget):
         super().__init__(parent)
         self._net_data = None
         self._original_pipe_df = None
+        # Per-pipe snapshot of the editable values as of the last calculation; rows whose
+        # current values differ from this are highlighted. Reset on every _fill_table().
+        self._baseline = {}
         self._init_ui()
 
     # ------------------------------------------------------------------
@@ -260,7 +269,7 @@ class PipeConfigTable(QWidget):
             self._table.setItem(row, 3, ro(f"J{pipe_data['to_junction']}"))
             self._table.setItem(row, 4, ro(f"{pipe_data['length_km'] * 1000:.1f}"))
 
-            combo = QComboBox()
+            combo = NoScrollComboBox()
             combo.setMinimumHeight(25)
             combo.setStyleSheet("""
                 QComboBox {
@@ -280,12 +289,14 @@ class PipeConfigTable(QWidget):
                     selection-color: white;
                 }
             """)
-            if pipe_std_types is not None:
-                combo.addItems(pipe_std_types.index.tolist())
+            # Only ISOPLUS bonded-steel pipes are relevant for district heating.
+            isoplus_names = isoplus_std_type_names(pipe_std_types)
+            if isoplus_names:
+                combo.addItems(isoplus_names)
                 current = pipe_data.get("std_type", "")
-                if current and current in pipe_std_types.index:
+                if current and current in isoplus_names:
                     combo.setCurrentText(current)
-                elif len(pipe_std_types.index) > 0:
+                else:
                     combo.setCurrentIndex(0)
             combo.currentTextChanged.connect(lambda text, r=row: self._on_std_type_changed(r, text))
             self._table.setCellWidget(row, 5, combo)
@@ -310,6 +321,49 @@ class PipeConfigTable(QWidget):
         hdr.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
         hdr.resizeSection(7, 80)
 
+        # This freshly-filled state is the "last calculation" baseline; no row is highlighted.
+        self._capture_baseline()
+
+        self._table.blockSignals(False)
+
+    # ------------------------------------------------------------------
+    # Change highlighting (rows edited since the last calculation)
+    # ------------------------------------------------------------------
+
+    def _row_values(self, row):
+        """Return the editable values of *row* as displayed strings: (std_type, DN, k)."""
+        combo = self._table.cellWidget(row, 5)
+        dn_item = self._table.item(row, 6)
+        k_item = self._table.item(row, 7)
+        return (
+            combo.currentText() if combo else "",
+            dn_item.text() if dn_item else "",
+            k_item.text() if k_item else "",
+        )
+
+    def _capture_baseline(self):
+        """Snapshot every row's current values as the baseline (clears all highlights)."""
+        self._baseline = {}
+        for row in range(self._table.rowCount()):
+            idx_item = self._table.item(row, 0)
+            if idx_item is not None:
+                self._baseline[int(idx_item.text())] = self._row_values(row)
+
+    def _update_row_highlight(self, row):
+        """Tint *row* if its current values differ from the baseline, else clear the tint."""
+        idx_item = self._table.item(row, 0)
+        if idx_item is None:
+            return
+        pipe_idx = int(idx_item.text())
+        changed = self._baseline.get(pipe_idx) != self._row_values(row)
+        brush = QBrush(QColor(_CHANGED_ROW_COLOR)) if changed else QBrush()
+
+        # setBackground emits itemChanged; block signals to avoid re-entering the handlers.
+        self._table.blockSignals(True)
+        for col in range(self._table.columnCount()):
+            item = self._table.item(row, col)
+            if item is not None:
+                item.setBackground(brush)
         self._table.blockSignals(False)
 
     def _on_row_selected(self):
@@ -339,6 +393,7 @@ class PipeConfigTable(QWidget):
                 item.setText(f"{props['inner_diameter_mm']:.1f}")
             self._table.blockSignals(False)
 
+            self._update_row_highlight(row)
             logging.info(f"Pipe {pipe_idx}: std_type changed to {new_std_type}")
         except Exception as e:
             logging.error(f"Failed to update pipe {pipe_idx} std_type: {e}")
@@ -364,3 +419,5 @@ class PipeConfigTable(QWidget):
             elif col == 7:
                 item.setText(f"{net.pipe.at[pipe_idx, 'k_mm']:.2f}")
             self._table.blockSignals(False)
+
+        self._update_row_highlight(row)
