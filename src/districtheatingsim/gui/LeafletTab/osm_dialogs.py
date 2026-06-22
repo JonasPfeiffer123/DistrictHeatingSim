@@ -622,7 +622,9 @@ class DownloadOSMDataDialog(OSMDownloadDialogBase):
             # CSV / GeoJSON / drawn polygon → WGS84 polygon (raises ValueError on a
             # malformed CSV; caught by the download thread → error signal).
             polygon = resolve_area_polygon(area_params, buffer_m=area_params.get("buffer_dist"))
-            G = ox.graph_from_polygon(polygon, network_type="all", custom_filter=custom_filter)
+            # truncate_by_edge keeps streets that cross the polygon boundary (otherwise an edge
+            # with one node outside the polygon is dropped, so boundary streets go missing).
+            G = ox.graph_from_polygon(polygon, network_type="all", custom_filter=custom_filter, truncate_by_edge=True)
 
         # Convert to GeoDataFrame
         gdf_edges = ox.graph_to_gdfs(G, nodes=False, edges=True)

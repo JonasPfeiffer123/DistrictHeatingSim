@@ -769,6 +769,17 @@ OSMnx custom-filter and the direct Overpass tag query (`examples/02`). `unclassi
 default; `track` is offered but **off** by default (most tracks are field/forest paths without
 buildings). Pinned by `tests/test_osm_dialogs.py::TestHighwayFilter` (offered + default state).
 
+### C25. Polygon street query dropped boundary-crossing streets (fixed 2026-06-18)
+The OSMnx polygon street download (`osm_dialogs.py::downloadWithOSMnx`,
+`net_generation/osmnx_steiner_network.py::generate_street_graph`) called
+`ox.graph_from_polygon(...)` with the default `truncate_by_edge=False`, which removes any edge with
+a node outside the polygon — so streets that only *cross* the polygon boundary were silently dropped,
+not just clipped. **Fixed:** pass `truncate_by_edge=True` at both call sites (keeps an outside node
+when one of its neighbours is inside, so boundary-crossing streets are retained). Verified live on an
+Ödernitz polygon: edges 20 → 38, named streets 4 → 8 — four boundary streets (Am Sandberg, Am Wald,
+An der Bahn, Fichtenweg) that were dropped before are now included. No unit-test seam (live osmnx/
+Overpass call); verified manually.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
