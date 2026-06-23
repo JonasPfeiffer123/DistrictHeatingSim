@@ -96,7 +96,19 @@ class EnergySystemTab(QWidget):
         :type new_base_path: str
         """
         self.base_path = new_base_path
+
+        # Drop the previous project's energy system so nothing lingers on a project change.
+        self.results = {}
+        self.energy_system = None
+        self.techTab.tech_objects.clear()
+        self.techTab.rebuildScene()
+        self.techTab.updateTechList()
+
         self._refresh_config_combo()
+
+        # Load the new project's active config if it has saved results; otherwise stay cleared.
+        if self.base_path and os.path.exists(self._active_json_path()):
+            self.load_results_JSON(show_dialog=False)
 
     def initUI(self):
         """

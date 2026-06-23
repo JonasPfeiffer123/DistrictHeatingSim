@@ -213,6 +213,11 @@ class BuildingPresenter:
                 self.model.base_path, self.config_manager.get_relative_path("building_load_profile_path")
             )
 
+            # Drop the previous project's building data so nothing lingers on a project change.
+            self.model.data = None
+            self.model.results = None
+            self.view.clear_display()
+
     # Column order must match what geocoding, heat-profile calc, and net generation expect.
     # Heizgrenztemperatur / Heizexponent / P_max are optional BDEW parameters; leave blank to use defaults.
     _TEMPLATE_COLUMNS = [
@@ -678,6 +683,13 @@ class BuildingTabView(QWidget):
             self.building_combobox.addItem(f"Gebäude {key}")
             item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
             item.setCheckState(Qt.CheckState.Checked)
+
+    def clear_display(self):
+        """Blank the building table, the building selection combobox and the profile plot."""
+        self.table_widget.setRowCount(0)
+        self.building_combobox.clear()
+        self.figure.clear()
+        self.canvas.draw()
 
     def plot(self, results=None):
         """

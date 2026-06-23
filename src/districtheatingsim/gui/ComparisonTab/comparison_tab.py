@@ -944,6 +944,16 @@ class ComparisonTab(QWidget):
 
         self.initUI()
 
+        # Clear the comparison dashboard on a project change so no previous-project variants linger
+        # (the explorer's tree is reset separately via its own set_base_path handler).
+        if hasattr(self.folder_manager, "project_folder_changed"):
+            self.folder_manager.project_folder_changed.connect(self._reset_on_project_change)
+
+    def _reset_on_project_change(self, _path=None):
+        """Clear the comparison dashboard (variants, KPIs, charts) on a project change."""
+        self.variant_data = []
+        self.dashboard.update_dashboard([])
+
     def initUI(self):
         """Initialize modern user interface."""
         self.mainLayout = QHBoxLayout(self)
