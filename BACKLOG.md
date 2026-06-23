@@ -831,6 +831,20 @@ elevation enrichment is now guarded by `any(z != 0.0)`, matching the line enrich
 when there is no real terrain, so no 3-D-z=0 / 2-D mix. Pinned by
 `tests/test_net_generation.py::TestCreatePerpendicularLine`.
 
+### C29. UI tabs not reset on project change — stale state from the previous project (LeafletTab fixed 2026-06-18)
+Tabs connect `project_folder_changed` but most only update their **base path**, not their **content**,
+so switching projects leaves the previous project's data on screen.
+- **LeafletTab (Kartenansicht Netzgenerierung) — fixed.** `on_project_folder_changed` only set the
+  base path + CRS; the previous project's overlay layers stayed on the Leaflet map. Now it reloads the
+  empty `map.html` (drops every overlay layer; CRS re-injected on `loadFinished`) and clears
+  `model.layers` / `current_unified_network`. Guarded against the initial setup call. GUI-only (no test
+  seam — verified manually).
+- **Still open (same pattern):** `NetSimulationTab._update_base_path` only sets `base_path` — keeps
+  `NetworkGenerationData`, the pipe table, the network plot + time-series widget (none of which have a
+  `clear()` yet). `BuildingTab` / `EnergySystemTab` / `ComparisonTab` likely retain their data too. Each
+  needs a `reset()`/`clear()` invoked on project change. Doing NetSimulationTab next (Jonas's call), the
+  others after.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,

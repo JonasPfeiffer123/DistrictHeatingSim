@@ -354,7 +354,10 @@ class VisualizationPresenter(QObject):
 
     def on_project_folder_changed(self, new_base_path):
         """
-        Update base path when project folder changes.
+        Reset the map and update paths when the project/variant folder changes.
+
+        Reloads the empty map so no layers from the previous project linger, and clears the
+        tracked layer state.
 
         :param new_base_path: New base path
         :type new_base_path: str
@@ -363,6 +366,15 @@ class VisualizationPresenter(QObject):
             self.model.base_path = new_base_path
             self.view.set_base_path(new_base_path)
             self.view.set_project_crs(self.folder_manager.project_crs)
+
+            # Reset the map so nothing from the previous project remains: clear the tracked
+            # layers and reload the empty map HTML (drops every overlay layer). The CRS is
+            # re-injected on loadFinished. Guarded against the initial setup call, where the
+            # map is loaded right afterwards in __init__.
+            self.model.layers = {}
+            self.current_unified_network = None
+            if hasattr(self, "map_file_path"):
+                self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
 
     def open_geocode_addresses_dialog(self):
         """
