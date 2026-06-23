@@ -805,8 +805,31 @@ branches (heat-pump house stations). A normal (Niedertemperatur) network has no 
 (and raise a clear German error if a cold network has no COP file set, instead of the opaque numpy
 error); a normal network leaves `COP_file_values = None` and never touches it. Pinned by
 `tests/test_simulation_golden_master.py::test_normal_network_runs_without_cop_file` (COP_filename=None,
-slow). *Note:* the bundled `data/COP/Kennlinien WP.csv` is a default resource the user can select; it
-is not auto-attached to a project, which is fine since a normal network doesn't need it.
+slow).
+- **Follow-up (2026-06-18):** a fresh project now **seeds the bundled standard TRY *and* COP files**
+  (previously neither was auto-set — both `try/cop_filename` defaulted to None until the user confirmed
+  the dialog). `ProjectFolderManager.apply_default_data_files()` copies the standard
+  `data/TRY/…` and `data/COP/Kennlinien WP.csv` into the project (`Klimadaten/` / `Wärmepumpendaten/`)
+  and persists them; `create_new_project` calls it. The two default resource paths are centralized as
+  `utilities.utilities.DEFAULT_TRY_RESOURCE` / `DEFAULT_COP_RESOURCE` (used by both the seeding and the
+  `TemperatureDataDialog`/`HeatPumpDataDialog` defaults). Pinned by
+  `tests/test_project_settings.py::test_apply_default_data_files_seeds_try_and_cop`.
+
+### C28. MST net generation crashed on 3-D building points + 2-D streets (fixed 2026-06-18)
+"MST"/"Advanced MST" net generation crashed with `ValueError: setting an array element with a sequence
+… inhomogeneous shape after 1 dimensions … (2,) + inhomogeneous part` in
+`create_perpendicular_line` → `LineString([point, nearest_point_on_line])`. Root cause: the elevation
+step in `load_layers` enriches the **point** layers (heat consumers/generators) with a Z-coordinate
+(3-D) but the **OSM street** layer stays 2-D; projecting a 3-D building point onto a 2-D street yields
+a 2-D point, and combining a 3-D and a 2-D coordinate in one LineString is the inhomogeneous-shape
+error. (The golden master never caught it — it loads a pre-generated network, never runs
+`generate_network`.) **Fixed:** (1) `create_perpendicular_line` builds the connection in 2-D
+(`[(point.x, point.y), (npl.x, npl.y)]`), keeping the whole MST/Advanced-MST/offset path 2-D and
+consistent — Z is assigned uniformly to every line vertex afterwards by `assign_elevation` (so a 3-D
+approach would instead have moved the crash into the Advanced-MST road-snapping); (2) the **point**
+elevation enrichment is now guarded by `any(z != 0.0)`, matching the line enrichment — points stay 2-D
+when there is no real terrain, so no 3-D-z=0 / 2-D mix. Pinned by
+`tests/test_net_generation.py::TestCreatePerpendicularLine`.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

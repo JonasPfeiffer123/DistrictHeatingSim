@@ -13,9 +13,9 @@ import logging
 
 import geopandas as gpd
 import pytest
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
-from districtheatingsim.net_generation.net_generation import offset_lines_by_angle
+from districtheatingsim.net_generation.net_generation import create_perpendicular_line, offset_lines_by_angle
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 
@@ -117,3 +117,21 @@ class TestNetworkGeoJSONVersion:
             loaded = NetworkGeoJSONSchema.import_from_file(path)
         assert loaded["metadata"]["version"] == NetworkGeoJSONSchema.VERSION
         assert caplog.records == []
+
+
+class TestCreatePerpendicularLine:
+    """Building→street connection must not crash when the point is 3-D (elevation) but the
+    street is 2-D — combining mixed dimensions raised 'inhomogeneous shape' (the MST bug)."""
+
+    _STREET = LineString([(0.0, 49.0), (20.0, 51.0)])
+
+    def test_3d_building_point_on_2d_street(self):
+        conn = create_perpendicular_line(Point(10.0, 50.0, 123.0), self._STREET)
+        assert conn.geom_type == "LineString"
+        assert not conn.has_z  # built in 2-D; elevation assigned to all vertices later
+        assert tuple(conn.coords[0]) == (10.0, 50.0)
+
+    def test_2d_building_point_on_2d_street(self):
+        conn = create_perpendicular_line(Point(10.0, 50.0), self._STREET)
+        assert conn.geom_type == "LineString"
+        assert not conn.has_z
