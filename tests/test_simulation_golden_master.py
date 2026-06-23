@@ -36,25 +36,13 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.fixture(scope="module")
-def goerlitz_run():
-    """Run the full production pipeline once for the whole module."""
-    import matplotlib
-
-    matplotlib.use("Agg")
-
+def _make_nd(cop_filename):
+    """Build the Görlitz NetworkGenerationData (normal network) with a given COP path."""
     from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
         NetworkGenerationData,
     )
-    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import (
-        initialize_geojson,
-    )
-    from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
-        thermohydraulic_time_series_net,
-        time_series_preprocessing,
-    )
 
-    nd = NetworkGenerationData(
+    return NetworkGenerationData(
         import_type="geoJSON",
         network_geojson_path=str(_GEOJSON),
         heat_demand_json_path=str(_LOAD),
@@ -79,9 +67,27 @@ def goerlitz_run():
         k_mm_pipe=0.1,
         main_producer_location_index=0,
         secondary_producers=[],
-        COP_filename=str(_COP),
+        COP_filename=cop_filename,
         TRY_filename=str(_TRY),
     )
+
+
+@pytest.fixture(scope="module")
+def goerlitz_run():
+    """Run the full production pipeline once for the whole module."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import (
+        initialize_geojson,
+    )
+    from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+        thermohydraulic_time_series_net,
+        time_series_preprocessing,
+    )
+
+    nd = _make_nd(str(_COP))
     nd = initialize_geojson(nd)
     nd.start_time_step = 0
     nd.end_time_step = 8  # short characterization range — keep the test fast
@@ -128,3 +134,21 @@ class TestGoerlitzGoldenMaster:
         )
         # Every KPI computed (no None / NaN leaking through).
         assert all(np.isfinite(v) for v in k.values() if isinstance(v, float))
+
+
+@pytest.mark.slow
+def test_normal_network_runs_without_cop_file():
+    # C27: a normal (non-cold) network has no heat pumps and may carry no COP file; COP_filename=None
+    # must not crash time_series_preprocessing (was np.genfromtxt(None) -> TypeError).
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+    from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+    nd = _make_nd(cop_filename=None)
+    nd = initialize_geojson(nd)
+    nd.start_time_step = 0
+    nd.end_time_step = 8
+    nd = time_series_preprocessing(nd)  # must not raise on a normal network without a COP file
+    assert nd.waerme_hast_ges_W is not None
