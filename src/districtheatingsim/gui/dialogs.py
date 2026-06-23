@@ -12,7 +12,7 @@ import re
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
 
-from districtheatingsim.utilities.utilities import get_resource_path
+from districtheatingsim.utilities.utilities import DEFAULT_COP_RESOURCE, DEFAULT_TRY_RESOURCE, get_resource_path
 
 
 def _extract_try_location(path: str) -> str:
@@ -105,9 +105,7 @@ class TemperatureDataDialog(QDialog):
 
         self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
         self.temperatureDataFileInput = QLineEdit(self)
-        self.temperatureDataFileInput.setText(
-            get_resource_path(os.path.join("data", "TRY", "TRY_511676144222", "TRY2015_511676144222_Jahr.dat"))
-        )
+        self.temperatureDataFileInput.setText(get_resource_path(DEFAULT_TRY_RESOURCE))
         self.selectTRYFileButton = QPushButton("TRY-Datei auswählen")
         self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.temperatureDataFileInput))
 
@@ -192,7 +190,7 @@ class HeatPumpDataDialog(QDialog):
         fileRow = QHBoxLayout()
         self.heatPumpDataFileLabel = QLabel("CSV-Datei mit Wärmepumpenkennfeld:")
         self.heatPumpDataFileInput = QLineEdit()
-        self.heatPumpDataFileInput.setText(get_resource_path("data/COP/Kennlinien WP.csv"))
+        self.heatPumpDataFileInput.setText(get_resource_path(DEFAULT_COP_RESOURCE))
         self.selectCOPFileButton = QPushButton("CSV-Datei auswählen")
         self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.heatPumpDataFileInput))
 

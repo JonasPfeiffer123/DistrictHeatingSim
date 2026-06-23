@@ -95,6 +95,10 @@ class HeatSystemPresenter:
                 self.view.show_error_message(f"Fehler: {DEFAULT_VARIANT_NAME} konnte nicht gefunden werden.")
                 return False
 
+            # Seed the standard TRY + COP data files (copied into the project) so a fresh
+            # project is immediately usable, like the climate data — no need to open the dialogs.
+            self.folder_manager.apply_default_data_files()
+
             # Create initial CSV file for building data in project tab
             csv_path = os.path.join(
                 self.folder_manager.get_variant_folder(),
