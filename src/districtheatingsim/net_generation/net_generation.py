@@ -155,7 +155,12 @@ def create_perpendicular_line(point: Point, line: LineString) -> LineString:
         Uses line.project() and line.interpolate() for optimal connection geometry.
     """
     nearest_point_on_line = line.interpolate(line.project(point))
-    return LineString([point, nearest_point_on_line])
+    # Build the connection in 2-D. The street geometry is 2-D at this stage, so projecting a
+    # 3-D building point (elevation) onto it yields a 2-D point — combining a 3-D and a 2-D
+    # coordinate in one LineString raises ValueError("...inhomogeneous shape..."). Z is assigned
+    # uniformly to every network-line vertex afterwards (assign_elevation in
+    # generate_and_export_layers), so dropping it here keeps the whole MST path 2-D and consistent.
+    return LineString([(point.x, point.y), (nearest_point_on_line.x, nearest_point_on_line.y)])
 
 
 def process_layer_points(layer: gpd.GeoDataFrame, layer_lines: gpd.GeoDataFrame) -> tuple[list[LineString], set]:

@@ -137,19 +137,22 @@ def load_layers(
                 f"({'GeoTIFF: ' + dem_path if dem_path else 'OpenTopoData API'})..."
             )
             elev_lookup = build_elevation_lookup(all_points, dem_path, crs_utm=crs)
-            heat_consumer_layer = assign_elevation_to_geodataframe(heat_consumer_layer, elev_lookup)
-            heat_generator_layer = assign_elevation_to_geodataframe(heat_generator_layer, elev_lookup)
 
+            # Only make the points 3-D when there is real terrain (matches the line guard below).
+            # Otherwise points would become 3-D with z=0 while the 2-D street layer stays 2-D,
+            # which mixes dimensions in the geometry construction.
             z_values = list(elev_lookup.values())
             if any(z != 0.0 for z in z_values):
+                heat_consumer_layer = assign_elevation_to_geodataframe(heat_consumer_layer, elev_lookup)
+                heat_generator_layer = assign_elevation_to_geodataframe(heat_generator_layer, elev_lookup)
                 print(
                     f"Elevation range: {min(z_values):.1f} m – {max(z_values):.1f} m "
                     f"(Δh = {max(z_values) - min(z_values):.1f} m)"
                 )
             else:
                 print(
-                    "Warning: All elevations are 0.0 m — no DEM data available. "
-                    "Hydraulic pressure calculations will ignore terrain height."
+                    "Warning: All elevations are 0.0 m — no DEM data available. Points remain 2-D; "
+                    "hydraulic pressure calculations will ignore terrain height."
                 )
         # -------------------------------------------------------------------------
 
