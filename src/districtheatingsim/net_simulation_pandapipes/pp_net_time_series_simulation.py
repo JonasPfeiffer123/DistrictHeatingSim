@@ -296,7 +296,13 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
     print(f"building_temperature_checked: {NetworkGenerationData.building_temperature_checked}")
     print(f"Netconfiguration: {NetworkGenerationData.netconfiguration}")
 
-    COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=";")
+    # The COP characteristic field is only needed for a cold network (heat-pump house stations).
+    # A normal network has no heat pumps, so COP_filename may be None — don't load it then.
+    COP_file_values = None
+    if NetworkGenerationData.netconfiguration == "kaltes Netz":
+        if not NetworkGenerationData.COP_filename:
+            raise ValueError("Für ein kaltes Netz wird eine COP-Kennfeld-Datei benötigt, es ist aber keine gesetzt.")
+        COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=";")
 
     # Supply temperature control strategy implementation
     if NetworkGenerationData.supply_temperature_control == "Statisch":

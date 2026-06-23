@@ -795,6 +795,19 @@ pandapipes (no flow), but worth confirming on the real net run.
   is only a latent edge case. *Note:* even a pure-VDI run yields a 35040-long demand profile but an
   8760-long temperature array — a resolution mismatch worth tidying if VDI is exercised further.
 
+### C27. Normal network crashed on a missing COP file (fixed 2026-06-18)
+`time_series_preprocessing` unconditionally ran `np.genfromtxt(NetworkGenerationData.COP_filename)`
+at the top, but the COP characteristic field is only used in the `netconfiguration == "kaltes Netz"`
+branches (heat-pump house stations). A normal (Niedertemperatur) network has no heat pumps, so its
+`COP_filename` is `None` (`ProjectFolderManager.cop_filename` defaults to None and is only set from
+`project_settings.json` or an explicit GUI selection) → `genfromtxt(None)` raised
+`TypeError: 'NoneType' object is not iterable`. **Fixed:** load the COP field only for a cold network
+(and raise a clear German error if a cold network has no COP file set, instead of the opaque numpy
+error); a normal network leaves `COP_file_values = None` and never touches it. Pinned by
+`tests/test_simulation_golden_master.py::test_normal_network_runs_without_cop_file` (COP_filename=None,
+slow). *Note:* the bundled `data/COP/Kennlinien WP.csv` is a default resource the user can select; it
+is not auto-attached to a project, which is fine since a normal network doesn't need it.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
