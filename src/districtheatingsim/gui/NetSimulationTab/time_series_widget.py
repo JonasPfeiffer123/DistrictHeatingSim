@@ -64,6 +64,13 @@ class TimeSeriesWidget(QWidget):
         # Small delay so the dropdown is fully laid out before first draw
         QTimer.singleShot(100, self._plot)
 
+    def clear(self):
+        """Drop the current data and blank the figure + dropdown (e.g. on project change)."""
+        self._network_data = None
+        self._rebuild_dropdown()  # clears the dropdown (returns early when data is None)
+        self._figure.clear()
+        self._canvas.draw_idle()
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------

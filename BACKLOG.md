@@ -839,11 +839,14 @@ so switching projects leaves the previous project's data on screen.
   empty `map.html` (drops every overlay layer; CRS re-injected on `loadFinished`) and clears
   `model.layers` / `current_unified_network`. Guarded against the initial setup call. GUI-only (no test
   seam — verified manually).
-- **Still open (same pattern):** `NetSimulationTab._update_base_path` only sets `base_path` — keeps
-  `NetworkGenerationData`, the pipe table, the network plot + time-series widget (none of which have a
-  `clear()` yet). `BuildingTab` / `EnergySystemTab` / `ComparisonTab` likely retain their data too. Each
-  needs a `reset()`/`clear()` invoked on project change. Doing NetSimulationTab next (Jonas's call), the
-  others after.
+- **NetSimulationTab — fixed 2026-06-18.** `_update_base_path` only set `base_path`, keeping
+  `NetworkGenerationData`, the pipe table, the network plot and time-series widget. Added `clear()` to
+  `PipeConfigTable` / `NetworkPlotWidget` / `TimeSeriesWidget` and a `_reset_network_view()` that nulls
+  `NetworkGenerationData` and clears all three; `_update_base_path` calls it on a project change
+  (guarded against the initial `__init__` call before the widgets exist). 72 net-simulation tests green.
+- **Still open (same pattern):** `BuildingTab` / `EnergySystemTab` / `ComparisonTab` likely retain their
+  data (building profiles, energy-system results, comparison data) on a project change. Each needs a
+  `reset()`/`clear()` invoked on `project_folder_changed`. Deferred (Jonas's call).
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

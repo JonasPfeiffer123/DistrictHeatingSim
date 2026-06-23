@@ -99,6 +99,18 @@ class NetSimulationTab(QWidget):
 
     def _update_base_path(self, new_base_path):
         self.base_path = new_base_path
+        # On a real project/variant change, drop the previously loaded network so nothing from
+        # the old project lingers. Guarded: the first call runs in __init__ before the widgets
+        # exist (set up in _init_ui).
+        if getattr(self, "_pipe_table", None) is not None:
+            self._reset_network_view()
+
+    def _reset_network_view(self):
+        """Clear the displayed network state (data + pipe table + plot + time series)."""
+        self.NetworkGenerationData = None
+        self._pipe_table.clear()
+        self._net_plot.clear()
+        self._ts_widget.clear()
 
     # kept for backward compatibility (called by external code)
     def updateDefaultPath(self, new_base_path):

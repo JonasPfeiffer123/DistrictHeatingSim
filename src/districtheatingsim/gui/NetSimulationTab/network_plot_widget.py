@@ -135,6 +135,18 @@ class NetworkPlotWidget(QWidget):
         self._populate_param_dropdown()
         self.refresh(force=True)
 
+    def clear(self):
+        """Drop the current network and blank the plot (e.g. on project change)."""
+        self._net_data = None
+        self._invalidate_cache()
+        self._param_dropdown.blockSignals(True)
+        self._param_dropdown.clear()
+        self._param_dropdown.blockSignals(False)
+        if WEBENGINE_AVAILABLE:
+            self._canvas.setHtml("")
+        else:
+            self._canvas.setText("")
+
     def refresh(self, force: bool = False):
         """
         Render or reload the network plot.
