@@ -844,9 +844,18 @@ so switching projects leaves the previous project's data on screen.
   `PipeConfigTable` / `NetworkPlotWidget` / `TimeSeriesWidget` and a `_reset_network_view()` that nulls
   `NetworkGenerationData` and clears all three; `_update_base_path` calls it on a project change
   (guarded against the initial `__init__` call before the widgets exist). 72 net-simulation tests green.
-- **Still open (same pattern):** `BuildingTab` / `EnergySystemTab` / `ComparisonTab` likely retain their
-  data (building profiles, energy-system results, comparison data) on a project change. Each needs a
-  `reset()`/`clear()` invoked on `project_folder_changed`. Deferred (Jonas's call).
+- **BuildingTab / EnergySystemTab / ComparisonTab — fixed 2026-06-18.**
+  - *BuildingTab:* `standard_path` now nulls `model.data`/`model.results` and calls a new
+    `view.clear_display()` (blanks the building table, the building combobox and the profile plot).
+  - *EnergySystemTab:* `updateDefaultPath` now clears `results`/`energy_system` + the tech scene
+    (`tech_objects.clear()` / `rebuildScene()` / `updateTechList()`), then **loads the new project's
+    active config** (`load_results_JSON`) if it has saved results — so the tab shows the new project's
+    data instead of the old one's.
+  - *ComparisonTab:* connects `project_folder_changed` to a `_reset_on_project_change` that clears the
+    dashboard (`update_dashboard([])` → variants/KPIs/charts blanked); the explorer tree already reset
+    via its own `set_base_path`.
+  All GUI-only (no test seam) — verified by import smoke + ruff; manual UI confirmation pending.
+  **C29 complete** (LeafletTab + NetSimulationTab + Building + EnergySystem + Comparison).
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
