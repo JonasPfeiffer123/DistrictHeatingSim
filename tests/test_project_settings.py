@@ -11,6 +11,7 @@ real ``recent_projects.json`` write that ``set_project_folder`` triggers.
 """
 
 import json
+import os
 
 import pytest
 
@@ -32,6 +33,21 @@ def _manager(project_folder):
     m = ProjectFolderManager(config_manager=_StubConfig())
     m.project_folder = str(project_folder)
     return m
+
+
+def test_apply_default_data_files_seeds_try_and_cop(tmp_path):
+    # A fresh project seeds the bundled standard TRY + COP files (like the climate data),
+    # copied into the project's standard subfolders and persisted.
+    m = _manager(tmp_path)
+    m.apply_default_data_files()
+
+    assert m.try_filename and os.path.exists(m.try_filename)
+    assert m.cop_filename and os.path.exists(m.cop_filename)
+    assert (tmp_path / "Klimadaten").exists()
+    assert (tmp_path / "Wärmepumpendaten").exists()
+    # both files live inside the project (self-contained)
+    assert os.path.commonpath([m.try_filename, str(tmp_path)]) == str(tmp_path)
+    assert os.path.commonpath([m.cop_filename, str(tmp_path)]) == str(tmp_path)
 
 
 def test_save_writes_version_and_roundtrips(tmp_path):

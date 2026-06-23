@@ -19,7 +19,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from districtheatingsim.gui.MainTab.project_structure import DEFAULT_VARIANT_NAME
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
 from districtheatingsim.utilities.schema import add_meta, check_version
-from districtheatingsim.utilities.utilities import get_resource_path
+from districtheatingsim.utilities.utilities import DEFAULT_COP_RESOURCE, DEFAULT_TRY_RESOURCE, get_resource_path
 
 
 class ProjectConfigManager:
@@ -538,6 +538,18 @@ class ProjectFolderManager(QObject):
             path = self._copy_data_file_to_project(path, "Wärmepumpendaten")
         self.cop_filename = path
         self.save_project_settings()
+
+    def apply_default_data_files(self) -> None:
+        """
+        Set TRY and COP to the bundled standard files for a fresh project.
+
+        Copies the standard climate (TRY) and heat-pump (COP) characteristic files — the same
+        ones the selection dialogs default to — into the project (``Klimadaten/`` /
+        ``Wärmepumpendaten/``) and persists the paths, so a new project is immediately usable
+        without opening the dialogs. Called once at project creation.
+        """
+        self.set_try_filename(get_resource_path(DEFAULT_TRY_RESOURCE))
+        self.set_cop_filename(get_resource_path(DEFAULT_COP_RESOURCE))
 
     def load_last_project(self) -> None:
         """

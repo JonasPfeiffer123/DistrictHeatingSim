@@ -66,6 +66,13 @@ def get_resource_path(relative_path):
         raise FileNotFoundError(f"Resource not found via importlib.resources: {relative_path}\n{e}") from e
 
 
+# Bundled standard data files used as the defaults for a fresh project and shown in the
+# corresponding selection dialogs (TemperatureDataDialog / HeatPumpDataDialog). Resolve to an
+# absolute path with get_resource_path().
+DEFAULT_TRY_RESOURCE = "data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
+DEFAULT_COP_RESOURCE = "data/COP/Kennlinien WP.csv"
+
+
 def handle_global_exception(exc_type, exc_value, exc_traceback):
     """
     Global exception handler that displays errors in a QMessageBox dialog.
