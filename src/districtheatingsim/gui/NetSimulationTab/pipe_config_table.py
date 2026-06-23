@@ -82,6 +82,16 @@ class PipeConfigTable(QWidget):
         self._fill_table()
         self.show()
 
+    def clear(self):
+        """Drop all pipe rows and return to the empty, hidden state (e.g. on project change)."""
+        self._net_data = None
+        self._original_pipe_df = None
+        self._baseline = {}
+        self._table.blockSignals(True)
+        self._table.setRowCount(0)
+        self._table.blockSignals(False)
+        self.hide()
+
     def select_pipe(self, pipe_idx: int):
         """
         Programmatically select the row for *pipe_idx*.
