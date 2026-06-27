@@ -856,6 +856,13 @@ so switching projects leaves the previous project's data on screen.
     via its own `set_base_path`.
   All GUI-only (no test seam) — verified by import smoke + ruff; manual UI confirmation pending.
   **C29 complete** (LeafletTab + NetSimulationTab + Building + EnergySystem + Comparison).
+  - *Follow-up fix 2026-06-18:* the EnergySystem reset above called `_active_json_path()` on every
+    project load, which had a side effect — `os.makedirs(ergebnisse_dir, exist_ok=True)`. On a
+    cloud-synced (OneDrive) `Ergebnisse/` folder that raised `FileExistsError [WinError 183]` even with
+    `exist_ok=True` (the reparse-point folder isn't seen as a dir), crashing project load. Fixed: made
+    `_active_json_path()` a pure path-getter (no side effects), moved the directory creation into the
+    save path (`save_results_JSON`), and wrapped it in `try: os.makedirs(...) except FileExistsError:
+    pass` to tolerate the cloud-folder quirk.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
