@@ -822,10 +822,12 @@ class EnergySystemTab(QWidget):
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
     def _active_json_path(self) -> str:
-        """Return the full path to the active config's JSON file."""
-        ergebnisse_dir = self._ergebnisse_dir()
-        os.makedirs(ergebnisse_dir, exist_ok=True)
-        return os.path.join(ergebnisse_dir, config_name_to_filename(self._active_config_name))
+        """Return the full path to the active config's JSON file (no filesystem side effects).
+
+        Directory creation is done by the save path, not here — a path-getter that runs on every
+        project load must not try to create (and possibly fail on) the results directory.
+        """
+        return os.path.join(self._ergebnisse_dir(), config_name_to_filename(self._active_config_name))
 
     def save_results_JSON(self, show_dialog=True):
         """
@@ -844,6 +846,12 @@ class EnergySystemTab(QWidget):
             return
 
         try:
+            # Create the results directory before writing. exist_ok=True can still raise
+            # FileExistsError on some Windows / cloud-synced (OneDrive) folders, so swallow that.
+            try:
+                os.makedirs(self._ergebnisse_dir(), exist_ok=True)
+            except FileExistsError:
+                pass
             json_filename = self._active_json_path()
             self.energy_system.save_to_json(json_filename)
             # Refresh combo in case a new file was created
