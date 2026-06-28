@@ -5,7 +5,7 @@ ComparisonTab.update_kpis (which previously inlined the same filter + single/ran
 + unavailable logic six times next to Qt label-setting).
 """
 
-from districtheatingsim.gui.ComparisonTab.comparison_tab import format_kpi_range
+from districtheatingsim.gui.ComparisonTab.comparison_data import format_kpi_range
 
 
 def test_no_variants_returns_empty():

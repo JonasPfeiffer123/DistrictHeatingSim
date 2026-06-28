@@ -199,8 +199,20 @@ tests. This is the safety net that makes every refactor below low-risk.
     ~~tears down + rebuilds the whole scene, losing manually-dragged layout~~ **fixed 2026-06-17
     (pulled into v2.0.0)**: now removes only the selected component + its linked partner + their
     pipes/label, leaving every other item's position untouched; the full-rebuild path is gone), and
-    `gui/ComparisonTab/comparison_tab.py` (1126 LOC). Same caveat as `main_view`: extract the
-    GUI-free islands, leave the Qt glue. *The full god-object decompositions stay post-release.*
+    `gui/ComparisonTab/comparison_tab.py` (~~1126~~ **1001 LOC, data layer extracted 2026-06-28**).
+    Same caveat as `main_view`: extract the GUI-free islands, leave the Qt glue. *The full
+    god-object decompositions stay post-release.*
+    - **`comparison_tab.py` GUI-free data layer extracted (DONE 2026-06-28):** moved the
+      discovery / loading / transform logic out of the three Qt classes into
+      `gui/ComparisonTab/comparison_data.py` (168 LOC, GUI-free) — `discover_variant_configs`,
+      `variant_has_results` (was `ProjectExplorer.validate_variant`), `clean_variant_name` (was
+      `ComparisonDashboard.get_clean_variant_name`), `load_network_kpis` (was
+      `ComparisonTab.load_network_data`), `process_variant_results` (the float/list
+      `primärenergiefaktor` reconciliation + rounding), plus the already-extracted
+      `format_kpi_range` (re-exported from `comparison_tab` for back-compat). The widgets are
+      now thin callers. Unit-tested by `tests/test_comparison_data.py` (17 tests) +
+      `tests/test_comparison_kpis.py`; the `clear_dashboard` reset by `tests/test_tab_reset_views.py`.
+      The chart-drawing / tree-building / Qt-signal glue stays in `comparison_tab.py`.
     - **Move-crash (found + fixed 2026-06-17, pulled into v2.0.0):** dragging a component **froze
       the app and crashed with no error** — `ComponentItem.itemChange` called `self.setPos(value)`
       *inside* the `ItemPositionChange` handler, which re-entered `itemChange` recursively (infinite

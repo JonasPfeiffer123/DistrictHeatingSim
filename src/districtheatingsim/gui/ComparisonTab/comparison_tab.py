@@ -34,52 +34,19 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.gui.EnergySystemTab.config_naming import filename_to_config_name
+from districtheatingsim.gui.ComparisonTab.comparison_data import (
+    clean_variant_name,
+    discover_variant_configs,
+    format_kpi_range,
+    load_network_kpis,
+    process_variant_results,
+    variant_has_results,
+)
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
 
-
-def format_kpi_range(variant_data: list[dict], key: str, fmt: str, *, empty: str = "--") -> str:
-    """
-    Summarize one KPI across the compared variants for the dashboard.
-
-    Filters out missing / zero values, then returns a single formatted number, a
-    ``"min - max"`` range when several variants differ, or ``empty`` when no
-    variant provides the value. GUI-free domain/formatting logic (extracted from
-    the view so it is unit-testable — BACKLOG B2).
-
-    :param variant_data: One result dict per variant.
-    :param key: The metric key to read from each variant dict.
-    :param fmt: A ``format()`` spec applied to each number (e.g. ``".1f"``).
-    :param empty: Text to show when no variant provides the metric.
-    :return: The formatted value / range / ``empty`` string.
-    :rtype: str
-    """
-    values = [v.get(key, 0) for v in variant_data if v.get(key, 0) not in (None, 0)]
-    if not values:
-        return empty
-    if len(values) == 1:
-        return format(values[0], fmt)
-    return f"{format(min(values), fmt)} - {format(max(values), fmt)}"
-
-
-def _discover_variant_configs(variant_path: str) -> list:
-    """
-    Return list of (config_name, filename) for all energy system configs in a variant.
-
-    :param variant_path: Absolute path to the variant folder.
-    :return: List of (config_name, filename) tuples, Standard first.
-    """
-    ergebnisse_dir = os.path.join(variant_path, "Ergebnisse")
-    configs = []
-    if not os.path.isdir(ergebnisse_dir):
-        return configs
-    files = sorted(os.listdir(ergebnisse_dir))
-    if "Ergebnisse.json" in files:
-        configs.append(("Standard", "Ergebnisse.json"))
-    for f in files:
-        if f.startswith("Ergebnisse_") and f.endswith(".json"):
-            configs.append((filename_to_config_name(f), f))
-    return configs
+# Re-exported so existing importers (`from ...comparison_tab import format_kpi_range`)
+# keep working; the canonical home is now comparison_data.py.
+__all__ = ["ComparisonDashboard", "ComparisonTab", "ProjectExplorer", "format_kpi_range"]
 
 
 class ProjectExplorer(QWidget):
@@ -210,9 +177,9 @@ class ProjectExplorer(QWidget):
             variant_count = 0
             for variant_name in variant_names:
                 variant_path = os.path.join(parent_dir, variant_name)
-                if not self.validate_variant(variant_path):
+                if not variant_has_results(variant_path):
                     continue
-                configs = _discover_variant_configs(variant_path)
+                configs = discover_variant_configs(variant_path)
                 if not configs:
                     continue
 
@@ -248,21 +215,6 @@ class ProjectExplorer(QWidget):
             self.update_selected_variants()
         except Exception as e:
             QMessageBox.warning(self, "Fehler", f"Fehler beim Laden der Projekte: {str(e)}")
-
-    def validate_variant(self, variant_path):
-        """
-        Validate that a variant has at least one energy system result file.
-
-        :param variant_path: Path to variant folder
-        :type variant_path: str
-        :return: True if the variant is usable for comparison
-        :rtype: bool
-        """
-        ergebnisse_dir = os.path.join(variant_path, "Ergebnisse")
-        has_results = os.path.isdir(ergebnisse_dir) and any(
-            f.startswith("Ergebnisse") and f.endswith(".json") for f in os.listdir(ergebnisse_dir)
-        )
-        return has_results
 
     def on_selection_changed(self, item, column):
         """
@@ -543,9 +495,7 @@ class ComparisonDashboard(QWidget):
         ax = self.cost_figure.add_subplot(111)
 
         # Use shorter, cleaner names for charts
-        names = [
-            self.get_clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)
-        ]
+        names = [clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)]
         costs = [v.get("WGK_Gesamt", 0) for v in self.variant_data]
 
         bars = ax.bar(names, costs, color="#3498db", alpha=0.8, edgecolor="#2980b9", linewidth=1)
@@ -578,12 +528,6 @@ class ComparisonDashboard(QWidget):
 
         self.cost_figure.tight_layout()
         self.cost_canvas.draw()
-
-    def get_clean_variant_name(self, full_name):
-        """Extract clean variant name from full project path name."""
-        if " - " in full_name:
-            return full_name.split(" - ")[-1]  # Take the last part after ' - '
-        return full_name
 
     def update_energy_chart(self):
         """Update energy mix comparison chart."""
@@ -653,7 +597,7 @@ class ComparisonDashboard(QWidget):
                         fancybox=True,
                         shadow=True,
                     )
-            clean_name = self.get_clean_variant_name(variant.get("name", f"Variante {i + 1}"))
+            clean_name = clean_variant_name(variant.get("name", f"Variante {i + 1}"))
             ax.set_title(clean_name, fontsize=10, fontweight="bold", pad=10)
 
         fig.suptitle("Energiemix Vergleich", fontsize=12, fontweight="bold", y=0.98)
@@ -669,9 +613,7 @@ class ComparisonDashboard(QWidget):
 
         ax = self.co2_figure.add_subplot(111)
 
-        names = [
-            self.get_clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)
-        ]
+        names = [clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)]
         emissions = [v.get("specific_emissions_Gesamt", 0) for v in self.variant_data]
 
         # Create CO2 bar chart
@@ -714,9 +656,7 @@ class ComparisonDashboard(QWidget):
 
         ax = self.pe_figure.add_subplot(111)
 
-        names = [
-            self.get_clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)
-        ]
+        names = [clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)]
         pe_factors = [v.get("primärenergiefaktor_Gesamt", 0) for v in self.variant_data]
 
         # Create PE factor bar chart
@@ -758,9 +698,7 @@ class ComparisonDashboard(QWidget):
             return
 
         # Extract network metrics
-        names = [
-            self.get_clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)
-        ]
+        names = [clean_variant_name(v.get("name", f"Variante {i + 1}")) for i, v in enumerate(self.variant_data)]
         verteilverluste = [v.get("Verteilverluste", 0) for v in self.variant_data]
         anzahl_gebaeude = [v.get("Anzahl_Gebäude", 0) for v in self.variant_data]
         trassenlaenge = [v.get("Trassenlänge", 0) for v in self.variant_data]
@@ -1042,7 +980,7 @@ class ComparisonTab(QWidget):
                     data = json.load(f)
 
                 results = data.get("results", {})
-                processed_data = self.process_variant_results(results)
+                processed_data = process_variant_results(results)
                 processed_data["name"] = display_name
                 processed_data["variant_name"] = variant_name
                 processed_data["config_name"] = config_name
@@ -1050,7 +988,7 @@ class ComparisonTab(QWidget):
 
                 # Network KPIs: load once per variant, share across configs
                 if variant_path not in network_cache:
-                    network_cache[variant_path] = self.load_network_data(variant_path)
+                    network_cache[variant_path] = load_network_kpis(variant_path)
                 processed_data.update(network_cache[variant_path])
 
                 self.variant_data.append(processed_data)
@@ -1061,72 +999,3 @@ class ComparisonTab(QWidget):
                 )
 
         self.dashboard.update_dashboard(self.variant_data)
-
-    def load_network_data(self, variant_path):
-        """
-        Load network KPI data from variant configuration.
-
-        :param variant_path: Path to variant folder
-        :type variant_path: str
-        :return: Network KPI data (length, losses, pump energy, building count)
-        :rtype: dict
-        """
-        network_data = {"Trassenlänge": 0, "Verteilverluste": 0, "Pumpenenergie": 0, "Anzahl_Gebäude": 0}
-        try:
-            config_path = os.path.join(variant_path, "Wärmenetz", "Konfiguration Netzinitialisierung.json")
-            if not os.path.exists(config_path):
-                return network_data
-            with open(config_path, encoding="utf-8") as f:
-                config = json.load(f)
-            kpi_results = config.get("kpi_results", {})
-            network_data["Trassenlänge"] = kpi_results.get("Trassenlänge Wärmenetz [m]", 0)
-            network_data["Verteilverluste"] = kpi_results.get("rel. Verteilverluste [%]", 0)
-            network_data["Pumpenenergie"] = kpi_results.get("Pumpenstrom [MWh]", 0)
-            network_data["Anzahl_Gebäude"] = kpi_results.get("Anzahl angeschlossene Gebäude", 0)
-        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
-            logging.warning("Konnte Netz-KPIs der Variante nicht lesen: %s", e)
-        return network_data
-
-    def process_variant_results(self, results):
-        """
-        Process raw variant results for comparison.
-
-        :param results: Raw results from JSON file
-        :type results: dict
-        :return: Processed results for dashboard display
-        :rtype: dict
-        :raises ValueError: If processing fails
-        """
-        try:
-            # Handle primärenergiefaktor_Gesamt which can be float or list
-            pe_gesamt = results.get("primärenergiefaktor_Gesamt", 0)
-            waermemengen = results.get("Wärmemengen", [])
-
-            if isinstance(pe_gesamt, (float, int)):
-                pe_gesamt = [pe_gesamt] * len(waermemengen) if waermemengen else [pe_gesamt]
-            elif isinstance(pe_gesamt, list):
-                if len(pe_gesamt) != len(waermemengen) and waermemengen:
-                    pe_gesamt = pe_gesamt * len(waermemengen) if pe_gesamt else [0] * len(waermemengen)
-
-            processed_results = {
-                "techs": results.get("techs", []),
-                "Wärmemengen": [round(w, 2) for w in waermemengen],
-                "WGK": [round(w, 2) for w in results.get("WGK", [])],
-                "Anteile": [round(a * 100, 2) for a in results.get("Anteile", [])],
-                "colors": results.get("colors", []),
-                "specific_emissions_L": [round(e, 4) for e in results.get("specific_emissions_L", [])],
-                "primärenergie_L": [
-                    round(pe / w, 4) if w else 0 for pe, w in zip(pe_gesamt, waermemengen, strict=False)
-                ],
-                "Jahreswärmebedarf": round(results.get("Jahreswärmebedarf", 0), 1),
-                "Strommenge": round(results.get("Strommenge", 0), 2),
-                "Strombedarf": round(results.get("Strombedarf", 0), 2),
-                "WGK_Gesamt": round(results.get("WGK_Gesamt", 0), 2),
-                "specific_emissions_Gesamt": round(results.get("specific_emissions_Gesamt", 0), 4),
-                "primärenergiefaktor_Gesamt": round(results.get("primärenergiefaktor_Gesamt", 0), 4),
-            }
-
-            return processed_results
-
-        except Exception as e:
-            raise ValueError(f"Error processing results: {e}") from e
