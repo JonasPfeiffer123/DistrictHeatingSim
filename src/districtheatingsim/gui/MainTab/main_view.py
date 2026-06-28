@@ -31,7 +31,7 @@ from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
-from districtheatingsim.gui.MainTab.project_structure import discover_variants
+from districtheatingsim.gui.MainTab.project_structure import discover_variants, resolve_new_project_start_dir
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
@@ -677,27 +677,17 @@ class HeatSystemDesignGUI(QMainWindow):
         if self.base_path:
             folder_path = os.path.dirname(os.path.dirname(self.base_path))
         else:
-            # No project loaded - ask user to select parent folder
-            # Try to use the most recent project's parent directory
-            start_dir = None
+            # No project loaded - ask the user to select a parent folder, opening the
+            # picker at a sensible location (parent of the most recent project, then
+            # ~/Documents, then home — resolved by the GUI-free helper).
+            recent_projects = []
             if hasattr(self, "presenter") and self.presenter and self.presenter.folder_manager:
                 try:
-                    config_manager = self.presenter.folder_manager.config_manager
-                    recent_projects = config_manager.get_recent_projects()
-                    if recent_projects:
-                        # Use the parent directory of the most recent project
-                        start_dir = os.path.dirname(recent_projects[0])
+                    recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects() or []
                 except Exception:
-                    pass
+                    recent_projects = []
 
-            # Fallback to Documents folder if no recent projects
-            if not start_dir:
-                default_dir = os.path.expanduser("~/Documents")
-                if os.path.exists(default_dir):
-                    start_dir = default_dir
-                else:
-                    start_dir = os.path.expanduser("~")
-
+            start_dir = resolve_new_project_start_dir(recent_projects)
             folder_path = QFileDialog.getExistingDirectory(
                 self, "Übergeordneten Ordner für neues Projekt auswählen", start_dir
             )

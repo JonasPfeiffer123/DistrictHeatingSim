@@ -6,6 +6,8 @@ as the first slice of the main_view god-object decomposition (BACKLOG B1). These
 tests are the seam that the GUI versions never had.
 """
 
+import os
+
 import pytest
 
 from districtheatingsim.gui.MainTab.project_structure import (
@@ -16,6 +18,7 @@ from districtheatingsim.gui.MainTab.project_structure import (
     create_project_structure,
     create_variant_structure,
     discover_variants,
+    resolve_new_project_start_dir,
 )
 
 
@@ -91,3 +94,38 @@ def test_create_project_structure_refuses_existing_project(tmp_path):
     project.mkdir()
     with pytest.raises(FileExistsError):
         create_project_structure(str(project))
+
+
+# ----------------------------------------------------------------------------
+# resolve_new_project_start_dir — start directory for the new-project picker
+# (extracted from main_view.on_create_new_project; BACKLOG B1)
+# ----------------------------------------------------------------------------
+
+
+def test_start_dir_prefers_parent_of_most_recent_project(tmp_path):
+    recent = [str(tmp_path / "Projekte" / "Projekt A"), str(tmp_path / "Old" / "Projekt B")]
+    assert resolve_new_project_start_dir(recent) == str(tmp_path / "Projekte")
+
+
+def test_start_dir_falls_back_to_documents_when_no_recent(monkeypatch, tmp_path):
+    # No recent projects -> ~/Documents if it exists.
+    home = tmp_path / "home"
+    (home / "Documents").mkdir(parents=True)
+    monkeypatch.setattr(os.path, "expanduser", lambda p: p.replace("~", str(home)))
+    assert os.path.normpath(resolve_new_project_start_dir([])) == os.path.normpath(str(home / "Documents"))
+
+
+def test_start_dir_falls_back_to_home_when_no_documents(monkeypatch, tmp_path):
+    # No recent projects and no ~/Documents -> home directory.
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(os.path, "expanduser", lambda p: p.replace("~", str(home)))
+    assert resolve_new_project_start_dir([]) == str(home)
+
+
+def test_start_dir_recent_without_parent_falls_back(monkeypatch, tmp_path):
+    # A bare recent entry (no directory component) must not be returned as start dir.
+    home = tmp_path / "home"
+    (home / "Documents").mkdir(parents=True)
+    monkeypatch.setattr(os.path, "expanduser", lambda p: p.replace("~", str(home)))
+    assert os.path.normpath(resolve_new_project_start_dir(["Projekt"])) == os.path.normpath(str(home / "Documents"))

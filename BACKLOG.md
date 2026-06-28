@@ -167,7 +167,7 @@ tests. This is the safety net that makes every refactor below low-risk.
 - `interactive_network_plot.py` **done (B1/B3, 2026-06)**: 1179 → 755 LOC, now a
   Plotly-only renderer; all net queries moved to the new `plot_data.py` (548 LOC,
   Plotly-/GUI-free, unit-tested). See B3.
-- `main_view.py` (~1244) **decomposition in progress (2026-06)**:
+- `main_view.py` (~~1244~~ **1183 LOC; B1 complete 2026-06-28 — rest is irreducible Qt glue**):
   - **Slice 1 (done):** extracted the project/variant filesystem logic into the new
     GUI-free `gui/MainTab/project_structure.py` (`VARIANT_PREFIX`,
     `DEFAULT_VARIANT_NAME`, `discover_variants`). This removed a *triplicated* and
@@ -187,11 +187,19 @@ tests. This is the safety net that makes every refactor below low-risk.
     shared, GUI-free, tmp_path-testable helpers (`create_project_structure` keeps the
     "fail on existing project" behaviour via `os.makedirs` without `exist_ok`). Pinned by
     `tests/test_project_structure.py` (+4 → 11); 280 passed.
-  - **Still to tackle:** the bulk of `main_view.py` is genuine Qt glue (menus/tabs/theme/
-    dialogs, ~40 methods) with **no behaviour test seam** — extracting it (e.g. a theme
-    controller) only *moves* LOC and risks breaking signal/stylesheet wiring that can't be
-    regression-tested here. Deliberately left until a GUI behaviour-test harness exists;
-    the testable GUI-free logic around it has now been harvested (slices 1+2).
+  - **Slice 3 (done 2026-06-28):** extracted the new-project picker's start-directory
+    resolution into `project_structure.resolve_new_project_start_dir(recent_projects)`
+    (parent of most-recent project → `~/Documents` → home). It was inline branching logic
+    in `on_create_new_project` (untestable behind a `QFileDialog`); the view now retrieves
+    `recent_projects` and calls the helper. Pinned by `tests/test_project_structure.py`
+    (+4 → 15). `main_view.py` 1193 → 1183 LOC. **This is the last GUI-free island in
+    `main_view.py`** — the audit (2026-06-28) confirmed the rest is irreducible Qt glue.
+  - **Conclusion (2026-06-28): `main_view.py` is done as far as B1 goes.** The bulk is
+    genuine Qt glue (menus/tabs/theme/dialogs, project/variant/save orchestration — each
+    method is `dialog → presenter/tab call → message`). Extracting any of it only *moves*
+    LOC and risks breaking signal/stylesheet wiring; the testable GUI-free logic has been
+    fully harvested (slices 1–3). A qtbot harness now exists (see A1) but the remaining
+    methods are orchestration over real tabs/presenters, not unit-testable widget behaviour.
   - **Newly-surfaced god-objects (2026-06-15 audit, OPEN):** three large GUI files are *not*
     in the original B1 list but hold extractable logic — `gui/ProjectTab/project_tab.py`
     (~~1278~~ **1040 LOC, progress logic extracted 2026-06-28**; geocoding/CSV logic
