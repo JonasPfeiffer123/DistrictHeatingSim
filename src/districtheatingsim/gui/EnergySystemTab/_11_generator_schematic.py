@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
     QGraphicsView,
 )
 
+from districtheatingsim.gui.EnergySystemTab import schematic_geometry as geom
+
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, scene):
@@ -271,8 +273,7 @@ class SchematicScene(CustomGraphicsScene):
         :return: The snapped position
         :rtype: QPointF
         """
-        x = round(position.x() / self.GRID_SIZE) * self.GRID_SIZE
-        y = round(position.y() / self.GRID_SIZE) * self.GRID_SIZE
+        x, y = geom.snap_to_grid(position.x(), position.y(), self.GRID_SIZE)
         return QPointF(x, y)
 
     def create_parallel_lines(self):
@@ -602,48 +603,20 @@ class SchematicScene(CustomGraphicsScene):
         :return: The optimal position
         :rtype: QPointF
         """
-        padding = 12
-        base_y_below = item.pos().y() + item.boundingRect().height() + padding
-        base_y_above = item.pos().y() - item.boundingRect().height() - padding - label.boundingRect().height()
 
-        # Try different Y offsets to find non-colliding position
-        for y_offset in range(0, 60, 15):  # Try offsets up to 60px in 15px steps
-            # Try below first (preferred for non-storage items)
-            if item.item_type != "Storage":
-                test_y = base_y_below + y_offset
-                test_x = item.pos().x() - label.boundingRect().width() / 2
-                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
+        def collides(x, y, w, h):
+            return self.check_label_collision(QRectF(x, y, w, h))
 
-                if not self.check_label_collision(test_rect):
-                    return QPointF(test_x, test_y)
-
-                # Try above as fallback
-                test_y = base_y_above - y_offset
-                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-
-                if not self.check_label_collision(test_rect):
-                    return QPointF(test_x, test_y)
-            else:
-                # For storage items, try above first
-                test_y = base_y_above - y_offset
-                test_x = item.pos().x() - label.boundingRect().width() / 2
-                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-
-                if not self.check_label_collision(test_rect):
-                    return QPointF(test_x, test_y)
-
-                # Try below as fallback
-                test_y = base_y_below + y_offset
-                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-
-                if not self.check_label_collision(test_rect):
-                    return QPointF(test_x, test_y)
-
-        # If no collision-free position found, return default position
-        if item.item_type == "Storage":
-            return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_above)
-        else:
-            return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_below)
+        x, y = geom.optimal_label_position(
+            item.pos().x(),
+            item.pos().y(),
+            item.boundingRect().height(),
+            label.boundingRect().width(),
+            label.boundingRect().height(),
+            item.item_type == "Storage",
+            collides,
+        )
+        return QPointF(x, y)
 
     def update_all_label_positions(self):
         """
