@@ -59,6 +59,7 @@ docs = [
 ]
 dev = [
     "pytest>=8.0",
+    "pytest-qt>=4.2",
     "ruff>=0.6",
 ]
 
