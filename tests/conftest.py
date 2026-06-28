@@ -20,6 +20,12 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+# This machine has PyQt5, PyQt6 and PySide6 all installed. pytest-qt would
+# otherwise auto-pick the wrong binding and corrupt the PyQt6 import in-process
+# ("cannot import type ... from PyQt6.QtCore"). Pin it to PyQt6 (the binding the
+# app uses). Must be set before the pytest-qt plugin reads it.
+os.environ.setdefault("PYTEST_QT_API", "pyqt6")
+
 import numpy as np
 import pandas as pd
 import pytest

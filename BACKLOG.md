@@ -102,6 +102,26 @@ tests. This is the safety net that makes every refactor below low-risk.
   behaviour-preserving (`ruff check` clean, 297 passed unchanged). The CI format step is
   now **gating** (`ruff format --check .`, `continue-on-error` removed) over the whole
   tree, not just `tests`. Formatting is no longer a decision — `ruff format` is canonical.
+- **Landed 2026-06-28 (first GUI behaviour-test seam — `pytest-qt`):** added `pytest-qt`
+  to the `dev` extra; `tests/conftest.py` pins `PYTEST_QT_API=pyqt6` (this machine has
+  PyQt5/PyQt6/PySide6 all installed → pytest-qt would otherwise auto-pick the wrong
+  binding and corrupt the in-process PyQt6 import). First widget-level behaviour tests,
+  pinning the **C29 project-change reset** contract (the GUI resets previously had "no
+  test seam"):
+  - `tests/test_netsim_widgets.py` (5) — `PipeConfigTable.clear` (populate→clear empties
+    + hides + is re-populatable) and `TimeSeriesWidget.clear` (dropdown teardown), driven
+    through the public interface with lightweight pandas/`plot_data` fakes (no pandapipes
+    solve). **NetworkPlotWidget is intentionally excluded** — it embeds a `QWebEngineView`
+    which *crashes the process* under offscreen/headless Qt (construction already segfaults,
+    exit 127); documented in the test module header.
+  - `tests/test_tab_reset_views.py` (5) — `BuildingTabView.clear_display` (table + building
+    combobox emptied, re-populatable) and `ComparisonDashboard.update_dashboard([])` →
+    `clear_dashboard` (all KPI tiles back to "--"). Both views are WebEngine-free → stable
+    headless. **342 passed** locally (Py 3.11, Windows), ruff + format clean.
+  - **Pattern for the B1 GUI refactors:** construct the widget with the `qtbot` fixture,
+    drive its public populate/clear/update methods with minimal fakes, assert observable
+    state. Avoid widgets that embed `QWebEngineView` (NetworkPlotWidget, LeafletTab map) —
+    no headless seam there; extract their GUI-free logic and test *that* instead.
 - **Still open:**
   - The CI `lint`/`test` jobs are gating but still **unverified on GitHub** (heavy deps +
     2 git deps; first gating run happens on the next push — expect to tweak the install
@@ -245,7 +265,7 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      ("A/B" → "A-B" everywhere, not just on save — the comparison tab previously lacked the
      sanitiser). The slash→dash transform is inherently lossy (can't round-trip a `/` in a
      filename), now documented + pinned by `tests/test_config_naming.py` (3). (Pulled into v2.0.0.)
-     The `geojson_to_building_csv` extraction above is still open.
+     (The `geojson_to_building_csv` extraction above is also done — same B2 batch.)
 3. **Cross-component reach-through.** `main_view` drives other tabs by calling their
    presenters directly (`buildingTab.presenter.load_csv(...)`,
    `projectTab.presenter.save_csv(...)`).
@@ -854,8 +874,13 @@ so switching projects leaves the previous project's data on screen.
   - *ComparisonTab:* connects `project_folder_changed` to a `_reset_on_project_change` that clears the
     dashboard (`update_dashboard([])` → variants/KPIs/charts blanked); the explorer tree already reset
     via its own `set_base_path`.
-  All GUI-only (no test seam) — verified by import smoke + ruff; manual UI confirmation pending.
+  All GUI-only — verified by import smoke + ruff; manual UI confirmation pending.
   **C29 complete** (LeafletTab + NetSimulationTab + Building + EnergySystem + Comparison).
+  - *Test seam added 2026-06-28:* the widget-level `clear()`/`clear_display()`/`clear_dashboard`
+    reset contracts are now pinned by `tests/test_netsim_widgets.py` + `tests/test_tab_reset_views.py`
+    (`pytest-qt`, see A1). NetworkPlotWidget + the LeafletTab map stay untested (QWebEngineView
+    crashes headless); the tab-level signal wiring (`project_folder_changed` → reset) is not yet
+    covered — only the widget reset methods are.
   - *Follow-up fix 2026-06-18:* the EnergySystem reset above called `_active_json_path()` on every
     project load, which had a side effect — `os.makedirs(ergebnisse_dir, exist_ok=True)`. On a
     cloud-synced (OneDrive) `Ergebnisse/` folder that raised `FileExistsError [WinError 183]` even with
