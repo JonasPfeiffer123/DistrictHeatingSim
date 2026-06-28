@@ -6,6 +6,11 @@ ProjectTab package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.gui.ProjectTab.project_progress
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.ProjectTab.project_tab_dialogs
    :members:
    :show-inheritance:

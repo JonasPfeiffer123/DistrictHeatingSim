@@ -194,7 +194,8 @@ tests. This is the safety net that makes every refactor below low-risk.
     the testable GUI-free logic around it has now been harvested (slices 1+2).
   - **Newly-surfaced god-objects (2026-06-15 audit, OPEN):** three large GUI files are *not*
     in the original B1 list but hold extractable logic — `gui/ProjectTab/project_tab.py`
-    (1278 LOC; geocoding/CSV logic duplicated with its worker — see B2),
+    (~~1278~~ **1040 LOC, progress logic extracted 2026-06-28**; geocoding/CSV logic
+    duplicated with its worker — see B2),
     `gui/EnergySystemTab/_11_generator_schematic.py` (1264 LOC — its `delete_selected`
     ~~tears down + rebuilds the whole scene, losing manually-dragged layout~~ **fixed 2026-06-17
     (pulled into v2.0.0)**: now removes only the selected component + its linked partner + their
@@ -213,6 +214,17 @@ tests. This is the safety net that makes every refactor below low-risk.
       now thin callers. Unit-tested by `tests/test_comparison_data.py` (17 tests) +
       `tests/test_comparison_kpis.py`; the `clear_dashboard` reset by `tests/test_tab_reset_views.py`.
       The chart-drawing / tree-building / Qt-signal glue stays in `comparison_tab.py`.
+    - **`project_tab.py` progress-tracker logic extracted (DONE 2026-06-28):** moved the
+      filesystem/CSV step-completion logic out of `ProjectPresenter` into
+      `gui/ProjectTab/project_progress.py` (157 LOC, GUI-free) — `check_csv_status`,
+      `check_network_dimensioned` and `evaluate_process_steps` (the per-step
+      completed/missing-files + overall-progress computation, incl. the dimensioned-network
+      special case). `update_progress_tracker` is now a 4-line caller that pushes the result
+      into the view. `project_tab.py` 1162 → 1040 LOC. Unit-tested by
+      `tests/test_project_progress.py` (17 tests) — the first tests for this module.
+      *Minor hardening:* `evaluate_process_steps` guards the empty-step-list case
+      (`base_path and process_steps`) where the old inline code would `IndexError`; harmless
+      for the real path (always 6 steps). The CSV-table / tree / dialog / Qt-signal glue stays.
     - **Move-crash (found + fixed 2026-06-17, pulled into v2.0.0):** dragging a component **froze
       the app and crashed with no error** — `ComponentItem.itemChange` called `self.setPos(value)`
       *inside* the `ItemPositionChange` handler, which re-entered `itemChange` recursively (infinite
