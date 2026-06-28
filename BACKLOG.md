@@ -196,7 +196,8 @@ tests. This is the safety net that makes every refactor below low-risk.
     in the original B1 list but hold extractable logic — `gui/ProjectTab/project_tab.py`
     (~~1278~~ **1040 LOC, progress logic extracted 2026-06-28**; geocoding/CSV logic
     duplicated with its worker — see B2),
-    `gui/EnergySystemTab/_11_generator_schematic.py` (1264 LOC — its `delete_selected`
+    `gui/EnergySystemTab/_11_generator_schematic.py` (~~1264~~ **1231 LOC, geometry extracted
+    2026-06-28** — its `delete_selected`
     ~~tears down + rebuilds the whole scene, losing manually-dragged layout~~ **fixed 2026-06-17
     (pulled into v2.0.0)**: now removes only the selected component + its linked partner + their
     pipes/label, leaving every other item's position untouched; the full-rebuild path is gone), and
@@ -225,6 +226,16 @@ tests. This is the safety net that makes every refactor below low-risk.
       *Minor hardening:* `evaluate_process_steps` guards the empty-step-list case
       (`base_path and process_steps`) where the old inline code would `IndexError`; harmless
       for the real path (always 6 steps). The CSV-table / tree / dialog / Qt-signal glue stays.
+    - **`_11_generator_schematic.py` geometry extracted (DONE 2026-06-28):** pulled the two pure
+      coordinate computations out of the QGraphicsScene into
+      `gui/EnergySystemTab/schematic_geometry.py` (83 LOC, GUI-free) — `snap_to_grid` and
+      `optimal_label_position` (the collision-avoiding label placement: centred-x, below/above
+      side preference per item type, offset stepping, fallback). The scene methods are thin
+      adapters that convert `QPointF`/`QRectF` and pass a `collides` predicate. Unit-tested by
+      `tests/test_schematic_geometry.py` (12 tests; the placement logic was previously untestable
+      because it queried scene items). This file is **mostly genuine Qt scene glue** (item
+      creation, connection points, pipe routing, paint) — only the pure math was extractable;
+      the rest stays.
     - **Move-crash (found + fixed 2026-06-17, pulled into v2.0.0):** dragging a component **froze
       the app and crashed with no error** — `ComponentItem.itemChange` called `self.setPos(value)`
       *inside* the `ItemPositionChange` handler, which re-entered `itemChange` recursively (infinite
