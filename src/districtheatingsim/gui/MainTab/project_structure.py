@@ -58,6 +58,29 @@ def create_project_structure(project_path: str) -> None:
     create_variant_structure(os.path.join(project_path, DEFAULT_VARIANT_NAME))
 
 
+def resolve_new_project_start_dir(recent_projects: list[str]) -> str:
+    """
+    Pick a sensible starting directory for the "new project parent folder" dialog.
+
+    Prefers the parent directory of the most recently opened project, falling back
+    to ``~/Documents`` (if it exists) and finally the user's home directory. Pure
+    path logic so the fallback chain can be unit-tested without a file dialog.
+
+    :param recent_projects: Recently opened project paths, most recent first
+        (as returned by ``config_manager.get_recent_projects()``); may be empty.
+    :return: An existing-or-home directory to open the folder picker at.
+    :rtype: str
+    """
+    if recent_projects:
+        parent = os.path.dirname(recent_projects[0])
+        if parent:
+            return parent
+    documents = os.path.expanduser("~/Documents")
+    if os.path.exists(documents):
+        return documents
+    return os.path.expanduser("~")
+
+
 def discover_variants(project_path: str) -> list[str]:
     """
     Return the sorted names of the variant sub-folders in ``project_path``.
