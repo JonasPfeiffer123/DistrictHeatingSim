@@ -39,6 +39,7 @@ from districtheatingsim.geocoding.building_csv import centroid_of, geojson_to_bu
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
+from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
@@ -647,141 +648,18 @@ class ProjectPresenter:
         if csv_status is not None:
             self.csv_status_label.setText(f"Quartier IST.csv Status: {csv_status}")
 
-    def check_csv_status(self, csv_file_path):
-        """
-        Check detailed CSV status: missing, available without coordinates, or with coordinates.
-
-        :param csv_file_path: Path to CSV file to check.
-        :type csv_file_path: str
-        :return: Status: 'fehlt', 'ist vorhanden', or 'mit Koordinaten'.
-        :rtype: str
-        """
-        if not os.path.exists(csv_file_path):
-            return "fehlt"
-
-        try:
-            with open(csv_file_path, encoding="utf-8", errors="ignore") as file:
-                # Use semicolon delimiter to match the CSV format
-                reader = csv.DictReader(file, delimiter=";")
-                headers = reader.fieldnames
-
-                if not headers:
-                    return "ist vorhanden"
-
-                # Check if UTM coordinate columns exist
-                coord_columns = ["UTM_X", "UTM_Y"]
-                has_coord_headers = all(col in headers for col in coord_columns)
-
-                if not has_coord_headers:
-                    return "ist vorhanden"
-
-                # Check if coordinate columns have data
-                for row in reader:
-                    if "UTM_X" in row and "UTM_Y" in row and row["UTM_X"] and row["UTM_Y"]:
-                        if row["UTM_X"].strip() and row["UTM_Y"].strip():
-                            try:
-                                float(row["UTM_X"])
-                                float(row["UTM_Y"])
-                                return "mit Koordinaten"  # Found at least one valid coordinate pair
-                            except ValueError:
-                                continue
-                    # Only check first few rows for performance
-                    break
-
-                return "ist vorhanden"  # Has headers but no valid coordinate data
-
-        except (OSError, csv.Error, UnicodeDecodeError, ValueError) as e:
-            # If we can't read the CSV, assume it exists but is problematic — but log it,
-            # so a corrupt/locked CSV is not silently reported as "ist vorhanden".
-            logging.warning("Konnte CSV-Status von %s nicht lesen: %s", csv_file_path, e)
-            return "ist vorhanden"
-
-    def check_network_dimensioned(self, network_file_path):
-        """
-        Check if network GeoJSON has state set to "dimensioned".
-
-        :param network_file_path: Path to Wärmenetz.geojson file.
-        :type network_file_path: str
-        :return: True if network is dimensioned, False otherwise.
-        :rtype: bool
-        """
-        if not os.path.exists(network_file_path):
-            return False
-
-        try:
-            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-
-            geojson = NetworkGeoJSONSchema.import_from_file(network_file_path)
-
-            # Check metadata for state == "dimensioned"
-            metadata = geojson.get("metadata", {})
-            state = metadata.get("state", "")
-            return state == "dimensioned"
-
-        except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
-            logging.warning("Konnte Netz-Status von %s nicht lesen: %s", network_file_path, e)
-            return False
-
     def update_progress_tracker(self):
         """
         Update project progress and CSV status label based on file existence and content.
+
+        The filesystem evaluation lives in the GUI-free
+        :func:`districtheatingsim.gui.ProjectTab.project_progress.evaluate_process_steps`;
+        this method just pushes its result into the view.
         """
         if not self.view:  # Skip if view not available yet
             return
 
-        base_path = self.model.base_path
-
-        # CSV Status: check first process step (Quartier IST.csv) with detailed analysis
-        csv_status = "unbekannt"
-        if base_path:
-            # Check first process step for Quartier IST.csv
-            first_step = self.process_steps[0]
-            csv_file_path = os.path.join(base_path, first_step["required_files"][0])
-            csv_status = self.check_csv_status(csv_file_path)
-
-            # Update CSV creation and geocoding status for first step
-            if os.path.exists(csv_file_path):
-                first_step["csv_creation_status"] = "completed"
-                # Check if CSV has coordinates (UTM_X and UTM_Y columns)
-                if csv_status == "mit Koordinaten":
-                    first_step["geocoding_status"] = "completed"
-                elif csv_status == "ist vorhanden":
-                    first_step["geocoding_status"] = "pending"
-                else:
-                    first_step["geocoding_status"] = "not_applicable"
-            else:
-                first_step["csv_creation_status"] = "pending"
-                first_step["geocoding_status"] = "not_applicable"
-
-            # Update all process steps
-            for step in self.process_steps:
-                full_paths = [os.path.join(base_path, path) for path in step["required_files"]]
-                generated_files = [file for file in full_paths if os.path.exists(file)]
-
-                # Special check for dimensioned network flag in Wärmenetz.geojson
-                if step.get("check_dimensioned_network", False):
-                    network_file = os.path.join(base_path, "Wärmenetz/Wärmenetz.geojson")
-                    network_dimensioned = self.check_network_dimensioned(network_file)
-
-                    if not network_dimensioned:
-                        # Add virtual missing file indicator
-                        step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
-                        step["missing_files"].append("Wärmenetz/Wärmenetz.geojson (nicht dimensioniert)")
-                        step["completed"] = False
-                    else:
-                        step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
-                        step["completed"] = len(step["missing_files"]) == 0
-                else:
-                    step["completed"] = len(generated_files) == len(full_paths)
-                    step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
-        else:
-            for step in self.process_steps:
-                step["completed"] = False
-                step["missing_files"] = step["required_files"]
-
-        total_steps = len(self.process_steps)
-        completed_steps = sum(1 for step in self.process_steps if step["completed"])
-        overall_progress = (completed_steps / total_steps) * 100
+        csv_status, overall_progress = evaluate_process_steps(self.model.base_path, self.process_steps)
 
         self.view.update_progress(overall_progress, csv_status=csv_status)
         self.view.set_process_steps(self.process_steps)
