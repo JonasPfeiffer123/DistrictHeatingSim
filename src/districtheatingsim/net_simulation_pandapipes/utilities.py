@@ -498,18 +498,11 @@ def init_diameter_types(
         # Calculate required diameter using continuity equation
         required_diameter = current_diameter * (velocity / v_max_pipe) ** 0.5
 
-        # Pick the smallest standard type whose inner diameter still satisfies the
-        # velocity limit — round *up*, never down. Rounding to the merely closest
-        # type (the old behaviour) could round down and leave the pipe above v_max,
-        # inflating dp and forcing the pump to an unrealistically high head. If no
-        # type is large enough, fall back to the largest available.
-        required_diameter_mm = required_diameter * 1000.0
-        candidates = filtered_by_material[filtered_by_material["inner_diameter_mm"] >= required_diameter_mm]
-        chosen_type = (
-            candidates["inner_diameter_mm"].idxmin()
-            if not candidates.empty
-            else filtered_by_material["inner_diameter_mm"].idxmax()
-        )
+        # Size the pipe *within its own insulation grade* — only the bore may change.
+        # An unrestricted selection would tie-break across grades (identical inner
+        # diameters) and silently reset a user-selected _2x start type to _STD.
+        grade = _insulation_grade(str(net.pipe.at[pipe_idx, "std_type"]))
+        chosen_type = select_std_type_within_grade(filtered_by_material, grade, required_diameter * 1000.0)
 
         # Update pipe properties
         properties = filtered_by_material.loc[chosen_type]
@@ -583,6 +576,35 @@ def neighbor_std_type(std_type: str, ladders: dict[str, list[str]], *, larger: b
     if 0 <= new_pos < len(ladder):
         return ladder[new_pos]
     return None
+
+
+def select_std_type_within_grade(filtered_by_material, grade: str, required_diameter_mm: float) -> str:
+    """Pick a std-type of a given insulation *grade* sized for ``required_diameter_mm``.
+
+    Returns the smallest type of that grade whose inner diameter still satisfies the
+    velocity requirement (round *up*, never down), falling back to the largest of the
+    grade if none is big enough. Restricting to one grade is essential: the ISOPLUS
+    grades (STD/1x/2x) share identical inner diameters, so an unrestricted ``idxmin()``
+    tie-breaks to an arbitrary grade and silently drops a user-selected insulation
+    (e.g. a ``_2x`` start type reset to ``_STD``). If ``grade`` is absent from the
+    catalog, the full catalog is used (so sizing still succeeds).
+
+    :param filtered_by_material: Catalog rows (DataFrame indexed by std-type name with
+        an ``inner_diameter_mm`` column) already filtered to one material.
+    :param grade: Insulation grade to stay within (e.g. ``"2x"``).
+    :param required_diameter_mm: Minimum inner diameter required [mm].
+    :return: The chosen std-type name.
+    :rtype: str
+    """
+    grades = filtered_by_material.index.to_series().map(lambda n: _insulation_grade(str(n)))
+    grade_catalog = filtered_by_material[(grades == grade).to_numpy()]
+    if grade_catalog.empty:
+        grade_catalog = filtered_by_material  # unknown grade -> fall back to full catalog
+
+    candidates = grade_catalog[grade_catalog["inner_diameter_mm"] >= required_diameter_mm]
+    if not candidates.empty:
+        return candidates["inner_diameter_mm"].idxmin()
+    return grade_catalog["inner_diameter_mm"].idxmax()
 
 
 def optimize_diameter_types(

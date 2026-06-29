@@ -281,6 +281,9 @@ class PipeConfigTable(QWidget):
 
             combo = NoScrollComboBox()
             combo.setMinimumHeight(25)
+            # Wide enough that the longest ISOPLUS std-type name (e.g. ISOPLUS_DRE1000_2x)
+            # is never clipped behind the drop-down arrow.
+            combo.setMinimumWidth(210)
             combo.setStyleSheet("""
                 QComboBox {
                     padding: 4px 8px;
@@ -317,15 +320,17 @@ class PipeConfigTable(QWidget):
         hdr = self._table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         hdr.resizeSection(0, 60)
-        hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        # Name only carries "Pipe N" — give it a small fixed width and let the Std-Typ
+        # column take the remaining space (Stretch) so the full ISOPLUS name is visible.
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        hdr.resizeSection(1, 110)
         hdr.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         hdr.resizeSection(2, 60)
         hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         hdr.resizeSection(3, 60)
         hdr.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         hdr.resizeSection(4, 90)
-        hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        hdr.resizeSection(5, 200)
+        hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
         hdr.resizeSection(6, 80)
         hdr.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)

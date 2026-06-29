@@ -932,6 +932,31 @@ so switching projects leaves the previous project's data on screen.
     save path (`save_results_JSON`), and wrapped it in `try: os.makedirs(...) except FileExistsError:
     pass` to tolerate the cloud-folder quirk.
 
+### C30. Diameter init dropped the user's insulation grade (fixed 2026-06-29)
+**Symptom (user-reported):** generating a pandapipes net with diameter optimization and a
+start type like `ISOPLUS_DRE100_2x` (double insulation) yielded *uninsulated* `_STD` pipes —
+the optimization "removed" the insulation. **Root cause:** `init_diameter_types`
+(`net_simulation_pandapipes/utilities.py`, runs *before* the already-grade-safe
+`optimize_diameter_types`) selected each pipe's std-type by inner diameter across the **whole**
+catalog. The ISOPLUS grades STD/1x/2x share **identical inner diameters** per DN, so the
+`idxmin()` tie-break always returned the first catalog entry (`_STD`), silently resetting every
+pipe's grade. **Fix:** extracted `select_std_type_within_grade(filtered_by_material, grade,
+required_mm)` (round-up sizing **within one grade**, full-catalog fallback for an unknown grade);
+`init_diameter_types` now reads the pipe's current grade and stays in it. Pinned by
+`tests/test_net_simulation.py::TestSelectStdTypeWithinGrade` (4) + a golden-master regression
+(`test_network_structure` asserts all 68 pipes keep `_2x`). The golden-master solver KPIs were
+**re-pinned** in the same commit (keeping 2x lowers heat loss → `Jahreswärmeerzeugung` 6.2508→6.1981,
+`Pumpenstrom` 0.0037649→0.0036684).
+- **UI follow-up (same commit):** the start-type selector was one flat dropdown of all 66 ISOPLUS
+  types. Replaced with a **cascading** grade → nominal-width pair (`network_config_tab.py`):
+  pick the Dämmstärke (Standard/1-fach/2-fach), then the DN within it; default stays
+  `ISOPLUS_DRE100_2x`. GUI-free grouping `group_isoplus_by_grade` / `parse_isoplus_std_type` +
+  `ISOPLUS_GRADE_LABELS` in `pipe_std_types.py`, tested by
+  `tests/test_net_simulation.py::TestIsoplusGrouping` (5). The dialog reads the full name via
+  `NetworkConfigTab.selected_pipe_type()`. *Possible follow-up:* the per-pipe `PipeConfigTable`
+  std-type combo is still a flat ISOPLUS list (post-generation edit) — could get the same cascade.
+  Also widened that table's Std-Typ column (Stretch) + shrank Name so long ISOPLUS names show fully.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
