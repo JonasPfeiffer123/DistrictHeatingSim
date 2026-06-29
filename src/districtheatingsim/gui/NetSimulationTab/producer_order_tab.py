@@ -8,7 +8,6 @@ Tab for selecting and ordering heat producers in district heating networks.
 
 import os
 
-import geopandas as gpd
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -120,7 +119,8 @@ class ProducerOrderTab(QWidget):
 
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
-        geojson_data = gpd.read_file(filepath)
+        # read_network_gdf repairs a missing feature_type column from layer_name (C32).
+        geojson_data = NetworkGeoJSONSchema.read_network_gdf(filepath)
 
         # Filter for generator features only
         generator_features = geojson_data[geojson_data["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR]

@@ -307,8 +307,11 @@ class KostenBerechnungDialog(QDialog):
         """
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
-        # Load unified GeoJSON and convert to GeoDataFrame
-        unified_geojson = NetworkGeoJSONSchema.import_from_file(self.filename)
+        # Load unified GeoJSON and convert to GeoDataFrame (ensure_feature_types repairs a
+        # missing feature_type from layer_name for older map exports — C32).
+        unified_geojson = NetworkGeoJSONSchema.ensure_feature_types(
+            NetworkGeoJSONSchema.import_from_file(self.filename)
+        )
         gdf_net = gpd.GeoDataFrame.from_features(unified_geojson["features"])
 
         # Filter by feature_type instead of name

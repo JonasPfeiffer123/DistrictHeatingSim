@@ -245,6 +245,17 @@ function add2DLayer(feature) {
 }
 
 // Funktion zum Sammeln aller Layer als unified GeoJSON
+// Map the display layer name back to the unified-schema feature_type, so a saved
+// network always carries feature_type (older exports dropped it -> reload crashed
+// with KeyError 'feature_type' / empty map import). Keep in sync with
+// NetworkGeoJSONSchema.LAYER_NAME_TO_FEATURE_TYPE.
+const LAYER_NAME_TO_FEATURE_TYPE = {
+    "Vorlauf": "network_line_flow",
+    "Rücklauf": "network_line_return",
+    "HAST": "building_connection",
+    "Erzeugeranlagen": "generator_connection"
+};
+
 function getAllLayersAsGeoJSON() {
     const allFeatures = [];
 
@@ -269,6 +280,13 @@ function getAllLayersAsGeoJSON() {
                             feature.properties.color = layerGroup.options.color;
                             feature.properties.opacity = layerGroup.options.opacity;
                             feature.properties.editable = layerGroup.options.editable;
+
+                            // Always carry feature_type so the saved network reloads correctly.
+                            if (!feature.properties.feature_type &&
+                                    LAYER_NAME_TO_FEATURE_TYPE[layerGroup.options.name]) {
+                                feature.properties.feature_type =
+                                    LAYER_NAME_TO_FEATURE_TYPE[layerGroup.options.name];
+                            }
                         }
 
                         // Transformiere zurück zum Projekt-CRS

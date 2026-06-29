@@ -983,6 +983,25 @@ junction → the Vor-/Rücklauf graph splits → the solver fails far from the c
   the dialog reminds the user to save first; the gate is the backstop for the generation path. The
   map reload after snap is a one-shot reload (untested — WebEngine/JS, no headless seam).
 
+### C32. Saved/edited network lost `feature_type` → reload crashed (fixed 2026-06-29)
+**Symptom (user-reported, pre-existing):** after saving a project/network and reopening, opening the
+pandapipes net-generation dialog crashed with `Fehler beim öffnen des Dialogs aufgetreten: 'feature_type'`
+(a `KeyError`), and the saved `Wärmenetz.geojson` could no longer be imported on the map (nothing
+appeared). **Root cause:** the Leaflet save (`geojsonHandler.js::getAllLayersAsGeoJSON`) wrote each
+feature's `layer_name` (Vorlauf/Rücklauf/HAST/Erzeugeranlagen) but **not** `feature_type`. Every
+network reader filters with `gdf[gdf["feature_type"] == …]`, so a file without that property/column
+raised `KeyError: 'feature_type'` (or, on the map's `.get()` path, classified nothing → empty import).
+**Fix — write it + repair old files:**
+- *Writer (root cause):* `getAllLayersAsGeoJSON` now also sets `feature_type` from the layer name
+  (`LAYER_NAME_TO_FEATURE_TYPE`), so every future save carries it.
+- *Reader repair (for files already saved broken):* `NetworkGeoJSONSchema.ensure_feature_types(dict)`
+  and `read_network_gdf(path)` derive a missing `feature_type` from `layer_name`. Applied at every
+  network read: `pp_net_initialisation_geojson` (gate + generation), `network_data_tab` (the crashing
+  dialog), `producer_order_tab`, `_02_energy_system_dialogs`, and the Leaflet map import. `Vorlauf →
+  network_line_flow`, `Rücklauf → return`, `HAST → building_connection`, `Erzeugeranlagen → generator`.
+- Pinned by `tests/test_network_geojson_schema.py` (6). The JS/map round-trip itself has no headless
+  test seam — only the Python repair is covered. **415→421 non-slow passed.**
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,

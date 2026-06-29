@@ -8,7 +8,6 @@ Tab for network data file selection and preview visualization.
 
 import os
 
-import geopandas as gpd
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -201,8 +200,9 @@ class NetworkDataTab(QWidget):
             if not os.path.exists(network_path):
                 raise FileNotFoundError("Die Wärmenetz GeoJSON-Datei wurde nicht gefunden.")
 
-            # Datei einlesen
-            network_gdf = gpd.read_file(network_path)
+            # Datei einlesen (read_network_gdf repariert eine fehlende feature_type-Spalte aus
+            # layer_name bei älteren Karten-Exporten — C32).
+            network_gdf = NetworkGeoJSONSchema.read_network_gdf(network_path)
 
             # Separate features by type
             vorlauf = network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW]
