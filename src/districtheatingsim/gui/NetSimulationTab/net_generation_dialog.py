@@ -115,7 +115,7 @@ class NetGenerationDialog(QDialog):
             network_path = self.network_data_tab.networkInput.itemAt(1).widget().text()
             json_path = self.network_data_tab.jsonLineEdit.text()
 
-            pipetype = self.network_config_tab.initialpipetypeInput.currentText()
+            pipetype = self.network_config_tab.selected_pipe_type()
 
             v_max_pipe = float(self.diameter_optimization_tab.v_max_pipeInput.text())
             material_filter = self.diameter_optimization_tab.material_filterInput.currentText()

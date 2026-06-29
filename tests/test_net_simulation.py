@@ -237,6 +237,56 @@ class TestDiameterLadders:
         assert neighbor_std_type("NOT_A_TYPE", ladders, larger=True) is None
 
 
+class TestSelectStdTypeWithinGrade:
+    """init_diameter_types must size a pipe *within its own insulation grade*. The
+    grades share identical inner diameters, so an unrestricted idxmin() tie-breaks to
+    an arbitrary grade and silently resets a user-chosen _2x start type to _STD — the
+    "optimization drops the insulation" bug."""
+
+    @staticmethod
+    def _catalog():
+        import pandas as pd
+
+        # DN100 and DN125, each present in all three grades with the SAME inner diameter.
+        return pd.DataFrame(
+            {"inner_diameter_mm": [107.1, 107.1, 107.1, 132.5, 132.5, 132.5]},
+            index=[
+                "ISOPLUS_DRE100_STD",
+                "ISOPLUS_DRE100_1x",
+                "ISOPLUS_DRE100_2x",
+                "ISOPLUS_DRE125_STD",
+                "ISOPLUS_DRE125_1x",
+                "ISOPLUS_DRE125_2x",
+            ],
+        )
+
+    def test_keeps_chosen_grade_not_reset_to_std(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import select_std_type_within_grade
+
+        # Required bore fits DN100; the 2x grade must be preserved (the regression).
+        assert select_std_type_within_grade(self._catalog(), "2x", 100.0) == "ISOPLUS_DRE100_2x"
+        assert select_std_type_within_grade(self._catalog(), "1x", 100.0) == "ISOPLUS_DRE100_1x"
+        assert select_std_type_within_grade(self._catalog(), "STD", 100.0) == "ISOPLUS_DRE100_STD"
+
+    def test_rounds_up_within_grade(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import select_std_type_within_grade
+
+        # 110 mm needs DN125 (round up, never down) — and stays in the 2x grade.
+        assert select_std_type_within_grade(self._catalog(), "2x", 110.0) == "ISOPLUS_DRE125_2x"
+
+    def test_falls_back_to_largest_of_grade_when_none_big_enough(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import select_std_type_within_grade
+
+        assert select_std_type_within_grade(self._catalog(), "2x", 9999.0) == "ISOPLUS_DRE125_2x"
+
+    def test_unknown_grade_falls_back_to_full_catalog(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import select_std_type_within_grade
+
+        # No "3x" grade in the catalog -> size over everything rather than failing.
+        chosen = select_std_type_within_grade(self._catalog(), "3x", 100.0)
+        assert chosen in self._catalog().index
+
+
 def _design_state(qext=7.5):
     return {
         "Heizentrale Haupteinspeisung": {
@@ -317,6 +367,53 @@ class TestIsoplusStdTypeNames:
 
         assert isoplus_std_type_names(None) == []
         assert isoplus_std_type_names(pd.DataFrame(index=[])) == []
+
+
+class TestIsoplusGrouping:
+    """The pipe selector lets the user pick an insulation grade, then a diameter within
+    it. group_isoplus_by_grade feeds that cascade (GUI-free, so it is unit-testable)."""
+
+    def test_parse_splits_dn_and_grade(self):
+        from districtheatingsim.net_simulation_pandapipes.pipe_std_types import parse_isoplus_std_type
+
+        assert parse_isoplus_std_type("ISOPLUS_DRE100_2x") == (100, "2x")
+        assert parse_isoplus_std_type("ISOPLUS_DRE25_STD") == (25, "STD")
+
+    def test_parse_returns_none_for_non_isoplus(self):
+        from districtheatingsim.net_simulation_pandapipes.pipe_std_types import parse_isoplus_std_type
+
+        assert parse_isoplus_std_type("80_PE") is None
+        assert parse_isoplus_std_type("KMR 100/250-2v") is None
+
+    def test_groups_by_grade_sorted_by_dn(self):
+        from districtheatingsim.net_simulation_pandapipes.pipe_std_types import group_isoplus_by_grade
+
+        names = [
+            "ISOPLUS_DRE100_2x",
+            "ISOPLUS_DRE25_2x",
+            "ISOPLUS_DRE100_STD",
+            "ISOPLUS_DRE25_STD",
+            "ISOPLUS_DRE100_1x",
+        ]
+        grouped = group_isoplus_by_grade(names)
+        # Grades in canonical thin->thick order, STD/1x/2x.
+        assert list(grouped.keys()) == ["STD", "1x", "2x"]
+        # Each grade sorted by ascending nominal width.
+        assert grouped["2x"] == [(25, "ISOPLUS_DRE25_2x"), (100, "ISOPLUS_DRE100_2x")]
+        assert grouped["STD"] == [(25, "ISOPLUS_DRE25_STD"), (100, "ISOPLUS_DRE100_STD")]
+        assert grouped["1x"] == [(100, "ISOPLUS_DRE100_1x")]
+
+    def test_ignores_non_isoplus_names(self):
+        from districtheatingsim.net_simulation_pandapipes.pipe_std_types import group_isoplus_by_grade
+
+        grouped = group_isoplus_by_grade(["ISOPLUS_DRE100_2x", "80_PE", "GARBAGE"])
+        assert grouped == {"2x": [(100, "ISOPLUS_DRE100_2x")]}
+
+    def test_unknown_grade_appended_after_known(self):
+        from districtheatingsim.net_simulation_pandapipes.pipe_std_types import group_isoplus_by_grade
+
+        grouped = group_isoplus_by_grade(["ISOPLUS_DRE100_3x", "ISOPLUS_DRE100_2x"])
+        assert list(grouped.keys()) == ["2x", "3x"]
 
 
 class TestNetworkDataArrayCoercion:

@@ -10,7 +10,12 @@ import pandapipes as pp
 from PyQt6.QtWidgets import QCheckBox, QComboBox, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
 from districtheatingsim.gui.utilities import NoScrollComboBox
-from districtheatingsim.net_simulation_pandapipes.pipe_std_types import isoplus_std_type_names
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
+    ISOPLUS_GRADE_LABELS,
+    group_isoplus_by_grade,
+    isoplus_std_type_names,
+    parse_isoplus_std_type,
+)
 
 
 class NetworkConfigTab(QWidget):
@@ -257,33 +262,70 @@ class NetworkConfigTab(QWidget):
 
     def createinitialpipetypeInput(self):
         """
-        Create pipe type selection input.
+        Create the cascading pipe-type selection (insulation grade → nominal width).
 
-        :return: Layout containing pipe type selection.
+        The ISOPLUS grades (Dämmstärke) share identical bores, so the user first picks
+        a grade and then a diameter *within* that grade; the optimizer keeps the grade
+        fixed. Use :meth:`selected_pipe_type` to read the full std-type name.
+
+        :return: Layout containing the grade + diameter selectors.
         :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
-        self.initialpipetypeInput = NoScrollComboBox(self)
+
         std_types = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe")
-        pipetypes = isoplus_std_type_names(std_types)  # only ISOPLUS pipes are relevant for DH
-        self.initialpipetypeInput.addItems(pipetypes)
+        # {grade: [(dn, std_type_name), …]} — only ISOPLUS pipes are relevant for DH.
+        self._pipe_groups = group_isoplus_by_grade(isoplus_std_type_names(std_types))
+
+        # Insulation-grade selector (Dämmstärke); userData is the raw grade key.
+        layout.addWidget(QLabel("Dämmstärke:"))
+        self.pipeGradeInput = NoScrollComboBox(self)
+        for grade in self._pipe_groups:
+            self.pipeGradeInput.addItem(ISOPLUS_GRADE_LABELS.get(grade, grade), userData=grade)
+        layout.addWidget(self.pipeGradeInput)
+
+        # Nominal-width selector, repopulated from the chosen grade; userData is the
+        # full std-type name (what selected_pipe_type returns).
+        layout.addWidget(QLabel("Nennweite:"))
+        self.initialpipetypeInput = NoScrollComboBox(self)
         layout.addWidget(self.initialpipetypeInput)
 
-        # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
+        self.pipeGradeInput.currentIndexChanged.connect(self._on_pipe_grade_changed)
+
+        # Default (e.g. ISOPLUS_DRE100_2x): pre-select its grade and nominal width.
         netconfig = (
             self.netconfigurationControlInput.currentText()
             if hasattr(self, "netconfigurationControlInput")
             else self.dialog_config["netconfiguration"][0]
         )
         std = self.dialog_config["standardwerte"][netconfig]
-
-        default_pipe_type = std["default_pipe_type"]
-        if default_pipe_type in pipetypes:
-            self.initialpipetypeInput.setCurrentText(default_pipe_type)
-        else:
-            pass
+        self._select_default_pipe_type(std["default_pipe_type"])
 
         return layout
+
+    def _on_pipe_grade_changed(self, *_):
+        """Repopulate the nominal-width combo for the currently selected grade."""
+        grade = self.pipeGradeInput.currentData()
+        self.initialpipetypeInput.clear()
+        for dn, name in self._pipe_groups.get(grade, []):
+            self.initialpipetypeInput.addItem(f"DN {dn}", userData=name)
+
+    def _select_default_pipe_type(self, default_pipe_type):
+        """Select *default_pipe_type* across the grade + nominal-width combos."""
+        parsed = parse_isoplus_std_type(default_pipe_type)
+        if parsed is not None:
+            grade_idx = self.pipeGradeInput.findData(parsed[1])
+            if grade_idx >= 0:
+                self.pipeGradeInput.setCurrentIndex(grade_idx)
+        # Ensure the width combo is populated even when the grade index did not change.
+        self._on_pipe_grade_changed()
+        dim_idx = self.initialpipetypeInput.findData(default_pipe_type)
+        if dim_idx >= 0:
+            self.initialpipetypeInput.setCurrentIndex(dim_idx)
+
+    def selected_pipe_type(self) -> str:
+        """Return the full ISOPLUS std-type name selected via the grade + width combos."""
+        return self.initialpipetypeInput.currentData() or ""
 
     def set_layout_visibility(self, layout, visible):
         """

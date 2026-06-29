@@ -104,6 +104,9 @@ class TestGoerlitzGoldenMaster:
         assert len(nd.net.pipe) == 68
         # Diameter optimization selected ISOPLUS pipes for the whole net.
         assert all(str(s).startswith("ISOPLUS_DRE") for s in nd.net.pipe["std_type"])
+        # C30 regression: the start type was ISOPLUS_DRE100_2x; init + optimize must keep
+        # the chosen insulation grade (2x) on every pipe, never reset it to _STD.
+        assert all(str(s).endswith("_2x") for s in nd.net.pipe["std_type"])
         # Network solved: junction results all finite.
         assert np.all(np.isfinite(nd.net.res_junction.values))
 
@@ -123,9 +126,11 @@ class TestGoerlitzGoldenMaster:
         # cross-platform solver float drift. Values reflect the round-up diameter sizing
         # in init_diameter_types (pumpstrom dropped ~31% vs the old round-to-closest
         # sizing, which under-sized pipes and inflated the pump head — see BACKLOG C14).
+        # Re-pinned for C30: keeping the _2x insulation grade (the old init reset it to
+        # _STD) lowers the pipe heat loss, so generation and pumpstrom both dropped ~1-3%.
         _, k = goerlitz_run
-        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.2508, rel=1e-2)
-        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0037649, rel=2e-2)
+        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.1981, rel=1e-2)
+        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0036684, rel=2e-2)
         # Distribution loss = generation − demand (negative here: an 8-step generation
         # is compared against the annual demand — a known partial-range artifact).
         assert k["Verteilverluste [MWh]"] == pytest.approx(

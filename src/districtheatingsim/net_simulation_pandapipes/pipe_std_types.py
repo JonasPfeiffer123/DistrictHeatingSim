@@ -31,6 +31,60 @@ _ISOPLUS_PATTERN = re.compile(r"^ISOPLUS_DRE(\d+)(_\w+)$")
 # of the UI pipe selectors.
 ISOPLUS_MATERIAL = "P235GH/PUR/PEHD"
 
+# ISOPLUS insulation grades (the "_<grade>" suffix), thinnest → thickest. The grade sets
+# the insulation thickness / heat loss, not the bore — every grade offers the full DN
+# range with identical inner diameters. The UI lets the user pick a grade first, then a
+# diameter within it; the optimizer keeps the grade fixed (see utilities.optimize/init).
+ISOPLUS_GRADE_ORDER = ["STD", "1x", "2x"]
+
+#: Human-readable grade labels for the pipe selector (German UI). The raw suffix is kept
+#: in parentheses so the mapping stays unambiguous.
+ISOPLUS_GRADE_LABELS = {
+    "STD": "Standard (STD)",
+    "1x": "1-fach verstärkt (1x)",
+    "2x": "2-fach verstärkt (2x)",
+}
+
+
+def parse_isoplus_std_type(name) -> tuple[int, str] | None:
+    """
+    Split an ISOPLUS std-type name into its nominal width and insulation grade.
+
+    ``"ISOPLUS_DRE100_2x"`` → ``(100, "2x")``. Returns ``None`` for names that are not
+    ISOPLUS ``DRE`` types.
+
+    :param name: A pipe std-type name.
+    :return: ``(nominal_width_dn, grade)`` or ``None``.
+    :rtype: tuple[int, str] | None
+    """
+    match = _ISOPLUS_PATTERN.match(str(name))
+    if not match:
+        return None
+    return int(match.group(1)), match.group(2).lstrip("_")
+
+
+def group_isoplus_by_grade(names) -> dict[str, list[tuple[int, str]]]:
+    """
+    Group ISOPLUS std-type names by insulation grade for the cascading pipe selector.
+
+    :param names: ISOPLUS std-type names (e.g. from :func:`isoplus_std_type_names`).
+    :return: ``{grade: [(dn, name), …]}`` with each list sorted by ascending nominal
+        width and the grades ordered :data:`ISOPLUS_GRADE_ORDER` first (any unknown
+        grades appended in sorted order). Non-ISOPLUS names are ignored.
+    :rtype: dict[str, list[tuple[int, str]]]
+    """
+    groups: dict[str, list[tuple[int, str]]] = {}
+    for name in names:
+        parsed = parse_isoplus_std_type(name)
+        if parsed is None:
+            continue
+        dn, grade = parsed
+        groups.setdefault(grade, []).append((dn, str(name)))
+
+    ordered = [g for g in ISOPLUS_GRADE_ORDER if g in groups]
+    ordered += sorted(g for g in groups if g not in ISOPLUS_GRADE_ORDER)
+    return {grade: sorted(groups[grade]) for grade in ordered}
+
 
 def isoplus_std_type_names(std_types) -> list[str]:
     """
