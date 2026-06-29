@@ -28,6 +28,10 @@ from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGener
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
 from districtheatingsim.gui.utilities import stop_qthreads
+from districtheatingsim.net_generation.network_connectivity import (
+    check_geojson_connectivity,
+    snap_geojson_endpoints,
+)
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.utilities.crs_utils import crs_to_urn
 
@@ -340,6 +344,7 @@ class VisualizationPresenter(QObject):
         self.view.downloadActionOSM.triggered.connect(self.open_osm_data_dialog)
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
         self.view.saveNetworkAction.triggered.connect(self.save_network)
+        self.view.checkConnectivityAction.triggered.connect(self.check_network_connectivity_action)
 
         # Track current unified network file
         self.current_unified_network = None
@@ -491,6 +496,102 @@ class VisualizationPresenter(QObject):
         except Exception as e:
             error_message = f"{str(e)}\n\n{traceback.format_exc()}"
             self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
+
+    def _network_geojson_path(self):
+        """Path of the network file to check: the loaded one, else the variant's standard path."""
+        if self.current_unified_network and os.path.exists(self.current_unified_network):
+            return self.current_unified_network
+        candidate = os.path.join(self.model.base_path or "", "Wärmenetz", "Wärmenetz.geojson")
+        return candidate if os.path.exists(candidate) else None
+
+    def check_network_connectivity_action(self):
+        """
+        Check that the saved network is fully connected before pandapipes generation.
+
+        Reproduces the exact-endpoint-match topology of generation (a vertex the editor
+        nudged off its neighbour silently splits the net) and reports flow/return splits,
+        floating HAST/producers and near-miss endpoint groups. Offers to auto-snap the
+        near-miss groups (which is the usual root cause) and reloads the corrected file.
+        """
+        path = self._network_geojson_path()
+        if not path:
+            self.view.show_error_message(
+                "Konnektivität prüfen",
+                "Kein gespeichertes Wärmenetz gefunden.\n"
+                "Bitte zuerst ein Netz generieren bzw. die Bearbeitung speichern ('Netzwerk speichern').",
+            )
+            return
+
+        try:
+            with open(path, encoding="utf-8") as f:
+                geojson = json.load(f)
+            report = check_geojson_connectivity(geojson)
+        except Exception as e:
+            self.view.show_error_message("Konnektivität prüfen", f"Netz konnte nicht geprüft werden:\n{e}")
+            return
+
+        body = "\n".join(f"• {m}" for m in report.messages)
+        note = "\n\n(Geprüft wird die gespeicherte Datei — Bearbeitungen bitte vorher speichern.)"
+
+        if report.ok:
+            QMessageBox.information(self.view, "Konnektivität prüfen", body + note)
+            return
+
+        if report.near_miss_clusters:
+            reply = QMessageBox.question(
+                self.view,
+                "Konnektivität prüfen",
+                f"{body}\n\nSollen die {len(report.near_miss_clusters)} fast-zusammenfallenden "
+                f"Endpunkt-Gruppe(n) automatisch zusammengeführt werden (Auto-Snap)?{note}",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                self._auto_snap_network(path, geojson)
+        else:
+            QMessageBox.warning(self.view, "Konnektivität prüfen", body + note)
+
+    def _auto_snap_network(self, path, geojson):
+        """Snap near-coincident endpoints in *geojson*, write back to *path*, reload the map."""
+        try:
+            snapped, n_snapped = snap_geojson_endpoints(geojson)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(snapped, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            self.view.show_error_message("Auto-Snap", f"Zusammenführen fehlgeschlagen:\n{e}")
+            return
+
+        report = check_geojson_connectivity(snapped)
+        self._reload_network_on_map(path)
+
+        if report.ok:
+            QMessageBox.information(
+                self.view,
+                "Auto-Snap",
+                f"{n_snapped} Endpunkt(e) zusammengeführt. Das Netz ist jetzt vollständig verbunden.",
+            )
+        else:
+            rest = "\n".join(f"• {m}" for m in report.messages)
+            QMessageBox.warning(
+                self.view,
+                "Auto-Snap",
+                f"{n_snapped} Endpunkt(e) zusammengeführt, aber es bestehen weiterhin Probleme:\n{rest}",
+            )
+
+    def _reload_network_on_map(self, path):
+        """Reload the empty map and re-display the (corrected) network once, avoiding duplicates."""
+        self.current_unified_network = None
+
+        def _on_loaded(_ok=True):
+            try:
+                self.view.web_view.loadFinished.disconnect(_on_loaded)
+            except TypeError:
+                pass
+            self.add_geojson_layer([path])
+
+        self.view.web_view.loadFinished.connect(_on_loaded)
+        if hasattr(self, "map_file_path"):
+            self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
 
     def add_geojson_layer(self, filenames):
         """
@@ -819,6 +920,9 @@ class VisualizationTabView(QWidget):
         self.saveNetworkAction = QAction("Netzwerk speichern", self)
         self.saveNetworkAction.setEnabled(False)  # Initially disabled
         fileMenu.addAction(self.saveNetworkAction)
+
+        self.checkConnectivityAction = QAction("Konnektivität prüfen", self)
+        fileMenu.addAction(self.checkConnectivityAction)
 
         self.main_layout.addWidget(self.menuBar)
 
