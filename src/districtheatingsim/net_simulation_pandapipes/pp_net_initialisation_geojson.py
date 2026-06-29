@@ -29,6 +29,7 @@ import pandas as pd
 from pandapipes.control.run_control import run_control
 
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
+from districtheatingsim.net_generation.network_connectivity import check_geojson_connectivity
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
@@ -61,6 +62,20 @@ def initialize_geojson(NetworkGenerationData) -> Any:
        (main: total demand/ΔT, secondary: percentage-based). Creates complete pandapipes network.
     """
     # Load unified network GeoJSON data
+
+    # Connectivity gate (C31): pandapipes merges line endpoints into junctions by EXACT
+    # coordinate match, so a vertex the Leaflet editor nudged off its neighbour silently
+    # splits the network and the solver later fails with an opaque connectivity error far
+    # from the cause. Catch it here with a clear, actionable message instead.
+    with open(NetworkGenerationData.network_geojson_path, encoding="utf-8") as _conn_f:
+        _conn_report = check_geojson_connectivity(json.load(_conn_f))
+    if not _conn_report.ok:
+        raise ValueError(
+            "Das Wärmenetz ist nicht vollständig verbunden und kann nicht berechnet werden:\n- "
+            + "\n- ".join(_conn_report.messages)
+            + "\n\nBitte im Tab 'Kartenansicht Netzgenerierung' die Konnektivität prüfen "
+            "und korrigieren (ggf. Auto-Snap)."
+        )
 
     # Read unified GeoJSON file
     network_gdf = gpd.read_file(NetworkGenerationData.network_geojson_path, driver="GeoJSON")

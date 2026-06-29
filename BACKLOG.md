@@ -957,6 +957,32 @@ required_mm)` (round-up sizing **within one grade**, full-catalog fallback for a
   std-type combo is still a flat ISOPLUS list (post-generation edit) — could get the same cascade.
   Also widened that table's Std-Typ column (Stretch) + shrank Name so long ISOPLUS names show fully.
 
+### C31. Edited Leaflet network silently disconnects pandapipes generation (fixed 2026-06-29)
+**Symptom (user-reported):** after editing a generated network in the Leaflet tab, pandapipes
+generation failed with an opaque connectivity error. **Root cause:** generation
+(`pp_net_initialisation_geojson`) merges line endpoints into junctions by **exact** `(x, y)`
+coordinate match (`get_line_coords_and_lengths` keeps raw floats; junction dicts keyed by the
+tuple). So a vertex the editor nudged even a fraction off its neighbour becomes a *separate*
+junction → the Vor-/Rücklauf graph splits → the solver fails far from the cause, with no hint.
+**Fix — GUI-free checker + gate + UI:**
+- `net_generation/network_connectivity.py` (GUI-/geopandas-free) reproduces that exact-match
+  topology and reports: flow/return connected-component counts (healthy = 1 each), HAST/producer
+  connections that don't bridge a flow node to a return node ("floating"), missing producer, and
+  **near-miss endpoint clusters** (within a tolerance, default 0.5 m, but not exactly equal — the
+  usual root cause). `snap_*` collapses each near-miss cluster onto its representative coordinate
+  (outliers move onto the existing junction; intermediate vertices + z preserved). GeoJSON adapters
+  (`feature_groups_from_geojson` / `check_geojson_connectivity` / `snap_geojson_endpoints`) work on
+  the unified-schema dict (stored in EPSG:25833 → metre tolerance applies directly). Tested by
+  `tests/test_network_connectivity.py` (14, incl. a real-Görlitz `ok` check).
+- **Gate:** `initialize_geojson` now runs the check first and raises a clear, actionable
+  `ValueError` (listing what's split / floating) instead of letting the solver fail — surfaced via
+  the existing `NetInitializationThread` error signal.
+- **Leaflet UI:** new "Konnektivität prüfen" menu action checks the saved network, lists issues,
+  and offers **Auto-Snap** for near-miss groups (writes the corrected file + reloads the map).
+  *Caveat:* the button checks the **saved** file (the JS map's unsaved edits aren't read back), so
+  the dialog reminds the user to save first; the gate is the backstop for the generation path. The
+  map reload after snap is a one-shot reload (untested — WebEngine/JS, no headless seam).
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
