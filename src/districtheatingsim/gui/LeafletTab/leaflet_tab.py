@@ -524,7 +524,7 @@ class VisualizationPresenter(QObject):
 
         try:
             with open(path, encoding="utf-8") as f:
-                geojson = json.load(f)
+                geojson = NetworkGeoJSONSchema.ensure_feature_types(json.load(f))  # C32: repair old saves
             report = check_geojson_connectivity(geojson)
         except Exception as e:
             self.view.show_error_message("Konnektivität prüfen", f"Netz konnte nicht geprüft werden:\n{e}")
@@ -654,6 +654,10 @@ class VisualizationPresenter(QObject):
         :param filepath: Path to the loaded file (for saving later)
         :type filepath: str or None
         """
+        # Repair a missing feature_type from layer_name for older map exports (C32),
+        # otherwise nothing gets classified and the map shows an empty network.
+        NetworkGeoJSONSchema.ensure_feature_types(geojson_data)
+
         # Separate features by type
         flow_features = []
         return_features = []

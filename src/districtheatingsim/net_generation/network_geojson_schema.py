@@ -31,6 +31,16 @@ class NetworkGeoJSONSchema:
     FEATURE_TYPE_BUILDING = "building_connection"
     FEATURE_TYPE_GENERATOR = "generator_connection"
 
+    # Display layer names used by the Leaflet map (one feature group per type) → feature_type.
+    # Used to repair networks saved by older map exports that dropped ``feature_type`` from the
+    # feature properties but kept ``layer_name`` (which caused KeyError 'feature_type' on reload).
+    LAYER_NAME_TO_FEATURE_TYPE = {
+        "Vorlauf": FEATURE_TYPE_FLOW,
+        "Rücklauf": FEATURE_TYPE_RETURN,
+        "HAST": FEATURE_TYPE_BUILDING,
+        "Erzeugeranlagen": FEATURE_TYPE_GENERATOR,
+    }
+
     # Edit levels
     EDIT_LEVEL_EDITABLE = "editable"
     EDIT_LEVEL_GENERATED = "generated"
@@ -406,6 +416,54 @@ class NetworkGeoJSONSchema:
             geojson = json.load(f)
         NetworkGeoJSONSchema.validate_version(geojson, filepath=filepath)
         return geojson
+
+    @staticmethod
+    def ensure_feature_types(geojson: dict[str, Any]) -> dict[str, Any]:
+        """
+        Fill any missing per-feature ``feature_type`` from ``layer_name`` (repair, in place).
+
+        Older Leaflet map exports wrote ``layer_name`` (Vorlauf/Rücklauf/HAST/Erzeugeranlagen)
+        but not ``feature_type`` onto the saved features, so reloading the network crashed
+        with ``KeyError: 'feature_type'`` (and the map import silently classified nothing).
+        This derives the missing ``feature_type`` from ``layer_name`` so such files load again.
+
+        :param geojson: A unified network GeoJSON dict (mutated).
+        :return: The same dict, with ``feature_type`` filled where it was missing.
+        :rtype: Dict[str, Any]
+        """
+        for feature in geojson.get("features", []):
+            props = feature.setdefault("properties", {})
+            if not props.get("feature_type"):
+                feature_type = NetworkGeoJSONSchema.LAYER_NAME_TO_FEATURE_TYPE.get(props.get("layer_name"))
+                if feature_type:
+                    props["feature_type"] = feature_type
+        return geojson
+
+    @staticmethod
+    def read_network_gdf(filepath: str, **read_file_kwargs):
+        """
+        Read a unified network GeoJSON into a GeoDataFrame with a guaranteed ``feature_type``.
+
+        Wraps :func:`geopandas.read_file` and repairs the ``feature_type`` column from
+        ``layer_name`` for older map exports that dropped it (see :meth:`ensure_feature_types`),
+        so the downstream ``gdf[gdf["feature_type"] == …]`` filters never KeyError.
+
+        :param filepath: Path to the network GeoJSON.
+        :param read_file_kwargs: Forwarded to ``geopandas.read_file`` (e.g. ``driver="GeoJSON"``).
+        :return: GeoDataFrame with a ``feature_type`` column when it can be determined.
+        :rtype: geopandas.GeoDataFrame
+        """
+        gdf = gpd.read_file(filepath, **read_file_kwargs)
+        if "layer_name" in gdf.columns:
+            if "feature_type" not in gdf.columns:
+                gdf["feature_type"] = gdf["layer_name"].map(NetworkGeoJSONSchema.LAYER_NAME_TO_FEATURE_TYPE)
+            else:
+                missing = gdf["feature_type"].isna()
+                if missing.any():
+                    gdf.loc[missing, "feature_type"] = gdf.loc[missing, "layer_name"].map(
+                        NetworkGeoJSONSchema.LAYER_NAME_TO_FEATURE_TYPE
+                    )
+        return gdf
 
     @staticmethod
     def split_to_legacy_format(

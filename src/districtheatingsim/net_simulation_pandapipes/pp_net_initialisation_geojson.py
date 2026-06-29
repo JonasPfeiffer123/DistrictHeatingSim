@@ -68,7 +68,8 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     # splits the network and the solver later fails with an opaque connectivity error far
     # from the cause. Catch it here with a clear, actionable message instead.
     with open(NetworkGenerationData.network_geojson_path, encoding="utf-8") as _conn_f:
-        _conn_report = check_geojson_connectivity(json.load(_conn_f))
+        _conn_geojson = NetworkGeoJSONSchema.ensure_feature_types(json.load(_conn_f))  # C32: repair old saves
+    _conn_report = check_geojson_connectivity(_conn_geojson)
     if not _conn_report.ok:
         raise ValueError(
             "Das Wärmenetz ist nicht vollständig verbunden und kann nicht berechnet werden:\n- "
@@ -77,8 +78,9 @@ def initialize_geojson(NetworkGenerationData) -> Any:
             "und korrigieren (ggf. Auto-Snap)."
         )
 
-    # Read unified GeoJSON file
-    network_gdf = gpd.read_file(NetworkGenerationData.network_geojson_path, driver="GeoJSON")
+    # Read unified GeoJSON file (read_network_gdf repairs a missing feature_type column from
+    # layer_name for older map exports — C32).
+    network_gdf = NetworkGeoJSONSchema.read_network_gdf(NetworkGenerationData.network_geojson_path, driver="GeoJSON")
 
     # Separate features by type
     gdf_dict = {
