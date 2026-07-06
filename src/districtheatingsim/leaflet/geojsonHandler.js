@@ -149,14 +149,20 @@ function importGeoJSON(geojsonData, fileName, editable) {
             fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
             opacity: feature.properties.opacity || 1.0
         }),
-        // Render point features (CSV building coordinates, HAST/Erzeuger) as circles.
-        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-            radius: 6,
-            color: randomColor,
-            weight: 2,
-            fillColor: randomColor,
-            fillOpacity: 0.6
-        }),
+        // Render point features (CSV building coordinates, HAST/Erzeuger) as fixed-size
+        // circles. circleMarker's radius is in pixels, so it does NOT scale with zoom.
+        // HAST/Erzeuger get a larger radius than plain CSV coordinate points.
+        pointToLayer: (feature, latlng) => {
+            const ft = (feature.properties || {}).feature_type;
+            const isNode = (ft === "building_connection" || ft === "generator_connection");
+            return L.circleMarker(latlng, {
+                radius: isNode ? 9 : 6,
+                color: randomColor,
+                weight: 2,
+                fillColor: randomColor,
+                fillOpacity: 0.6
+            });
+        },
         onEachFeature: (feature, layer) => {
             // Wenn Layer nicht editierbar sein soll
             if (!editable) {

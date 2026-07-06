@@ -38,6 +38,26 @@ from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJ
 from districtheatingsim.utilities.crs_utils import crs_to_urn
 
 
+def _nearest_address(vl, address_lookup, tolerance: float = 2.0):
+    """
+    Return the address of the building nearest to ``vl`` within ``tolerance`` metres.
+
+    Used to label HAST circles from the project's building CSV when the network export
+    dropped the address from the feature. GUI-free.
+
+    :param vl: ``(x, y[, z])`` of the HAST connection point (projected CRS).
+    :param address_lookup: ``[(x, y, address), …]`` building locations.
+    :param tolerance: Max match distance [m].
+    :return: The nearest address within tolerance, or ``None``.
+    :rtype: str | None
+    """
+    if not address_lookup or not vl:
+        return None
+    x, y = vl[0], vl[1]
+    bx, by, address = min(address_lookup, key=lambda e: (e[0] - x) ** 2 + (e[1] - y) ** 2)
+    return address if (bx - x) ** 2 + (by - y) ** 2 <= tolerance * tolerance else None
+
+
 class GeoJsonReceiver(QObject):
     """
     Bridge for receiving GeoJSON data from JavaScript.
@@ -645,6 +665,24 @@ class VisualizationPresenter(QObject):
 
         return False
 
+    def _building_address_lookup(self):
+        """Return ``[(x, y, address), …]`` from the project's building CSV (for HAST labels)."""
+        try:
+            rel = self.config_manager.get_relative_path("current_building_data_path")
+            csv_path = os.path.join(self.model.base_path or "", rel)
+            if not os.path.exists(csv_path):
+                return []
+            df = pd.read_csv(csv_path, delimiter=";")
+            if not {"UTM_X", "UTM_Y", "Adresse"}.issubset(df.columns):
+                return []
+            lookup = []
+            for x, y, address in zip(df["UTM_X"], df["UTM_Y"], df["Adresse"], strict=False):
+                if pd.notna(x) and pd.notna(y) and pd.notna(address):
+                    lookup.append((float(x), float(y), str(address)))
+            return lookup
+        except Exception:
+            return []
+
     def _load_unified_network_geojson(self, geojson_data, filepath=None):
         """
         Load unified network GeoJSON and add layers to map.
@@ -699,10 +737,21 @@ class VisualizationPresenter(QObject):
             }
 
         # HAST labelled with the building address; producers numbered "Erzeugerstandort N".
-        hast_points = [
-            _to_vl_point(f, (f.get("properties", {}).get("building_data") or {}).get("Adresse"))
-            for f in building_features
-        ]
+        # The address is preferably read from the feature's building_data, but the network
+        # export drops it — so fall back to matching the HAST location to the project's
+        # building CSV by nearest coordinate.
+        address_lookup = self._building_address_lookup()
+
+        def _hast_label(feature):
+            address = ((feature.get("properties") or {}).get("building_data") or {}).get("Adresse")
+            if address:
+                return str(address)
+            geom = feature.get("geometry", {})
+            coords = geom.get("coordinates", [])
+            vl = coords[0] if geom.get("type") == "LineString" and coords else coords
+            return _nearest_address(vl, address_lookup) if vl else None
+
+        hast_points = [_to_vl_point(f, _hast_label(f)) for f in building_features]
         generator_points = [_to_vl_point(f, f"Erzeugerstandort {i + 1}") for i, f in enumerate(generator_features)]
 
         layers = [
