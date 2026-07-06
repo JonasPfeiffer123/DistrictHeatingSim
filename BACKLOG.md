@@ -1024,8 +1024,16 @@ on save. Decided model **A** (flow layer = backbone + stubs; consumer/producer p
   edited flow (and `rebuild_network_from_flow` accepts Point HAST/generator geometry, always emitting
   the canonical VL→RL bridge LineString). Verified end-to-end on Görlitz (34 flow + 9 HAST + 1 gen
   points → rebuilt to 34+34+9+1, connected). *No headless seam for the JS render/geoman editing.*
-- **Still to do:** **AP2** (node/split lines at touch points → midpoint connections) and **AP3**
-  (move-node-with-lines vs. split UX); model B (projection snap) becomes clean once AP2 lands.
+- **AP2 landed (node/split, GUI-free, tested):** `flow_network_rebuild.node_flow_lines` explodes the
+  flow into 2-point segments and splits each at any *other* segment's endpoint lying on its interior
+  (within 0.5 m). This fixes two things pandapipes could not handle: a multi-vertex "kink" line (it
+  wired only `coords[0]→coords[1]`, dropping the rest) and a line whose endpoint lands **mid-way**
+  along another (no junction there → open). `rebuild_network_from_flow` now nodes the flow first, then
+  derives return + bridges + regenerates the flow features from the noded segments. Pinned by
+  `tests/test_flow_network_rebuild.py::TestNodeFlowLines` (3) + `TestMidpointConnection` (a stub on a
+  line's interior is 2 components pre-rebuild, connected after). Works in 2-D (the editor is 2-D).
+- **Still to do:** **AP3** (move-node-with-lines vs. split UX — pure geoman/JS, hardest, no headless
+  seam); model B (projection snap for connections) becomes clean now that AP2 nodes touch points.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

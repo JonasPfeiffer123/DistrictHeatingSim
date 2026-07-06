@@ -11,9 +11,15 @@ import json
 from pathlib import Path
 
 import pytest
+from shapely.geometry import LineString
 
-from districtheatingsim.net_generation.flow_network_rebuild import rebuild_network_from_flow
+from districtheatingsim.net_generation.flow_network_rebuild import node_flow_lines, rebuild_network_from_flow
 from districtheatingsim.net_generation.network_connectivity import check_geojson_connectivity
+
+
+def _segset(lines):
+    """Return the set of frozenset endpoints of 2-point segments, order-independent."""
+    return {frozenset([tuple(ln.coords[0]), tuple(ln.coords[-1])]) for ln in lines}
 
 
 def _line(ftype, coords, props=None):
@@ -110,6 +116,59 @@ class TestRebuildNetworkFromFlow:
         hast = next(f for f in out["features"] if f["properties"]["feature_type"] == "building_connection")
         assert hast["geometry"]["type"] == "LineString"
         assert hast["properties"]["building_data"] == {"id": 1}
+        assert check_geojson_connectivity(out).ok is True
+
+
+class TestNodeFlowLines:
+    def test_explodes_multivertex_kink_into_segments(self):
+        # A kink line (3 vertices) becomes two 2-point segments so pandapipes wires both
+        # (it only connects coords[0]->coords[1] per line).
+        out = node_flow_lines([LineString([(0, 0), (10, 0), (20, 0)])])
+        assert _segset(out) == {frozenset([(0, 0), (10, 0)]), frozenset([(10, 0), (20, 0)])}
+
+    def test_splits_segment_at_interior_touch_point(self):
+        # A stub whose endpoint (10,0) lands mid-way along the main line splits it there.
+        main = LineString([(0, 0), (20, 0)])
+        stub = LineString([(10, 0), (10, 5)])
+        out = node_flow_lines([main, stub])
+        assert _segset(out) == {
+            frozenset([(0, 0), (10, 0)]),
+            frozenset([(10, 0), (20, 0)]),
+            frozenset([(10, 0), (10, 5)]),
+        }
+
+    def test_shared_endpoints_are_not_split(self):
+        # Two lines meeting only at an endpoint stay as two segments (no interior hit).
+        out = node_flow_lines([LineString([(0, 0), (10, 0)]), LineString([(10, 0), (20, 0)])])
+        assert len(out) == 2
+
+
+class TestMidpointConnection:
+    def test_stub_on_line_interior_becomes_connected_after_rebuild(self):
+        # main line + a stub touching its middle + a building at the stub top + generator.
+        # Without noding the stub is a separate flow component (10,0 is not a main vertex);
+        # rebuild's noding splits the main there so the whole net closes.
+        gj = {
+            "type": "FeatureCollection",
+            "features": [
+                _line("network_line_flow", [(0, 0), (20, 0)]),
+                _line("network_line_flow", [(10, 0), (10, 5)]),
+                {
+                    "type": "Feature",
+                    "properties": {"feature_type": "building_connection"},
+                    "geometry": {"type": "Point", "coordinates": [10, 5]},
+                },
+                {
+                    "type": "Feature",
+                    "properties": {"feature_type": "generator_connection"},
+                    "geometry": {"type": "Point", "coordinates": [0, 0]},
+                },
+            ],
+        }
+        # Pre-rebuild the flow is split (main + stub not sharing a vertex).
+        assert check_geojson_connectivity(gj).flow_components == 2
+
+        out = rebuild_network_from_flow(gj)
         assert check_geojson_connectivity(out).ok is True
 
 
