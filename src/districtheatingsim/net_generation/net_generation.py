@@ -38,6 +38,59 @@ def create_offset_points(point: Point, distance: float, angle_degrees: float) ->
     return Point(point.x + dx, point.y + dy)
 
 
+def build_offset_map(lines_gdf: gpd.GeoDataFrame, distance: float, angle_degrees: float) -> dict[tuple, tuple]:
+    """
+    Compute the per-vertex offset vector used to build the return network.
+
+    Each vertex ``(x, y)`` maps to a single ``(ox, oy)`` translation (the normalised
+    average of its incident segments' perpendiculars, flipped to the preferred side and
+    scaled by ``distance``). Exposed separately from :func:`offset_lines_by_angle` so
+    that heat-consumer/producer connection points can be offset by the **same** vector
+    as the return lines — guaranteeing each VL↔RL bridge lands exactly on a return
+    junction (the flow-centric rebuild, AP1).
+
+    :param lines_gdf: Supply LineStrings.
+    :param distance: Offset distance [m].
+    :param angle_degrees: Preferred-side reference angle (0°=East, 90°=North).
+    :return: ``{(x, y): (ox, oy)}`` for every distinct supply vertex.
+    :rtype: dict[tuple, tuple]
+    """
+    ref_angle = math.radians(angle_degrees)
+    ref_x, ref_y = math.cos(ref_angle), math.sin(ref_angle)
+
+    # Collect, per vertex (x, y), the perpendicular of each incident segment. The
+    # perpendicular is computed once per segment (independent of which endpoint we are
+    # at) and flipped to the preferred side, so both endpoints of a straight segment
+    # offset to the *same* side — a parallel return line, not a crossing one.
+    incident: dict[tuple, list[tuple]] = {}
+    for line in lines_gdf.geometry:
+        coords = list(line.coords)
+        for a, b in zip(coords[:-1], coords[1:], strict=False):
+            pa, pb = (a[0], a[1]), (b[0], b[1])
+            dx, dy = pb[0] - pa[0], pb[1] - pa[1]
+            length = math.hypot(dx, dy)
+            if length == 0:
+                continue
+            px, py = -dy / length, dx / length  # segment perpendicular (rotate +90°)
+            if px * ref_x + py * ref_y < 0:
+                px, py = -px, -py  # flip toward the preferred side
+            incident.setdefault(pa, []).append((px, py))
+            incident.setdefault(pb, []).append((px, py))
+
+    # One offset vector per vertex: the (normalised) average of its incident-segment
+    # perpendiculars. At a multi-orientation junction this is a compromise direction,
+    # but every vertex still moves to a single consistent return coordinate.
+    def offset_vector(perps: list[tuple]) -> tuple:
+        acc_x = sum(p[0] for p in perps)
+        acc_y = sum(p[1] for p in perps)
+        norm = math.hypot(acc_x, acc_y)
+        if norm < 1e-9:  # perpendiculars cancelled -> fall back to the reference side
+            return (ref_x * distance, ref_y * distance)
+        return (acc_x / norm * distance, acc_y / norm * distance)
+
+    return {vertex: offset_vector(perps) for vertex, perps in incident.items()}
+
+
 def offset_lines_by_angle(lines_gdf: gpd.GeoDataFrame, distance: float, angle_degrees: float) -> gpd.GeoDataFrame:
     """
     Build a parallel return network offset from the supply lines.
@@ -63,43 +116,10 @@ def offset_lines_by_angle(lines_gdf: gpd.GeoDataFrame, distance: float, angle_de
     :return: Return LineStrings with preserved CRS.
     :rtype: gpd.GeoDataFrame
     """
-    ref_angle = math.radians(angle_degrees)
-    ref_x, ref_y = math.cos(ref_angle), math.sin(ref_angle)
+    offset_map = build_offset_map(lines_gdf, distance, angle_degrees)
 
-    # 1) Collect, per vertex (x, y), the perpendicular of each incident segment.
-    #    The perpendicular is computed once per segment (independent of which endpoint
-    #    we are at) and flipped to the preferred side, so both endpoints of a straight
-    #    segment offset to the *same* side — a parallel return line, not a crossing one.
-    incident: dict[tuple, list[tuple]] = {}
-    for line in lines_gdf.geometry:
-        coords = list(line.coords)
-        for a, b in zip(coords[:-1], coords[1:], strict=False):
-            pa, pb = (a[0], a[1]), (b[0], b[1])
-            dx, dy = pb[0] - pa[0], pb[1] - pa[1]
-            length = math.hypot(dx, dy)
-            if length == 0:
-                continue
-            px, py = -dy / length, dx / length  # segment perpendicular (rotate +90°)
-            if px * ref_x + py * ref_y < 0:
-                px, py = -px, -py  # flip toward the preferred side
-            incident.setdefault(pa, []).append((px, py))
-            incident.setdefault(pb, []).append((px, py))
-
-    # 2) One offset vector per vertex: the (normalised) average of its incident-segment
-    #    perpendiculars. At a multi-orientation junction this is a compromise direction,
-    #    but every vertex still moves to a single consistent return coordinate.
-    def offset_vector(perps: list[tuple]) -> tuple:
-        acc_x = sum(p[0] for p in perps)
-        acc_y = sum(p[1] for p in perps)
-        norm = math.hypot(acc_x, acc_y)
-        if norm < 1e-9:  # perpendiculars cancelled -> fall back to the reference side
-            return (ref_x * distance, ref_y * distance)
-        return (acc_x / norm * distance, acc_y / norm * distance)
-
-    offset_map = {vertex: offset_vector(perps) for vertex, perps in incident.items()}
-
-    # 3) Remap every vertex through the map; a shared vertex -> a shared return
-    #    coordinate, so the return network keeps the supply topology exactly.
+    # Remap every vertex through the map; a shared vertex -> a shared return
+    # coordinate, so the return network keeps the supply topology exactly.
     def offset_line(line: LineString) -> LineString:
         new_coords = []
         for coord in line.coords:

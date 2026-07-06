@@ -1002,6 +1002,26 @@ raised `KeyError: 'feature_type'` (or, on the map's `.get()` path, classified no
 - Pinned by `tests/test_network_geojson_schema.py` (6). The JS/map round-trip itself has no headless
   test seam — only the Python repair is covered. **415→421 non-slow passed.**
 
+### C33. Flow-centric network editing (AP1 — in progress, 2026-06-29)
+Manual four-layer editing in Leaflet is unintuitive and the source of the C31/C32 disconnect class:
+the Rücklauf and the HAST/Erzeuger VL↔RL bridges are pure geometric *derivations* of the Vorlauf
+(return = perpendicular offset; each bridge = a flow vertex offset by the **same** per-vertex vector).
+Plan: make only the Vorlauf editable; show HAST/Erzeuger as non-editable circles; regenerate the rest
+on save. Decided model **A** (flow layer = backbone + stubs; consumer/producer points fixed).
+- **Core landed (GUI-free, tested):** `net_generation/net_generation.py::build_offset_map` extracted
+  from `offset_lines_by_angle` (behaviour-preserving; `TestReturnNetworkOffset` still green), and
+  `net_generation/flow_network_rebuild.py::rebuild_network_from_flow(geojson)` — keeps the flow as-is,
+  regenerates return features as its offset, and recomputes each building/generator bridge as
+  `[vl, vl + offset_map[vl]]` with `vl` snapped to the nearest flow vertex (so a moved flow reattaches
+  and the bridge lands on a return junction). Protected building/generator *data* preserved; only
+  geometry recomputed. Pinned by `tests/test_flow_network_rebuild.py` (6, incl. a real-Görlitz
+  roundtrip that stays connected via the C31 checker).
+- **Still to do:** Leaflet JS — render only the Vorlauf editable, HAST/Erzeuger as non-editable
+  circle markers; on "Netzwerk speichern" send the edited flow and run `rebuild_network_from_flow`
+  before writing the unified file. **AP2** (node/split lines at touch points → midpoint connections)
+  and **AP3** (move-node-with-lines vs. split UX) remain; model B (projection snap) becomes clean once
+  AP2 lands.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,

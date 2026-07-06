@@ -26,6 +26,11 @@ Net generation package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.net_generation.flow_network_rebuild
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.net_generation.network_geojson_schema
    :members:
    :show-inheritance:
