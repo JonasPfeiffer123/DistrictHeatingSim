@@ -24,7 +24,7 @@ GUI-free (geopandas/shapely only); the Leaflet save path calls this before writi
 """
 
 import geopandas as gpd
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from districtheatingsim.net_generation.net_generation import build_offset_map, offset_lines_by_angle
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
@@ -32,10 +32,67 @@ from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJ
 # Default return/connection offset — must match generate_and_export_layers (0.5 m, 0°).
 DEFAULT_OFFSET_DISTANCE = 0.5
 DEFAULT_OFFSET_ANGLE = 0.0
+# Tolerance for treating a foreign endpoint as lying *on* a segment (metres, EPSG:25833).
+DEFAULT_NODE_TOLERANCE = 0.5
 
 
 def _feature_type(feature: dict):
     return (feature.get("properties") or {}).get("feature_type")
+
+
+def node_flow_lines(lines, tolerance: float = DEFAULT_NODE_TOLERANCE):
+    """
+    Split the flow network into 2-point segments noded at every touch/kink (AP2).
+
+    pandapipes wires each line as ``coords[0] → coords[1]`` and forms junctions only at
+    *exact* endpoints, so (a) a multi-vertex line (a kink added by the editor) would wire
+    only its first segment, and (b) a line whose endpoint lands mid-way along another line
+    would not connect there. This explodes every line into consecutive 2-point segments
+    and additionally splits each segment at any *other* segment's endpoint lying on its
+    interior (within ``tolerance``), so a junction forms at every kink and touch point.
+
+    Works in 2-D (the Leaflet editor produces 2-D coordinates).
+
+    :param lines: Flow ``LineString`` geometries.
+    :param tolerance: Max distance for a foreign endpoint to count as on a segment [m].
+    :return: A list of 2-point ``LineString`` segments.
+    :rtype: list[LineString]
+    """
+    # 1) Explode to 2-point segments (this alone fixes multi-vertex "kink" lines).
+    segments = []
+    for line in lines:
+        coords = [(c[0], c[1]) for c in line.coords]
+        for a, b in zip(coords[:-1], coords[1:], strict=False):
+            if a != b:
+                segments.append((a, b))
+
+    # 2) Every segment endpoint is a candidate junction.
+    points = set()
+    for a, b in segments:
+        points.add(a)
+        points.add(b)
+
+    # 3) Split each segment at foreign endpoints lying strictly on its interior.
+    result = []
+    for a, b in segments:
+        seg = LineString([a, b])
+        hits = []
+        for p in points:
+            if p == a or p == b:
+                continue
+            if seg.distance(Point(p)) <= tolerance:
+                proj = seg.project(Point(p))
+                if 0 < proj < seg.length:
+                    hits.append((proj, p))
+        if not hits:
+            result.append(seg)
+        else:
+            hits.sort()
+            chain = [a, *[p for _, p in hits], b]
+            for x, y in zip(chain[:-1], chain[1:], strict=False):
+                if x != y:
+                    result.append(LineString([x, y]))
+    return result
 
 
 def rebuild_network_from_flow(
@@ -43,12 +100,14 @@ def rebuild_network_from_flow(
     *,
     distance: float = DEFAULT_OFFSET_DISTANCE,
     angle: float = DEFAULT_OFFSET_ANGLE,
+    node_tolerance: float = DEFAULT_NODE_TOLERANCE,
 ) -> dict:
     """
     Regenerate return lines + consumer/producer bridges from the (edited) flow layer.
 
-    Flow features are kept exactly as given; return features are regenerated as the flow
-    offset; each building/generator connection keeps its properties but its geometry is
+    The flow is first noded into 2-point segments split at every kink/touch (AP2,
+    :func:`node_flow_lines`); return features are regenerated as the noded flow's offset;
+    each building/generator connection keeps its properties but its geometry is
     recomputed as ``[vl, vl + offset(vl)]`` where ``vl`` is snapped to the nearest flow
     vertex (so it stays attached and the bridge closes onto a return junction). Any
     non-network features and the top-level ``crs``/``metadata`` are preserved.
@@ -80,8 +139,11 @@ def rebuild_network_from_flow(
     if not flow_feats:
         return geojson  # nothing to derive from
 
+    # Node the flow into 2-point segments split at every kink/touch (AP2), so pandapipes
+    # forms a junction there; the return + bridges are then derived from the noded flow.
     flow_lines = [LineString(f["geometry"]["coordinates"]) for f in flow_feats]
-    flow_gdf = gpd.GeoDataFrame(geometry=flow_lines)
+    noded_flow = node_flow_lines(flow_lines, tolerance=node_tolerance)
+    flow_gdf = gpd.GeoDataFrame(geometry=noded_flow)
 
     offset_map = build_offset_map(flow_gdf, distance, angle)
     return_gdf = offset_lines_by_angle(flow_gdf, distance, angle)
@@ -112,11 +174,16 @@ def rebuild_network_from_flow(
     for feature in generator_feats:
         _rebuild_bridge(feature)
 
-    # Regenerate the return features from the offset flow (no protected data on returns).
+    # Regenerate flow + return features from the noded flow (no protected data on either;
+    # noding may split/merge segments, so the original flow features are not reused).
+    new_flow_feats = [
+        NetworkGeoJSONSchema.create_network_line_feature(geometry, "flow", f"flow_{i:03d}")
+        for i, geometry in enumerate(noded_flow)
+    ]
     new_return_feats = [
         NetworkGeoJSONSchema.create_network_line_feature(geometry, "return", f"return_{i:03d}")
         for i, geometry in enumerate(return_gdf.geometry)
     ]
 
-    geojson["features"] = flow_feats + new_return_feats + building_feats + generator_feats + other_feats
+    geojson["features"] = new_flow_feats + new_return_feats + building_feats + generator_feats + other_feats
     return geojson
