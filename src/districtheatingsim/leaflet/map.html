@@ -226,6 +226,22 @@
             align-items: center;
             gap: 10px; /* Abstand zwischen Slider und Button */
         }
+
+        /* Permanent address labels on imported CSV building points: plain, unobtrusive
+           text (no white box/arrow) so dense point sets stay readable. */
+        .dhs-address-label {
+            background: rgba(255, 255, 255, 0.7);
+            border: none;
+            box-shadow: none;
+            padding: 0 3px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #222;
+            white-space: nowrap;
+        }
+        .dhs-address-label::before {
+            display: none; /* hide the tooltip pointer arrow */
+        }
     </style>
 </head>
 <body>

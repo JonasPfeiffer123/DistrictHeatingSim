@@ -95,6 +95,18 @@ function getRandomColor() {
     return color;
 }
 
+// Build a text label from a feature's address properties (imported CSV building
+// coordinates). Returns null for features without an address (network lines etc.),
+// so only point features carrying "Adresse" get a label.
+function addressLabel(feature) {
+    if (!feature || !feature.geometry || feature.geometry.type !== "Point") {
+        return null;
+    }
+    const props = feature.properties || {};
+    const street = props.Adresse || props.adresse || props.address || props["Straße"];
+    return street ? String(street) : null;
+}
+
 // Funktion zum Importieren von GeoJSON und Hinzufügen als eine einzelne Layer-Gruppe
 function importGeoJSON(geojsonData, fileName, editable) {
     // editable parameter: true = Layer kann bearbeitet werden, false = geschützt
@@ -151,6 +163,19 @@ function importGeoJSON(geojsonData, fileName, editable) {
                 }
             } else {
                 layer.options.editable = true;
+            }
+
+            // Show the address as a permanent text label on point features
+            // (e.g. imported CSV building coordinates). Network lines have no
+            // address property, so they get no label.
+            const label = addressLabel(feature);
+            if (label) {
+                layer.bindTooltip(label, {
+                    permanent: true,
+                    direction: "top",
+                    offset: [0, -6],
+                    className: "dhs-address-label"
+                });
             }
 
             layerGroup.addLayer(layer);
