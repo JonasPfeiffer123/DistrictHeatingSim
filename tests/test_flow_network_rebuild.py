@@ -86,6 +86,32 @@ class TestRebuildNetworkFromFlow:
         gj = {"type": "FeatureCollection", "features": []}
         assert rebuild_network_from_flow(gj)["features"] == []
 
+    def test_accepts_point_geometry_for_bridges(self):
+        # The Leaflet map renders HAST/producers as circle points; rebuild must accept a
+        # Point VL and still emit the canonical VL->RL bridge LineString.
+        gj = {
+            "type": "FeatureCollection",
+            "features": [
+                _line("network_line_flow", [(0, 0), (10, 0)]),
+                _line("network_line_flow", [(10, 0), (20, 0)]),
+                {
+                    "type": "Feature",
+                    "properties": {"feature_type": "building_connection", "building_data": {"id": 1}},
+                    "geometry": {"type": "Point", "coordinates": [20, 0]},
+                },
+                {
+                    "type": "Feature",
+                    "properties": {"feature_type": "generator_connection"},
+                    "geometry": {"type": "Point", "coordinates": [0, 0]},
+                },
+            ],
+        }
+        out = rebuild_network_from_flow(gj)
+        hast = next(f for f in out["features"] if f["properties"]["feature_type"] == "building_connection")
+        assert hast["geometry"]["type"] == "LineString"
+        assert hast["properties"]["building_data"] == {"id": 1}
+        assert check_geojson_connectivity(out).ok is True
+
 
 _GOERLITZ = (
     Path(__file__).resolve().parents[1]

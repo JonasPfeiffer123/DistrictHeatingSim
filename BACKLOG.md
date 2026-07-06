@@ -1016,11 +1016,16 @@ on save. Decided model **A** (flow layer = backbone + stubs; consumer/producer p
   and the bridge lands on a return junction). Protected building/generator *data* preserved; only
   geometry recomputed. Pinned by `tests/test_flow_network_rebuild.py` (6, incl. a real-Görlitz
   roundtrip that stays connected via the C31 checker).
-- **Still to do:** Leaflet JS — render only the Vorlauf editable, HAST/Erzeuger as non-editable
-  circle markers; on "Netzwerk speichern" send the edited flow and run `rebuild_network_from_flow`
-  before writing the unified file. **AP2** (node/split lines at touch points → midpoint connections)
-  and **AP3** (move-node-with-lines vs. split UX) remain; model B (projection snap) becomes clean once
-  AP2 lands.
+- **Leaflet integration landed:** the map now plots **only the editable Vorlauf** plus HAST/Erzeuger
+  as **non-editable circle points** at their VL endpoint (`_load_unified_network_geojson` drops the
+  Rücklauf and converts the bridges to points; `geojsonHandler.js` renders points via
+  `pointToLayer → circleMarker`). On "Netzwerk speichern", `saveEditedNetwork` runs
+  `rebuild_network_from_flow` before writing, so the Rücklauf + bridges are regenerated from the
+  edited flow (and `rebuild_network_from_flow` accepts Point HAST/generator geometry, always emitting
+  the canonical VL→RL bridge LineString). Verified end-to-end on Görlitz (34 flow + 9 HAST + 1 gen
+  points → rebuilt to 34+34+9+1, connected). *No headless seam for the JS render/geoman editing.*
+- **Still to do:** **AP2** (node/split lines at touch points → midpoint connections) and **AP3**
+  (move-node-with-lines vs. split UX); model B (projection snap) becomes clean once AP2 lands.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

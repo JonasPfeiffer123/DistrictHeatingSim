@@ -95,14 +95,17 @@ function getRandomColor() {
     return color;
 }
 
-// Build a text label from a feature's address properties (imported CSV building
-// coordinates). Returns null for features without an address (network lines etc.),
-// so only point features carrying "Adresse" get a label.
+// Text label for a point feature: an explicit map_label (HAST address / "Erzeugerstandort N",
+// set in Python) wins; otherwise the address of an imported CSV building coordinate. Returns
+// null for anything without a label (network lines etc.), so only labelled points get text.
 function addressLabel(feature) {
     if (!feature || !feature.geometry || feature.geometry.type !== "Point") {
         return null;
     }
     const props = feature.properties || {};
+    if (props.map_label) {
+        return String(props.map_label);
+    }
     const street = props.Adresse || props.adresse || props.address || props["Straße"];
     return street ? String(street) : null;
 }
@@ -145,6 +148,14 @@ function importGeoJSON(geojsonData, fileName, editable) {
             color: randomColor,
             fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
             opacity: feature.properties.opacity || 1.0
+        }),
+        // Render point features (CSV building coordinates, HAST/Erzeuger) as circles.
+        pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+            radius: 6,
+            color: randomColor,
+            weight: 2,
+            fillColor: randomColor,
+            fillOpacity: 0.6
         }),
         onEachFeature: (feature, layer) => {
             // Wenn Layer nicht editierbar sein soll

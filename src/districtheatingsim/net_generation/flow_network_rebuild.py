@@ -95,13 +95,17 @@ def rebuild_network_from_flow(
         return min(vertices, key=lambda k: (k[0] - vl[0]) ** 2 + (k[1] - vl[1]) ** 2)
 
     def _rebuild_bridge(feature: dict) -> None:
-        coords = feature["geometry"]["coordinates"]
-        first = coords[0]
-        vl = _snap((first[0], first[1]))
+        geometry = feature["geometry"]
+        coords = geometry["coordinates"]
+        # The VL point comes either from a bridge LineString (coords[0]) or, when the
+        # Leaflet map renders HAST/producers as circle *points*, from the point itself.
+        vl_raw = coords if geometry.get("type") == "Point" else coords[0]
+        vl = _snap((vl_raw[0], vl_raw[1]))
         ox, oy = offset_map[vl]
         rl = (vl[0] + ox, vl[1] + oy)
-        z = [first[2]] if len(first) > 2 else []  # preserve elevation if present
-        feature["geometry"]["coordinates"] = [[vl[0], vl[1], *z], [rl[0], rl[1], *z]]
+        z = [vl_raw[2]] if len(vl_raw) > 2 else []  # preserve elevation if present
+        # Always emit the canonical VL->RL bridge LineString.
+        feature["geometry"] = {"type": "LineString", "coordinates": [[vl[0], vl[1], *z], [rl[0], rl[1], *z]]}
 
     for feature in building_feats:
         _rebuild_bridge(feature)
