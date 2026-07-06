@@ -9,6 +9,7 @@ visualization and interactive network generation.
 """
 
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -28,6 +29,7 @@ from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGener
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
 from districtheatingsim.gui.utilities import stop_qthreads
+from districtheatingsim.net_generation.flow_network_rebuild import rebuild_network_from_flow
 from districtheatingsim.net_generation.network_connectivity import (
     check_geojson_connectivity,
     snap_geojson_endpoints,
@@ -191,20 +193,18 @@ class GeoJsonReceiver(QObject):
         :type filepath: str
         """
         try:
-            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-
             edited_data = json.loads(geojsonString)
+            NetworkGeoJSONSchema.ensure_feature_types(edited_data)  # repair older exports (C32)
 
-            # If already in unified format, just save
-            if edited_data.get("metadata", {}).get("version") == NetworkGeoJSONSchema.VERSION:
-                with open(filepath, "w", encoding="utf-8") as f:
-                    json.dump(edited_data, f, indent=2, ensure_ascii=False)
-            else:
-                # Legacy format - just save as-is
-                with open(filepath, "w", encoding="utf-8") as f:
-                    json.dump(edited_data, f, indent=2, ensure_ascii=False)
+            # Flow-centric save (AP1/C33): the map edits only the Vorlauf and shows HAST/
+            # Erzeuger as fixed points; regenerate the Rücklauf and the VL↔RL bridges from
+            # the edited flow so the four saved layers are consistent (and closed) again.
+            rebuild_network_from_flow(edited_data)
+
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(edited_data, f, indent=2, ensure_ascii=False)
         except Exception:
-            pass
+            logging.exception("Fehler beim Speichern des bearbeiteten Wärmenetzes")
 
     @pyqtSlot(float, float)
     def receiveCoordinateFromMap(self, lat, lon):
@@ -676,12 +676,39 @@ class VisualizationPresenter(QObject):
             elif ftype == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR:
                 generator_features.append(feature)
 
-        # Create separate layers for each type with editable flags
+        # Flow-centric editing (AP1/C33): plot only the editable Vorlauf plus HAST and
+        # Erzeuger as fixed circle points at their VL (flow-side) endpoint. The Rücklauf is
+        # a pure derivation of the Vorlauf and is regenerated on save
+        # (rebuild_network_from_flow), so it is neither plotted nor edited.
+        def _to_vl_point(feature, label=None):
+            geom = feature.get("geometry", {})
+            coords = geom.get("coordinates", [])
+            if geom.get("type") == "LineString" and coords:
+                vl = coords[0]
+            elif geom.get("type") == "Point":
+                vl = coords
+            else:
+                return feature
+            props = dict(feature.get("properties", {}))
+            if label:  # map_label is the permanent text shown next to the circle
+                props["map_label"] = label
+            return {
+                "type": "Feature",
+                "properties": props,
+                "geometry": {"type": "Point", "coordinates": list(vl)},
+            }
+
+        # HAST labelled with the building address; producers numbered "Erzeugerstandort N".
+        hast_points = [
+            _to_vl_point(f, (f.get("properties", {}).get("building_data") or {}).get("Adresse"))
+            for f in building_features
+        ]
+        generator_points = [_to_vl_point(f, f"Erzeugerstandort {i + 1}") for i, f in enumerate(generator_features)]
+
         layers = [
             ("Vorlauf", flow_features, True),
-            ("Rücklauf", return_features, True),
-            ("HAST", building_features, False),
-            ("Erzeugeranlagen", generator_features, False),
+            ("HAST", hast_points, False),
+            ("Erzeugeranlagen", generator_points, False),
         ]
 
         # Get CRS from original GeoJSON
