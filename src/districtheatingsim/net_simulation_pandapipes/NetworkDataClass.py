@@ -199,6 +199,30 @@ class NetworkGenerationData:
     # KPI results
     kpi_results: dict[str, int | float | None] | None = None
 
+    @staticmethod
+    def house_connection_route_lengths(net):
+        """
+        Return ``(total_route_m, route_without_house_connections_m)`` for a network.
+
+        The route length is the single-pipe equivalent (total pipe length / 2 for supply +
+        return). House-connection pipes are those incident to a heat-consumer (HAST) junction
+        (one supply + one return stub per building); their route length is subtracted for the
+        "without" value. Returns ``(None, None)`` if the net has no pipe table.
+
+        :param net: pandapipes network.
+        :return: ``(total_route_m, route_without_house_connections_m)``.
+        :rtype: tuple[float | None, float | None]
+        """
+        if not (hasattr(net, "pipe") and hasattr(net.pipe, "length_km")):
+            return None, None
+        total_route_m = net.pipe.length_km.sum() * 1000 / 2
+        house_route_m = 0.0
+        if hasattr(net, "heat_consumer") and len(net.heat_consumer) > 0:
+            consumer_junctions = set(net.heat_consumer.from_junction) | set(net.heat_consumer.to_junction)
+            house_mask = net.pipe.from_junction.isin(consumer_junctions) | net.pipe.to_junction.isin(consumer_junctions)
+            house_route_m = net.pipe.loc[house_mask, "length_km"].sum() * 1000 / 2
+        return total_route_m, total_route_m - house_route_m
+
     def calculate_results(self) -> dict[str, int | float | None]:
         """
         Calculate network KPIs including heat density, losses, and pump consumption.
@@ -232,30 +256,30 @@ class NetworkGenerationData:
         )
         results["max. Heizlast Gebäude [kW]"] = np.max(self.waerme_ges_kW) if self.waerme_ges_kW is not None else None
 
-        # Network infrastructure metrics
-        if hasattr(self.net, "pipe") and hasattr(self.net.pipe, "length_km"):
-            # Divide by 2 for single-pipe equivalent length (supply + return)
-            results["Trassenlänge Wärmenetz [m]"] = self.net.pipe.length_km.sum() * 1000 / 2
-        else:
-            results["Trassenlänge Wärmenetz [m]"] = None
+        # Network infrastructure metrics. Trassenlänge is the single-pipe route length
+        # (total pipe length / 2 for supply + return). It is reported both *with* house
+        # connections (all pipes) and *without* them, since the house-connection stubs
+        # inflate the usual density KPIs. House-connection pipes are those incident to a
+        # heat-consumer (HAST) junction — one supply + one return stub per building.
+        total_route_m, route_without_house_m = NetworkGenerationData.house_connection_route_lengths(self.net)
+        results["Trassenlänge Wärmenetz [m]"] = total_route_m
+        results["Trassenlänge ohne Hausanschlüsse [m]"] = route_without_house_m
 
-        # Density calculations
-        if (
-            results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] is not None
-            and results["Trassenlänge Wärmenetz [m]"] is not None
-        ):
-            results["Wärmebedarfsdichte [MWh/(a*m)]"] = (
-                results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] / results["Trassenlänge Wärmenetz [m]"]
-            )
-        else:
-            results["Wärmebedarfsdichte [MWh/(a*m)]"] = None
+        # Density calculations — computed against both trace lengths (with / without HAST).
+        def _density(numerator, length):
+            if numerator is None or not length:  # None length or 0 -> undefined
+                return None
+            return numerator / length
 
-        if results["max. Heizlast Gebäude [kW]"] is not None and results["Trassenlänge Wärmenetz [m]"] is not None:
-            results["Anschlussdichte [kW/m]"] = (
-                results["max. Heizlast Gebäude [kW]"] / results["Trassenlänge Wärmenetz [m]"]
-            )
-        else:
-            results["Anschlussdichte [kW/m]"] = None
+        demand = results["Jahresgesamtwärmebedarf Gebäude [MWh/a]"]
+        peak = results["max. Heizlast Gebäude [kW]"]
+        length_with = results["Trassenlänge Wärmenetz [m]"]
+        length_without = results["Trassenlänge ohne Hausanschlüsse [m]"]
+
+        results["Wärmebedarfsdichte [MWh/(a*m)]"] = _density(demand, length_with)
+        results["Wärmebedarfsdichte ohne Hausanschlüsse [MWh/(a*m)]"] = _density(demand, length_without)
+        results["Anschlussdichte [kW/m]"] = _density(peak, length_with)
+        results["Anschlussdichte ohne Hausanschlüsse [kW/m]"] = _density(peak, length_without)
 
         # Network operation results
         jahreswaermeerzeugung = 0

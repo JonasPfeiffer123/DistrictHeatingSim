@@ -237,6 +237,51 @@ class TestDiameterLadders:
         assert neighbor_std_type("NOT_A_TYPE", ladders, larger=True) is None
 
 
+class TestHouseConnectionRouteLengths:
+    """Trassenlänge is reported with and without house connections (C34). House-connection
+    pipes are those incident to a heat-consumer (HAST) junction."""
+
+    @staticmethod
+    def _net(pipe, heat_consumer=None):
+        import pandas as pd
+
+        class _Net:
+            pass
+
+        net = _Net()
+        net.pipe = pd.DataFrame(pipe)
+        if heat_consumer is not None:
+            net.heat_consumer = pd.DataFrame(heat_consumer)
+        return net
+
+    def test_splits_house_connection_length(self):
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+
+        # 2 backbone + 1 supply-stub + 1 return-stub; the stubs touch the HAST junctions 3/6.
+        net = self._net(
+            pipe={"length_km": [0.1, 0.1, 0.02, 0.02], "from_junction": [0, 1, 2, 5], "to_junction": [1, 2, 3, 6]},
+            heat_consumer={"from_junction": [3], "to_junction": [6]},
+        )
+        total, without = NetworkGenerationData.house_connection_route_lengths(net)
+        assert total == pytest.approx(120.0)  # 0.24 km * 1000 / 2
+        assert without == pytest.approx(100.0)  # minus the 0.04 km of stubs / 2
+
+    def test_no_consumers_means_without_equals_total(self):
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+
+        net = self._net(pipe={"length_km": [0.1, 0.1], "from_junction": [0, 1], "to_junction": [1, 2]})
+        total, without = NetworkGenerationData.house_connection_route_lengths(net)
+        assert total == without == pytest.approx(100.0)
+
+    def test_no_pipe_table_returns_none(self):
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+
+        class _Empty:
+            pass
+
+        assert NetworkGenerationData.house_connection_route_lengths(_Empty()) == (None, None)
+
+
 class TestSelectStdTypeWithinGrade:
     """init_diameter_types must size a pipe *within its own insulation grade*. The
     grades share identical inner diameters, so an unrestricted idxmin() tie-breaks to

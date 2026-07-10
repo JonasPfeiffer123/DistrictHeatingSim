@@ -1035,6 +1035,28 @@ on save. Decided model **A** (flow layer = backbone + stubs; consumer/producer p
 - **Still to do:** **AP3** (move-node-with-lines vs. split UX — pure geoman/JS, hardest, no headless
   seam); model B (projection snap for connections) becomes clean now that AP2 nodes touch points.
 
+### C34. Network-info KPIs with/without house connections + plot scroll (2026-06-29)
+- **Trassenlänge with/without HAST (user-reported):** `Trassenlänge Wärmenetz [m]` summed *all*
+  supply pipes, including the house-connection stubs, which inflates the density KPIs.
+  `NetworkGenerationData.calculate_results` now also reports `Trassenlänge ohne Hausanschlüsse [m]`
+  and the matching `Wärmebedarfsdichte`/`Anschlussdichte ohne Hausanschlüsse` — house-connection
+  pipes are those incident to a heat-consumer (HAST) junction (one supply + one return stub per
+  building). Existing keys unchanged (back-compat with `comparison_tab` + the golden master); the
+  panel shows the new keys next to their counterparts (`network_info_panel._PRIORITY_KEYS`). Pinned
+  in `test_simulation_golden_master.py` (Görlitz: 1171.1 m with → 966.5 m without) +
+  `test_net_simulation.py::TestHouseConnectionRouteLengths` (the extracted
+  `house_connection_route_lengths(net)` static helper). *Load fix:* a **loaded** project shows the
+  saved (older) `kpi_results` verbatim, so the panel augments them with the new keys from the net +
+  persisted demand when they are missing (`network_info_panel._with_house_connection_kpis`) — a full
+  recompute is avoided because a loaded project does not restore the demand time series.
+- **Plotly plot vertical scroll (user-reported):** the embedded network plot used a fixed 600 px
+  figure height that overflowed into a vertical scroll region, and the wheel scrolled the panel
+  instead of zooming. `network_plot_widget` now sets the figure `autosize`/`height=None`, writes the
+  HTML with `scrollZoom`+`responsive` and `default_height="100%"`, and injects CSS
+  (`html,body{overflow:hidden;height:100%}` + `.plotly-graph-div{height:100vh}`) so the map fills the
+  view and the wheel only zooms (consumed → the surrounding scroll area stays put). No headless seam
+  (QWebEngineView) — ruff-checked only.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
