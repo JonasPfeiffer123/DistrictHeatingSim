@@ -120,6 +120,11 @@ class TestGoerlitzGoldenMaster:
         assert k["max. Heizlast Gebäude [kW]"] == pytest.approx(2107.7698, rel=1e-4)
         assert k["Wärmebedarfsdichte [MWh/(a*m)]"] == pytest.approx(3.794345, rel=1e-4)
         assert k["Anschlussdichte [kW/m]"] == pytest.approx(1.799801, rel=1e-4)
+        # C34: trace length + densities also reported *without* the house-connection (HAST)
+        # stubs, which inflate the usual density KPIs.
+        assert k["Trassenlänge ohne Hausanschlüsse [m]"] == pytest.approx(966.5170, rel=1e-4)
+        assert k["Wärmebedarfsdichte ohne Hausanschlüsse [MWh/(a*m)]"] == pytest.approx(4.597546, rel=1e-4)
+        assert k["Anschlussdichte ohne Hausanschlüsse [kW/m]"] == pytest.approx(2.180789, rel=1e-4)
 
     def test_solver_kpis(self, goerlitz_run):
         # Pipeflow-derived KPIs for the fixed 8-step range; looser tolerance to survive

@@ -26,8 +26,11 @@ class NetworkInfoPanel(QWidget):
         "Jahresgesamtwärmebedarf Gebäude [MWh/a]",
         "max. Heizlast Gebäude [kW]",
         "Trassenlänge Wärmenetz [m]",
+        "Trassenlänge ohne Hausanschlüsse [m]",
         "Wärmebedarfsdichte [MWh/(a*m)]",
+        "Wärmebedarfsdichte ohne Hausanschlüsse [MWh/(a*m)]",
         "Anschlussdichte [kW/m]",
+        "Anschlussdichte ohne Hausanschlüsse [kW/m]",
         "Jahreswärmeerzeugung [MWh]",
         "Pumpenstrom [MWh]",
         "Verteilverluste [MWh]",
@@ -105,6 +108,11 @@ class NetworkInfoPanel(QWidget):
         results = network_data.kpi_results
         if results is None:
             results = network_data.calculate_results()
+        elif "Trassenlänge ohne Hausanschlüsse [m]" not in results and hasattr(network_data, "net"):
+            # Older saved project (kpi_results predates the C34 without-house-connection
+            # KPIs): augment from the net + persisted demand instead of recomputing
+            # everything (a loaded project does not restore the demand time series).
+            results = self._with_house_connection_kpis(dict(results), network_data.net)
 
         for key in self._PRIORITY_KEYS:
             if key in results and results[key] is not None:
@@ -119,6 +127,26 @@ class NetworkInfoPanel(QWidget):
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _with_house_connection_kpis(results, net):
+        """Add the C34 without-house-connection KPIs to a restored (older) results dict.
+
+        Recomputes the trace length without house connections from the net and derives the
+        matching densities from the persisted demand/peak, so a loaded project shows them
+        without discarding the saved values.
+        """
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+
+        _, without = NetworkGenerationData.house_connection_route_lengths(net)
+        results["Trassenlänge ohne Hausanschlüsse [m]"] = without
+        demand = results.get("Jahresgesamtwärmebedarf Gebäude [MWh/a]")
+        peak = results.get("max. Heizlast Gebäude [kW]")
+        results["Wärmebedarfsdichte ohne Hausanschlüsse [MWh/(a*m)]"] = (
+            (demand / without) if (demand and without) else None
+        )
+        results["Anschlussdichte ohne Hausanschlüsse [kW/m]"] = (peak / without) if (peak and without) else None
+        return results
 
     def _clear_cards(self):
         while self._cards_layout.count():
