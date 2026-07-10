@@ -175,13 +175,24 @@ class NetworkPlotWidget(QWidget):
                 basemap_style="carto-positron",
                 colorscale="RdYlBu_r",
             )
+            # Let the map fill the web view instead of a fixed 600px height that overflows
+            # into a vertical scroll region.
+            fig.update_layout(autosize=True, height=None)
 
             if WEBENGINE_AVAILABLE:
                 with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False, encoding="utf-8") as f:
                     fig.write_html(
                         f.name,
                         include_plotlyjs="inline",
-                        config={"displayModeBar": True, "displaylogo": False},
+                        # scrollZoom: the mouse wheel zooms the map (and is consumed, so the
+                        # surrounding scroll area no longer scrolls when hovering the map).
+                        config={
+                            "displayModeBar": True,
+                            "displaylogo": False,
+                            "scrollZoom": True,
+                            "responsive": True,
+                        },
+                        default_height="100%",
                     )
                     self._plot_html_path = f.name
 
@@ -318,6 +329,7 @@ class NetworkPlotWidget(QWidget):
                 basemap_style="carto-positron",
                 colorscale="RdYlBu_r",
             )
+            fig.update_layout(autosize=True, height=None)  # fill the view (see refresh)
             fig_json = fig.to_json()
         except Exception as e:
             logging.error(f"Error rebuilding plot for in-place update: {e}")
@@ -360,10 +372,18 @@ class NetworkPlotWidget(QWidget):
                 logging.warning(f"Could not remove old plot file: {e}")
         self._plot_html_path = None
 
+    # Make the plot fill the web view and never show its own scrollbars, so the mouse
+    # wheel only ever zooms the map (no vertical scroll region).
+    _FILL_CSS = (
+        "<style>html,body{margin:0;height:100%;overflow:hidden;}"
+        ".plotly-graph-div{height:100vh!important;width:100%!important;}</style>"
+    )
+
     def _inject_click_handler(self, html_path: str):
         try:
             with open(html_path, encoding="utf-8") as f:
                 html = f.read()
+            html = html.replace("</head>", self._FILL_CSS + "</head>")
             html = html.replace("</body>", self._CLICK_JS + "</body>")
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html)
