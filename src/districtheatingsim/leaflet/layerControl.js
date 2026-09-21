@@ -233,7 +233,9 @@ function openContextMenu(event) {
 // Farbe ändern und nur die Darstellung aktualisieren
 function applyColorChange(newColor) {
     if (selectedLayer && newColor) {
-        selectedLayer.setStyle({ color: newColor });
+        // Set both stroke (color) and fill (fillColor) so circle markers change fully,
+        // not just their outline.
+        selectedLayer.setStyle({ color: newColor, fillColor: newColor });
         selectedLayer.options.color = newColor;
         updateLayerVisuals(selectedLayer); // Nur visuell aktualisieren
     }
@@ -374,9 +376,9 @@ function saveLayerChanges() {
         // Ändere den Namen des Layers in den Optionen
         selectedLayer.options.name = newName;
 
-        // Ändere die Farbe des Layers auf der Karte
+        // Ändere die Farbe des Layers auf der Karte (Rand + Füllung).
         if (selectedLayer.setStyle) {
-            selectedLayer.setStyle({ color: newColor }); // Ändere die Farbe sofort auf der Karte
+            selectedLayer.setStyle({ color: newColor, fillColor: newColor });
         } else if (selectedLayer instanceof L.Marker) {
             // Falls es sich um einen Marker handelt, ändere das Icon entsprechend
             const icon = L.divIcon({

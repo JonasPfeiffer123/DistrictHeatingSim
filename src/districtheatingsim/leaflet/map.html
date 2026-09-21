@@ -242,6 +242,10 @@
         .dhs-address-label::before {
             display: none; /* hide the tooltip pointer arrow */
         }
+        /* Toggle all point labels (HAST addresses, producer names) off. */
+        #map.labels-hidden .dhs-address-label {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -258,6 +262,7 @@
                 </div>
                 <button id="createLayerButton" onclick="createNewLayer()">Neuen Layer erstellen</button>
                 <button id="toggleMarkerButton">Marker setzen: Ein</button>
+                <button id="toggleLabelsButton">Beschriftungen: Ein</button>
                 <div id="coordinateDisplay" style="padding: 10px; background-color: #f8f9fa; font-family: Arial, sans-serif; font-size: 14px;">
                     Click on the map to get coordinates.
                 </div>

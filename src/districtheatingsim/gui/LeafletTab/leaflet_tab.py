@@ -373,9 +373,10 @@ class VisualizationPresenter(QObject):
         if self.folder_manager.variant_folder:
             self.on_project_folder_changed(self.folder_manager.variant_folder)
 
-        # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet)
+        # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet); danach das
+        # Wärmenetz des initial geladenen Projekts automatisch anzeigen, falls vorhanden.
         self.map_file_path = self.model.get_resource_path("leaflet\\map.html")
-        self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
+        self._reload_map_then(lambda: self._auto_load_network(self.model.base_path))
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -394,12 +395,13 @@ class VisualizationPresenter(QObject):
 
             # Reset the map so nothing from the previous project remains: clear the tracked
             # layers and reload the empty map HTML (drops every overlay layer). The CRS is
-            # re-injected on loadFinished. Guarded against the initial setup call, where the
-            # map is loaded right afterwards in __init__.
+            # re-injected on loadFinished. Then auto-load the new project's Wärmenetz.geojson
+            # if present. Guarded against the initial setup call, where the map is loaded
+            # right afterwards in __init__ (which does its own auto-load).
             self.model.layers = {}
             self.current_unified_network = None
             if hasattr(self, "map_file_path"):
-                self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
+                self._reload_map_then(lambda: self._auto_load_network(new_base_path))
 
     def open_geocode_addresses_dialog(self):
         """
@@ -598,20 +600,44 @@ class VisualizationPresenter(QObject):
                 f"{n_snapped} Endpunkt(e) zusammengeführt, aber es bestehen weiterhin Probleme:\n{rest}",
             )
 
-    def _reload_network_on_map(self, path):
-        """Reload the empty map and re-display the (corrected) network once, avoiding duplicates."""
-        self.current_unified_network = None
+    def _reload_map_then(self, callback):
+        """Reload the empty map HTML, then run *callback* once, after the page has loaded."""
 
         def _on_loaded(_ok=True):
             try:
                 self.view.web_view.loadFinished.disconnect(_on_loaded)
             except TypeError:
                 pass
-            self.add_geojson_layer([path])
+            callback()
 
         self.view.web_view.loadFinished.connect(_on_loaded)
         if hasattr(self, "map_file_path"):
             self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
+
+    def _auto_load_network(self, base_path):
+        """
+        Load the project's ``Wärmenetz/Wärmenetz.geojson`` onto the map if it exists.
+
+        Best-effort: a missing network is a normal case (nothing to load); a corrupt or
+        unreadable one is logged and surfaced non-fatally rather than crashing project
+        opening. Requires the map page to be loaded (call after a reload).
+
+        :param base_path: The current variant/base folder.
+        """
+        if not base_path:
+            return
+        network_path = os.path.join(base_path, "Wärmenetz", "Wärmenetz.geojson")
+        if not os.path.exists(network_path):
+            return  # no network generated yet — nothing to auto-load
+        try:
+            self.add_geojson_layer([network_path])
+        except Exception:
+            logging.exception("Automatisches Laden des Wärmenetzes fehlgeschlagen: %s", network_path)
+
+    def _reload_network_on_map(self, path):
+        """Reload the empty map and re-display the (corrected) network once, avoiding duplicates."""
+        self.current_unified_network = None
+        self._reload_map_then(lambda: self.add_geojson_layer([path]))
 
     def add_geojson_layer(self, filenames):
         """
