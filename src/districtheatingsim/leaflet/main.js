@@ -172,6 +172,20 @@ if (document.getElementById('map')._leaflet_id) {
         }
     }
 
+    // Toggle all point labels (HAST addresses, producer names) via a CSS class on #map.
+    let labelsHidden = false;
+    function toggleLabels() {
+        labelsHidden = !labelsHidden;
+        const mapEl = document.getElementById('map');
+        if (mapEl) {
+            mapEl.classList.toggle('labels-hidden', labelsHidden);
+        }
+        const button = document.getElementById('toggleLabelsButton');
+        if (button) {
+            button.textContent = labelsHidden ? 'Beschriftungen: Aus' : 'Beschriftungen: Ein';
+        }
+    }
+
     // Click handler for the map
     function onMapClick(e) {
         var lat = e.latlng.lat.toFixed(6);
@@ -283,6 +297,12 @@ if (document.getElementById('map')._leaflet_id) {
     const toggleButton = document.getElementById('toggleMarkerButton');
     if (toggleButton) {
         toggleButton.addEventListener('click', toggleMarkerMode);
+    }
+
+    // Event for the button to toggle point labels (addresses / producer names)
+    const toggleLabelsBtn = document.getElementById('toggleLabelsButton');
+    if (toggleLabelsBtn) {
+        toggleLabelsBtn.addEventListener('click', toggleLabels);
     }
 
     // Enable snapping for each layer on creation
