@@ -342,7 +342,7 @@ class InteractiveNetworkPlot:
             marker = dict(size=8, color="#3498db")
 
         self.fig.add_trace(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=data.lats,
                 lon=data.lons,
                 mode="markers",
@@ -373,7 +373,7 @@ class InteractiveNetworkPlot:
         # Add a near-invisible marker carrying the colorbar when colour-coding.
         if data.vmin is not None:
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[data.center_lat],
                     lon=[data.center_lon],
                     mode="markers",
@@ -409,7 +409,7 @@ class InteractiveNetworkPlot:
                 color = "#2c3e50"  # Default dark gray
 
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
                     lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                     mode="lines+markers",
@@ -443,7 +443,7 @@ class InteractiveNetworkPlot:
         # Add a near-invisible marker carrying the colorbar when colour-coding.
         if data.vmin is not None:
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[data.center_lat],
                     lon=[data.center_lon],
                     mode="markers",
@@ -479,7 +479,7 @@ class InteractiveNetworkPlot:
                 color = "#e74c3c"  # Red for heat consumers
 
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
                     lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                     mode="lines+markers",
@@ -512,7 +512,7 @@ class InteractiveNetworkPlot:
         # Add a near-invisible marker carrying the colorbar when colour-coding.
         if data.vmin is not None:
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[data.center_lat],
                     lon=[data.center_lon],
                     mode="markers",
@@ -548,7 +548,7 @@ class InteractiveNetworkPlot:
                 color = "#27ae60"  # Default green
 
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
                     lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                     mode="lines+markers",
@@ -581,7 +581,7 @@ class InteractiveNetworkPlot:
         # Add a near-invisible marker carrying the colorbar when colour-coding.
         if data.vmin is not None:
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[data.center_lat],
                     lon=[data.center_lon],
                     mode="markers",
@@ -617,7 +617,7 @@ class InteractiveNetworkPlot:
                 color = "#9b59b6"  # Default purple
 
             self.fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
                     lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                     mode="lines+markers",
@@ -651,7 +651,7 @@ class InteractiveNetworkPlot:
         zoom = self._calculate_zoom(lat_range, lon_range)
 
         self.fig.update_layout(
-            mapbox=dict(style=basemap_style, center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
+            map=dict(style=basemap_style, center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
             showlegend=True,
             legend=dict(
                 yanchor="top",

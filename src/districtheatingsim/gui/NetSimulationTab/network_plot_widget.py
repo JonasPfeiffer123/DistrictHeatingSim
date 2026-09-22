@@ -346,9 +346,9 @@ class NetworkPlotWidget(QWidget):
             + fig_json
             + """;
                 // Keep the user's current map view instead of snapping back.
-                if (plotDiv.layout && plotDiv.layout.mapbox && fig.layout.mapbox) {
-                    fig.layout.mapbox.center = plotDiv.layout.mapbox.center;
-                    fig.layout.mapbox.zoom = plotDiv.layout.mapbox.zoom;
+                if (plotDiv.layout && plotDiv.layout.map && fig.layout.map) {
+                    fig.layout.map.center = plotDiv.layout.map.center;
+                    fig.layout.map.zoom = plotDiv.layout.map.zoom;
                 }
                 Plotly.react(plotDiv, fig.data, fig.layout);
                 window.lastHighlighted = -1;
