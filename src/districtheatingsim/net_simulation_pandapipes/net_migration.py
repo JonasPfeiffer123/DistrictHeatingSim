@@ -15,6 +15,11 @@ import logging
 
 import pandapipes as pp
 
+from districtheatingsim.net_simulation_pandapipes.controllers import (
+    DEFAULT_PUMP_CONTROLLER_GAIN,
+    LEGACY_PUMP_CONTROLLER_GAIN,
+    BadPointPressureLiftController,
+)
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
     nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
@@ -32,10 +37,14 @@ def migrate_loaded_net(net):
       anchored as ISOPLUS in pandapipes 0.14).
     - Ensure the pipe table has the 0.14 ``inner_diameter_mm`` column, deriving it
       from the legacy ``diameter_m`` [m] for any pipe not covered by the remap.
+    - Raise the pickled pump controller's legacy gain (0.2) to the current default, so
+      loaded projects get the faster-converging time series too (BACKLOG G1).
 
     :param net: The loaded pandapipes network.
     :return: The same network, migrated.
     """
+    _upgrade_pump_controller_gain(net)
+
     if not hasattr(net, "pipe") or len(net.pipe) == 0:
         return net
 
@@ -71,3 +80,14 @@ def migrate_loaded_net(net):
         logger.info("Migrated %d KMR pipe(s) to ISOPLUS std-types", remapped)
 
     return net
+
+
+def _upgrade_pump_controller_gain(net) -> None:
+    """Set pickled bad-point pump controllers still on the legacy gain to the current default."""
+    controllers = getattr(net, "controller", None)
+    if controllers is None or "object" not in controllers:
+        return
+    for ctrl in controllers["object"]:
+        if isinstance(ctrl, BadPointPressureLiftController) and ctrl.proportional_gain == LEGACY_PUMP_CONTROLLER_GAIN:
+            ctrl.proportional_gain = DEFAULT_PUMP_CONTROLLER_GAIN
+            logger.info("Raised pump controller gain %.1f -> %.1f", LEGACY_PUMP_CONTROLLER_GAIN, ctrl.proportional_gain)

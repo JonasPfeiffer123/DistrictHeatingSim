@@ -22,6 +22,12 @@ from pandapower.control.basic_controller import BasicCtrl
 
 from districtheatingsim.constants import KELVIN_OFFSET
 
+# Proportional gain of the bad-point pump controller (see BadPointPressureLiftController).
+# Nets saved before BACKLOG G1 carry the old default 0.2 and are upgraded on load
+# (net_migration.migrate_loaded_net).
+DEFAULT_PUMP_CONTROLLER_GAIN = 0.6
+LEGACY_PUMP_CONTROLLER_GAIN = 0.2
+
 
 class BadPointPressureLiftController(BasicCtrl):
     """
@@ -35,7 +41,7 @@ class BadPointPressureLiftController(BasicCtrl):
     :type target_dp_min_bar: float
     :param tolerance: Pressure difference tolerance [bar], defaults to 0.2
     :type tolerance: float
-    :param proportional_gain: Proportional gain factor, defaults to 0.2
+    :param proportional_gain: Proportional gain factor, defaults to 0.6
     :type proportional_gain: float
     :param min_plift: Minimum pump lift during standby [bar], defaults to 1.5
     :type min_plift: float
@@ -54,6 +60,11 @@ class BadPointPressureLiftController(BasicCtrl):
        German "Differenzdruckregelung im Schlechtpunkt". Identifies worst point (lowest Δp)
        among active consumers, applies proportional control to pump pressures. Standby mode
        with minimal circulation when all demands zero. Updates bad point dynamically each step.
+
+       Every control iteration is a full pipeflow. The bad-point Δp follows the pump lift
+       almost 1:1, so the gain sets how much of the error is removed per iteration: 0.2 needed
+       ~3.9 pipeflows per time step, 0.6 needs ~1.9 with the same results (BACKLOG G1). Gain
+       1.0 lands at the edge of the tolerance band.
     """
 
     def __init__(
@@ -62,7 +73,7 @@ class BadPointPressureLiftController(BasicCtrl):
         circ_pump_pressure_idx: int = 0,
         target_dp_min_bar: float = 1.0,
         tolerance: float = 0.2,
-        proportional_gain: float = 0.2,
+        proportional_gain: float = DEFAULT_PUMP_CONTROLLER_GAIN,
         min_plift: float = 1.5,
         min_pflow: float = 3.5,
         **kwargs,

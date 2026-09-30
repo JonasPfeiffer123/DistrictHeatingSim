@@ -5,10 +5,12 @@ temperature control, and result processing.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from pandapipes.pipeflow import PipeflowNotConverged, pipeflow
 from pandapipes.timeseries import run_time_series
 from pandapower.control.controller.const_control import ConstControl
 from pandapower.timeseries import DFData, OutputWriter
@@ -440,6 +442,27 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
     return NetworkGenerationData
 
 
+def pipeflow_with_damping_fallback(net, **kwargs) -> None:
+    """
+    Pipeflow with an undamped Newton step first; damped only if that does not converge.
+
+    The time series used to run every pipeflow with ``alpha=0.5``, which roughly doubles the
+    Newton iterations. Undamped (``alpha=1``) reaches the same result in about half the time;
+    the damped retry keeps the old robustness for hard time steps (BACKLOG G1). Passed to
+    ``run_timeseries`` as its ``run`` function, so it is called for every control iteration.
+
+    :param net: Pandapipes network
+    :type net: pandapipes.pandapipesNet
+    :param kwargs: Pipeflow options (``mode``, ``iter``, …); any ``alpha`` is overridden
+    :raises PipeflowNotConverged: If the damped retry does not converge either
+    """
+    try:
+        pipeflow(net, **{**kwargs, "alpha": 1.0})
+    except PipeflowNotConverged:
+        logging.debug("Undamped pipeflow did not converge, retrying with alpha=0.5")
+        pipeflow(net, **{**kwargs, "alpha": 0.5})
+
+
 def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     """
     Run thermohydraulic time series simulation with controller updates.
@@ -450,7 +473,8 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     :rtype: Any
 
     .. note::
-       Runs bidirectional simulation with iter=100, alpha=0.5. Updates all controllers
+       Runs bidirectional simulation with iter=100, undamped with a damped (alpha=0.5) retry per
+       pipeflow (``pipeflow_with_damping_fallback``). Updates all controllers
        (heat demand, temperatures, secondary producers). Logs junction, heat consumer,
        and pump data.
     """
@@ -525,7 +549,13 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
 
     try:
-        run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100, alpha=0.5)
+        run_time_series.run_timeseries(
+            NetworkGenerationData.net,
+            time_steps,
+            mode="bidirectional",
+            iter=100,
+            run=pipeflow_with_damping_fallback,
+        )
     except Exception as e:
         raise RuntimeError(f"Thermohydraulic time-series simulation failed (bidirectional, iter=100): {e}") from e
 
