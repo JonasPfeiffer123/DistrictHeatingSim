@@ -135,3 +135,65 @@ class TestCreatePerpendicularLine:
         conn = create_perpendicular_line(Point(10.0, 50.0), self._STREET)
         assert conn.geom_type == "LineString"
         assert not conn.has_z
+
+
+def _reference_mst_edges(xy):
+    """The pre-G5 algorithm: networkx MST over the complete graph (edges as coordinate pairs)."""
+    import networkx as nx
+
+    g = nx.Graph()
+    for i, p in enumerate(xy):
+        for j, q in enumerate(xy):
+            if i != j:
+                g.add_edge(i, j, weight=Point(p).distance(Point(q)))
+    return {frozenset((tuple(xy[u]), tuple(xy[v]))) for u, v in nx.minimum_spanning_tree(g).edges()}
+
+
+def _mst_edges(gdf):
+    return {frozenset(line.coords) for line in gdf.geometry}
+
+
+class TestGenerateMst:
+    """G5: generate_mst computes distances + tree vectorised (scipy) instead of a pairwise
+    iterrows loop into networkx; the tree must be the same MST."""
+
+    def test_same_tree_as_networkx_reference(self):
+        import numpy as np
+
+        from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst
+
+        xy = np.random.default_rng(0).uniform(0, 2000, (60, 2))
+        mst = generate_mst(gpd.GeoDataFrame(geometry=[Point(p) for p in xy]))
+
+        assert len(mst) == len(xy) - 1
+        assert _mst_edges(mst) == _reference_mst_edges(xy)
+
+    def test_coincident_points_joined_with_zero_length_edge(self):
+        # scipy reads 0 in a dense matrix as "no edge" — coincident points must still be connected.
+        from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst
+
+        pts = [Point(0, 0), Point(0, 0), Point(10, 0), Point(10, 5)]
+        mst = generate_mst(gpd.GeoDataFrame(geometry=pts))
+
+        assert len(mst) == 3
+        assert mst.length.sum() == pytest.approx(15.0)
+        assert frozenset({(0.0, 0.0)}) in _mst_edges(mst)  # the zero-length edge
+
+    def test_keeps_z_and_uses_2d_distance(self):
+        from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst
+
+        pts = [Point(0, 0, 100), Point(10, 0, 0), Point(20, 0, 50)]
+        mst = generate_mst(gpd.GeoDataFrame(geometry=pts))
+
+        assert all(line.has_z for line in mst.geometry)
+        assert _mst_edges(mst) == {
+            frozenset({(0.0, 0.0, 100.0), (10.0, 0.0, 0.0)}),
+            frozenset({(10.0, 0.0, 0.0), (20.0, 0.0, 50.0)}),
+        }
+
+    @pytest.mark.parametrize("n", [0, 1])
+    def test_fewer_than_two_points_gives_empty_network(self, n):
+        from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst
+
+        mst = generate_mst(gpd.GeoDataFrame(geometry=[Point(i, i) for i in range(n)]))
+        assert len(mst) == 0
