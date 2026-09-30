@@ -10,8 +10,9 @@ road alignment adjustment while maintaining connectivity.
 from collections import defaultdict
 
 import geopandas as gpd
-import networkx as nx
 import numpy as np
+from scipy.sparse.csgraph import minimum_spanning_tree
+from scipy.spatial.distance import pdist, squareform
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
@@ -26,21 +27,31 @@ def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     :rtype: gpd.GeoDataFrame
 
     .. note::
-        Tree topology (n-1 edges for n points). Uses Kruskal's algorithm with Euclidean distances.
+        Tree topology (n-1 edges for n points) over the complete graph with 2-D Euclidean
+        distances (like shapely's ``distance``). The distance matrix and the tree are computed
+        vectorised with scipy — the former pairwise ``iterrows`` loop took 3.9 s for 300 points
+        vs ~16 ms (BACKLOG G5). Where several trees have exactly the same length, which one is
+        returned is unspecified.
     """
-    # Build complete graph with distance weights
-    g = nx.Graph()
-    for i, point1 in points.iterrows():
-        for j, point2 in points.iterrows():
-            if i != j:
-                distance = point1.geometry.distance(point2.geometry)
-                g.add_edge(i, j, weight=distance)
+    geometries = list(points.geometry)
+    if len(geometries) < 2:
+        return gpd.GeoDataFrame(geometry=[])
 
-    # Generate minimum spanning tree
-    mst = nx.minimum_spanning_tree(g)
+    xy = np.array([(geom.x, geom.y) for geom in geometries])
+    # scipy reads (near-)zero distances as "no edge", so coincident points are merged first: the
+    # tree spans the distinct locations, and every duplicate is joined to its representative by
+    # a zero-length edge (as the complete-graph MST would do).
+    _, representative, group = np.unique(xy, axis=0, return_index=True, return_inverse=True)
+    group = group.reshape(-1)
 
-    # Convert MST edges to LineString geometries
-    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+    edges = []
+    if len(representative) > 1:
+        tree = minimum_spanning_tree(squareform(pdist(xy[representative]))).tocoo()
+        edges += [(representative[a], representative[b]) for a, b in zip(tree.row, tree.col, strict=True)]
+    edges += [(representative[group[k]], k) for k in range(len(geometries)) if representative[group[k]] != k]
+
+    # Convert MST edges to LineString geometries (original geometries, so Z is kept)
+    lines = [LineString([geometries[i], geometries[j]]) for i, j in edges]
 
     return gpd.GeoDataFrame(geometry=lines)
 

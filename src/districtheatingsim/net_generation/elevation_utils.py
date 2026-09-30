@@ -197,10 +197,11 @@ def assign_elevation_to_geodataframe(
 ) -> gpd.GeoDataFrame:
     """Write Z-coordinates from *elevation_lookup* into a GeoDataFrame's geometries.
 
-    Supports ``Point`` and ``LineString`` geometry types.  For each vertex
-    ``(x, y)`` the corresponding elevation is looked up; if not found,
-    *default_z* is used.  The returned GeoDataFrame has the same CRS and
-    attributes as the input but with 3-D geometries.
+    Supports ``Point`` and ``LineString`` geometry types, 2-D or already 3-D.  For
+    each vertex ``(x, y)`` the corresponding elevation is looked up; if not found,
+    an existing Z is kept, otherwise *default_z* is used.  The returned
+    GeoDataFrame has the same CRS and attributes as the input but with 3-D
+    geometries.
 
     :param gdf: Input GeoDataFrame with 2-D or 3-D geometries
     :type gdf: gpd.GeoDataFrame
@@ -212,16 +213,19 @@ def assign_elevation_to_geodataframe(
     :rtype: gpd.GeoDataFrame
     """
 
-    def _z(x: float, y: float) -> float:
-        return elevation_lookup.get((x, y), default_z)
+    def _z(x: float, y: float, fallback: float) -> float:
+        return elevation_lookup.get((x, y), fallback)
 
     def _elevate_geometry(geom):
         if geom is None:
             return geom
         if geom.geom_type == "Point":
-            return Point(geom.x, geom.y, _z(geom.x, geom.y))
+            return Point(geom.x, geom.y, _z(geom.x, geom.y, geom.z if geom.has_z else default_z))
         if geom.geom_type == "LineString":
-            return LineString([(x, y, _z(x, y)) for x, y in geom.coords])
+            # The input can already be 3-D (e.g. connection lines built from elevated building
+            # points) — unpacking every vertex as (x, y) crashed network generation whenever
+            # elevation data was available (BACKLOG C39).
+            return LineString([(c[0], c[1], _z(c[0], c[1], c[2] if len(c) > 2 else default_z)) for c in geom.coords])
         # Unsupported geometry type — return unchanged with a warning
         logger.warning("assign_elevation_to_geodataframe: unsupported geometry type '%s'", geom.geom_type)
         return geom
