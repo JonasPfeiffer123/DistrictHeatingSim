@@ -1469,7 +1469,7 @@ sizing unchanged (same 68 ISOPLUS types). **Done:**
   retry / raises when both diverge) and `TestMigrateLoadedNet` (+2: legacy gain raised, custom
   gain kept). Golden master unchanged (`test_simulation_golden_master.py` green without re-pinning).
 
-### G2. Net time series: numba + parallel chunks (large, open)
+### G2. Net time series: numba + parallel chunks (done 2026-09-30, both opt-in)
 - ~~numba is not installed / not declared~~ **Declared 2026-09-30 as optional extra `fast`**
   (`pip install -e .[fast]`; installed in the dev venv). pandapipes picks it up automatically.
   Measured on Görlitz (after G1): 70 → 62 ms/step (~11 %), but the first pipeflow pays **~5 s JIT
@@ -1478,8 +1478,22 @@ sizing unchanged (same 68 ISOPLUS types). **Done:**
   (`pandapower.auxiliary`), so with the extra the warm startup import grows by ~0.2 s (2.2 → ~2.6 s);
   without it nothing changes. **PyInstaller:** numba is bundled only if present in the build env —
   untested in the frozen app so far (kernel falls back to Python if caching/compiling fails there).
-- Time steps are nearly independent (controllers reset per step) → the year can be split into
-  blocks and solved in parallel processes (≈ linear in cores).
+- **Done 2026-09-30 — parallel blocks (decided: opt-in, default sequential):**
+  `thermohydraulic_time_series_net(nd, workers=N)` splits the range into ≥ 1-week blocks
+  (`split_time_range`, `PARALLEL_MIN_BLOCK_STEPS = 168`), simulates them in `spawn` worker processes
+  (fork with running Qt threads is unsafe; BLAS limited to one thread in the children to avoid
+  oversubscription), merges the logged results in time order, recomputes the pump results and keeps
+  the net of the last block (like a sequential run). GUI: "Parallele Prozesse" in the time-series
+  dialog (1 = off, disabled for the simplified calculation); `multiprocessing.freeze_support()` in
+  the entry point for the frozen exe. **Accuracy (Görlitz):** heat generation, all temperatures and
+  mass flows identical to the sequential run; only the pump pressures differ in the first hours
+  after each block start (the bad-point controller restarts from the initial lift instead of the
+  previous hour's): 2 weeks / 2 workers → 24 h affected, ≤ 7 %; 8 weeks / 4 workers → 88 h, ≤ 10 %;
+  Pumpenstrom +0.05 %. **Speed:** each worker needs a few seconds to start (imports; numba JIT if
+  installed), so it pays off from a few weeks on: 2 weeks / 2 workers 22.2 → 19.9 s; 8 weeks /
+  4 workers 94–149 s → 50–59 s (≈ 1.6–2.6×; timings on the dev laptop vary strongly). Pinned by
+  `tests/test_net_simulation.py::TestSplitTimeRange` + `TestParallelTimeSeries` (slow, real worker
+  processes, heat results equal to sequential). *Not verified in the frozen exe yet.*
 
 ### G3. Solar thermal dominates the energy-system optimizer (quick wins done 2026-09-29; large open)
 `examples/10` (optimizer, ~160 `calculate_mix` calls) ran **28.2 s** standalone (57 s in the smoke
@@ -1713,8 +1727,12 @@ release mechanics themselves (section F). See the **Release plan** below.
 3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), ~~G9
    vendoring~~ **done 2026-09-30**, ~~G5 spatial index~~ **done 2026-09-30**, ~~G4 optimizer overhead~~ measured
    2026-09-30: ~1 % of an optimization run — not worth changing.
-4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
-   instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.
+4. Large (2026-09-30, decisions: numba optional, parallel opt-in, pickle + Parquet, optimizer
+   hardened not replaced): ~~numba for the solar loop (G3)~~ **done**, ~~parallel yearly net
+   simulation (G2)~~ **done**, ~~Parquet instead of JSON + JSON instead of pickle (G7)~~ **done**,
+   ~~optimizer (G4)~~ **hardened, C41 fixed**, G10 hygiene partly done (logging + click polling open).
+   Still open elsewhere: pyslpheat caching (G6, other repo), `thermal-energy-storage-1d` step loop
+   (G3/G4, other repo), lazy tabs (G8), C38, C40.
 
 ## Release plan (2026-06-15 audit)
 

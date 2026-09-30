@@ -88,6 +88,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData = None
         self._init_thread = None
         self._calc_thread = None
+        self._time_series_workers = 1  # parallel processes for the detailed time series (G2)
         self._recalc_thread = None
 
         self._init_ui()
@@ -262,6 +263,7 @@ class NetSimulationTab(QWidget):
             self.NetworkGenerationData.end_time_step = inputs["end"]
             self.NetworkGenerationData.results_csv_filename = inputs["results_filename"]
             self.NetworkGenerationData.simplified_calculation = inputs["simplified"]
+            self._time_series_workers = inputs["workers"]
             self._time_series_simulation()
 
     # ------------------------------------------------------------------
@@ -302,7 +304,9 @@ class NetSimulationTab(QWidget):
 
         try:
             simplified = getattr(self.NetworkGenerationData, "simplified_calculation", False)
-            self._calc_thread = NetCalculationThread(self.NetworkGenerationData, simplified=simplified)
+            self._calc_thread = NetCalculationThread(
+                self.NetworkGenerationData, simplified=simplified, workers=self._time_series_workers
+            )
             self._calc_thread.calculation_done.connect(self._on_time_series_done)
             self._calc_thread.calculation_error.connect(self._on_simulation_error)
             self._calc_thread.start()

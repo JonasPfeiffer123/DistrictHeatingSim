@@ -5,7 +5,12 @@ temperature control, and result processing.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import contextlib
+import copy
 import logging
+import multiprocessing
+import os
+from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
 import numpy as np
@@ -463,12 +468,102 @@ def pipeflow_with_damping_fallback(net, **kwargs) -> None:
         pipeflow(net, **{**kwargs, "alpha": 0.5})
 
 
-def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
+# A parallel block is at least one week: every worker process pays a few seconds to start
+# (importing pandapipes, numba JIT when installed) and the pump controller restarts at each block.
+PARALLEL_MIN_BLOCK_STEPS = 168
+
+
+def split_time_range(start: int, end: int, workers: int, min_block: int = PARALLEL_MIN_BLOCK_STEPS) -> list:
+    """
+    Split ``[start, end)`` into up to ``workers`` contiguous blocks of at least ``min_block`` steps.
+
+    :param start: First time step (inclusive)
+    :type start: int
+    :param end: Last time step (exclusive)
+    :type end: int
+    :param workers: Maximum number of blocks
+    :type workers: int
+    :param min_block: Minimum block length [time steps]
+    :type min_block: int
+    :return: ``[(block_start, block_end), …]`` covering the range in order (one block if too short)
+    :rtype: list[tuple[int, int]]
+    """
+    n_blocks = max(1, min(workers, (end - start) // max(min_block, 1)))
+    bounds = np.linspace(start, end, n_blocks + 1).round().astype(int)
+    return [(int(a), int(b)) for a, b in zip(bounds[:-1], bounds[1:], strict=True) if b > a]
+
+
+_BLAS_THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
+
+
+@contextlib.contextmanager
+def _single_threaded_blas_in_children():
+    """
+    Let worker processes started inside this block use one BLAS thread each.
+
+    With several workers, multi-threaded BLAS in every process oversubscribes the cores (one
+    Görlitz run, 8 weeks, 4 workers: 59 → 50 s; timings on the dev laptop vary strongly). A
+    sequential run does profit from BLAS threads, so only the children are limited. Spawned children copy the environment at start; the parent's
+    BLAS is already initialised and unaffected.
+    """
+    saved = {name: os.environ.get(name) for name in _BLAS_THREAD_VARS}
+    os.environ.update(dict.fromkeys(_BLAS_THREAD_VARS, "1"))
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def _time_series_block(NetworkGenerationData):
+    """Worker-process entry: simulate one block sequentially, return its net and logged results."""
+    result = thermohydraulic_time_series_net(NetworkGenerationData)
+    return result.net, result.net_results
+
+
+def _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks: list) -> Any:
+    """
+    Simulate the time blocks in parallel processes and merge them in time order (BACKLOG G2).
+
+    Every block starts from the network as initialised — in particular the pump pressures of
+    the bad-point controller, which a sequential run carries over from the previous hour. Block
+    results therefore differ from a sequential run within the controller tolerance. The merged
+    object ends in the state of the last block's final hour, like a sequential run.
+    """
+    jobs = []
+    for block_start, block_end in blocks:
+        job = copy.copy(NetworkGenerationData)  # the net is pickled into each worker separately
+        job.start_time_step, job.end_time_step = block_start, block_end
+        jobs.append(job)
+
+    # "spawn" everywhere: forking a process that runs Qt threads is unsafe.
+    context = multiprocessing.get_context("spawn")
+    with _single_threaded_blas_in_children(), ProcessPoolExecutor(max_workers=len(jobs), mp_context=context) as pool:
+        outcomes = list(pool.map(_time_series_block, jobs))
+
+    NetworkGenerationData.net = outcomes[-1][0]
+    NetworkGenerationData.net_results = {
+        key: np.concatenate([results[key] for _, results in outcomes], axis=0) for key in outcomes[0][1]
+    }
+    validate_simulation_results(NetworkGenerationData.net_results, context="thermohydraulic time series (parallel)")
+    NetworkGenerationData.pump_results = calculate_results(NetworkGenerationData.net, NetworkGenerationData.net_results)
+    return NetworkGenerationData
+
+
+def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> Any:
     """
     Run thermohydraulic time series simulation with controller updates.
 
     :param NetworkGenerationData: Network data with preprocessed model and parameters
     :type NetworkGenerationData: object
+    :param workers: Worker processes for the time series, defaults to 1 (sequential). With more,
+        the range is split into blocks of at least ``PARALLEL_MIN_BLOCK_STEPS`` hours simulated in
+        parallel (results differ within the pump-controller tolerance, see
+        ``_parallel_thermohydraulic_time_series``).
+    :type workers: int
     :return: Updated NetworkGenerationData with simulation results and pump operations
     :rtype: Any
 
@@ -478,6 +573,16 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
        (heat demand, temperatures, secondary producers). Logs junction, heat consumer,
        and pump data.
     """
+    if workers > 1:
+        blocks = split_time_range(
+            NetworkGenerationData.start_time_step,
+            NetworkGenerationData.end_time_step,
+            workers,
+            min_block=PARALLEL_MIN_BLOCK_STEPS,
+        )
+        if len(blocks) > 1:
+            return _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks)
+
     # Update the ConstControl
     time_steps = range(
         0,
