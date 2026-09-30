@@ -167,7 +167,8 @@ class ProjectPresenter:
             {
                 "name": "Schritt 2: Gebäude-Lastgang generieren",
                 "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
-                "required_files": ["Lastgang/Gebäude Lastgang.json"],
+                # Current Parquet file, or the JSON of projects saved before BACKLOG G7
+                "required_files": [["Lastgang/Gebäude Lastgang.parquet", "Lastgang/Gebäude Lastgang.json"]],
             },
             {
                 "name": "Schritt 3: Straßendaten herunterladen",

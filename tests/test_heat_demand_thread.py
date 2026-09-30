@@ -8,12 +8,13 @@ changed meanwhile, and no second run while one is in flight. Uses the Görlitz b
 and the examples' TRY file.
 """
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+
+from districtheatingsim.heat_requirement.building_profiles_io import read_building_profiles
 
 _REPO = Path(__file__).resolve().parents[1]
 _CSV = (
@@ -38,7 +39,7 @@ class TestComputeAndSaveHeatDemand:
 
         data = buildings.copy()
         data.index = data.index + 100  # a non-default index must neither break nor be reset in place
-        json_path = tmp_path / "Gebäude Lastgang.json"
+        json_path = tmp_path / "Gebäude Lastgang.parquet"
 
         outcome = compute_and_save_heat_demand(data, str(_TRY), 2023, str(json_path))
 
@@ -52,14 +53,14 @@ class TestComputeAndSaveHeatDemand:
             assert sum(r["wärme"]) == pytest.approx(float(row["Wärmebedarf"]), rel=0.02)
             assert outcome.combined_data[str(i)]["Adresse"] == row["Adresse"]
 
-        saved = json.loads(json_path.read_text(encoding="utf-8"))
+        saved = read_building_profiles(str(json_path))  # G7: Parquet array store
         assert "_meta" in saved
         assert saved["0"]["wärme"] == outcome.results["0"]["wärme"]
 
     def test_failed_write_keeps_results(self, buildings, tmp_path):
         from districtheatingsim.gui.BuildingTab.heat_demand_thread import compute_and_save_heat_demand
 
-        outcome = compute_and_save_heat_demand(buildings, str(_TRY), 2023, str(tmp_path / "missing" / "x.json"))
+        outcome = compute_and_save_heat_demand(buildings, str(_TRY), 2023, str(tmp_path / "missing" / "x.parquet"))
 
         assert outcome.save_error is not None and "Speichern" in outcome.save_error
         assert len(outcome.results) == len(buildings)
@@ -106,7 +107,7 @@ def presenter(qtbot, buildings, tmp_path):
     )
     p = BuildingPresenter(BuildingModel(), view, folder_manager, None, None)
     p.model.base_path = str(tmp_path)
-    p.model.json_path = str(tmp_path / "Gebäude Lastgang.json")
+    p.model.json_path = str(tmp_path / "Gebäude Lastgang.parquet")
     view.populate_table(buildings)
     p.messages = messages
     yield p
@@ -154,3 +155,18 @@ class TestBuildingPresenterWorker:
         assert presenter._calc_thread is first_thread
         assert ("error", "Berechnung läuft", "Die Gebäudelastgänge werden bereits berechnet.") in presenter.messages
         _wait_for_worker(qtbot, presenter)
+
+
+class TestLegacyJsonLoad:
+    """G7: loading an old project's JSON works, and later saves go to the Parquet file next to it."""
+
+    def test_load_legacy_json_then_save_parquet(self, presenter, buildings, tmp_path):
+        from districtheatingsim.heat_requirement.building_profiles_io import write_building_profiles
+
+        legacy = tmp_path / "Gebäude Lastgang.json"
+        write_building_profiles(str(legacy), {"0": {"wärme": [1.0, 2.0], "Adresse": "A-Str 1"}})
+
+        presenter.load_json(str(legacy), show_dialog=False)
+
+        assert presenter.model.results["0"]["wärme"] == [1.0, 2.0]
+        assert presenter.model.json_path == str(tmp_path / "Gebäude Lastgang.parquet")

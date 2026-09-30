@@ -1586,9 +1586,26 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   done/error signals, presenter applies results, project change discards them, double start refused).
 
 ### G7. Data storage: JSON bloat + pickled net (large, open)
-- `Gebäude Lastgang.json` is **15.8 MB for 9 buildings** (written with `indent=4`; `zeitschritte` and
-  `außentemperatur` repeated per building). As Parquet: 2.4 MB (`pyarrow` is already a dependency).
-  Extrapolated ~900 MB at 500 buildings. `Ergebnisse.json` (20.8 MB) has the same pattern.
+- `Gebäude Lastgang.json` was **15.8 MB for 9 buildings** (written with `indent=4`; `zeitschritte` and
+  `außentemperatur` repeated per building); extrapolated ~900 MB at 500 buildings. **Done
+  2026-09-30:** new generic format `utilities/array_store.py` — every long, type-homogeneous list /
+  1-D numpy array becomes a (zstd-compressed) Parquet row, identical arrays are stored once, the
+  rest stays as a small JSON skeleton in the Parquet metadata. `load` returns **exactly** what
+  `json.load` returned (element types int/float/bool/str, NaN/inf, key conversion; objects go
+  through the JSON encoder's `default` like `json.dump(cls=…)`) — verified on the real Görlitz files
+  (identical) and by `tests/test_array_store.py` (22 cases compared via `json.dumps`). Görlitz:
+  Lastgang **15.8 → 1.88 MB** (load 107 → 44 ms), Ergebnisse 20.8 → 1.80 MB, Ergebnisse_Gaskessel
+  4.9 → 0.36 MB. The building profiles file is now `Lastgang/Gebäude Lastgang.parquet`
+  (`heat_requirement/building_profiles_io.py`): written by the heat demand worker and "speichern"
+  (a chosen `.json` still writes JSON), read by the building tab, the network initialisation, the
+  network dialog and the auto-load — format detected from the content; the default path takes the
+  newer of Parquet / legacy JSON; loading a legacy JSON makes later saves go to the `.parquet` next to
+  it; the progress tracker accepts either. The committed Görlitz sample stays JSON (exercises the
+  legacy path; golden master unchanged). Pinned by `tests/test_building_profiles_io.py` (Görlitz
+  round trip identical + < 20 % size, JSON export, content detection, newer-file rule),
+  `tests/test_heat_demand_thread.py` (worker writes Parquet; legacy JSON load → Parquet target) and
+  `test_simulation_golden_master.py::test_net_initialisation_reads_parquet_profiles_identically`
+  (slow). `Ergebnisse.json` → next step (config discovery is by `*.json` name).
 - ~~The pandapipes net is persisted with `pp.to_pickle`~~ **Done 2026-09-30:** saved as pandapipes
   JSON (`Wärmenetz/Ergebnisse Netzinitialisierung.json`, new `file_paths.json` key `pp_net_file_path`)
   via `net_simulation_pandapipes/net_io.py`; `load_net` still reads the legacy `.p` of older projects

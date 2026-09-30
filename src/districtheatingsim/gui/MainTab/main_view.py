@@ -35,6 +35,7 @@ from districtheatingsim.gui.MainTab.project_structure import discover_variants, 
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
+from districtheatingsim.heat_requirement.building_profiles_io import preferred_profiles_path
 
 
 class HeatSystemDesignGUI(QMainWindow):
@@ -948,8 +949,14 @@ class HeatSystemDesignGUI(QMainWindow):
                 building_data_path = os.path.join(
                     self.base_path, self.presenter.config_manager.get_relative_path("current_building_data_path")
                 )
-                building_profile_path = os.path.join(
-                    self.base_path, self.presenter.config_manager.get_relative_path("building_load_profile_path")
+                building_profile_path = preferred_profiles_path(
+                    os.path.join(
+                        self.base_path, self.presenter.config_manager.get_relative_path("building_load_profile_path")
+                    ),
+                    os.path.join(
+                        self.base_path,
+                        self.presenter.config_manager.get_relative_path("building_load_profile_legacy_path"),
+                    ),
                 )
 
                 # Load building data if files exist (no dialogs)
