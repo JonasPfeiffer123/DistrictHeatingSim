@@ -20,6 +20,42 @@ from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGener
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 
 
+def _same_day_as_previous(time_steps: np.ndarray) -> np.ndarray:
+    """
+    Per time step: does it fall on the same calendar day as the previous one?
+
+    Replaces formatting both time stamps with ``np.datetime_as_string`` in every hour of the
+    simulation loop (BACKLOG G3). The first step has no predecessor and yields ``False``.
+
+    :param time_steps: Time stamps (datetime64)
+    :type time_steps: numpy.ndarray
+    :return: Boolean array, same length as ``time_steps``
+    :rtype: numpy.ndarray
+    """
+    days = np.asarray(time_steps, dtype="datetime64[h]").astype("datetime64[D]")
+    same_day = np.zeros(len(days), dtype=bool)
+    same_day[1:] = days[1:] == days[:-1]
+    return same_day
+
+
+def _numeric_keys(table: dict) -> dict:
+    """
+    Convert numeric-string keys of an IAM table (as left by a JSON round trip) back to floats.
+
+    :param table: IAM lookup table {angle: factor}, possibly with string keys
+    :type table: dict
+    :return: Same table with float keys where the key is a number
+    :rtype: dict
+    """
+    converted = {}
+    for key, value in table.items():
+        try:
+            converted[float(key)] = value
+        except (TypeError, ValueError):
+            converted[key] = value
+    return converted
+
+
 class SolarThermal(BaseHeatGenerator):
     """
     Solar thermal collector system with storage.
@@ -369,6 +405,7 @@ class SolarThermal(BaseHeatGenerator):
 
         # Hourly simulation loop
         n_steps = len(time_steps)
+        same_day_L = _same_day_as_previous(time_steps)
 
         for i in range(n_steps):
             # Calculate effective solar radiation terms
@@ -571,8 +608,7 @@ class SolarThermal(BaseHeatGenerator):
                 # Stagnation detection
                 self.Stagnation_L[i] = (
                     1
-                    if np.datetime_as_string(time_steps[i], unit="D")
-                    == np.datetime_as_string(time_steps[i - 1], unit="D")
+                    if same_day_L[i]
                     and self.Kollektorfeldertrag_L[i] > Last_L[i]
                     and self.Speicherinhalt[i] >= self.QSmax
                     else 0
@@ -830,9 +866,7 @@ class SolarThermal(BaseHeatGenerator):
                 self.Wärmeleistung_kW[t] = self.Kollektorfeldertrag_L[t]
 
                 # Check for stagnation conditions and activate protection
-                same_day = np.datetime_as_string(time_steps[t], unit="D") == np.datetime_as_string(
-                    time_steps[t - 1], unit="D"
-                )
+                same_day = np.datetime64(time_steps[t], "D") == np.datetime64(time_steps[t - 1], "D")
                 excess_generation = self.Kollektorfeldertrag_L[t] > remaining_load
                 storage_full = self.Speicherinhalt[t] >= self.QSmax
 
@@ -1029,6 +1063,13 @@ class SolarThermal(BaseHeatGenerator):
             obj.init_calculation_constants()
         elif not hasattr(obj, "IAM_N") or not obj.IAM_N or not isinstance(obj.IAM_N, dict):
             obj.init_calculation_constants()
+
+        # JSON turns the numeric IAM angles into strings ("10"). The radiation lookup matches
+        # angles by value, so string keys never match — that zeroed the beam IAM and roughly
+        # halved the yield of every saved-and-reloaded system (BACKLOG C37). Restore numbers.
+        for attr in ("IAM_W", "IAM_N"):
+            if isinstance(getattr(obj, attr, None), dict):
+                setattr(obj, attr, _numeric_keys(getattr(obj, attr)))
 
         return obj
 
