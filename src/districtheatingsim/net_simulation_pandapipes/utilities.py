@@ -186,6 +186,32 @@ def COP_WP(
     return COP_L, VLT_L
 
 
+def secondary_producer_element_indices(net, k: int) -> tuple[int, int]:
+    """
+    Return the ``circ_pump_mass`` and ``flow_control`` row indices of the k-th secondary producer.
+
+    ``create_network`` adds exactly one mass-flow pump and one flow control per secondary
+    producer, in the order of the ``secondary_producers`` list, so the k-th producer owns the
+    k-th row of both tables.
+
+    :param net: Pandapipes network with the secondary producers' pumps and flow controls
+    :type net: pandapipes.pandapipesNet
+    :param k: Position of the producer in the ``secondary_producers`` list
+    :type k: int
+    :return: (circ_pump_mass index, flow_control index)
+    :rtype: Tuple[int, int]
+    :raises ValueError: If the net has fewer pumps/flow controls than secondary producers
+    """
+    n_pumps = len(net.circ_pump_mass) if "circ_pump_mass" in net else 0
+    n_flow_controls = len(net.flow_control) if "flow_control" in net else 0
+    if k >= n_pumps or k >= n_flow_controls:
+        raise ValueError(
+            f"Secondary producer {k} has no matching circ_pump_mass/flow_control "
+            f"(net has {n_pumps} pumps, {n_flow_controls} flow controls)."
+        )
+    return int(net.circ_pump_mass.index[k]), int(net.flow_control.index[k])
+
+
 def create_controllers(
     net,
     qext_w: np.ndarray,
@@ -277,10 +303,13 @@ def create_controllers(
 
     # Secondary producer controllers
     if secondary_producers:
-        for producer in secondary_producers:
+        for k, producer in enumerate(secondary_producers):
             # KORRIGIERT: Verwende Attribut-Zugriff statt Dictionary-Zugriff
             mass_flow = producer.mass_flow if hasattr(producer, "mass_flow") else 0
             producer_index = producer.index if hasattr(producer, "index") else 0
+            # create_network adds one circ_pump_mass + one flow_control per secondary producer,
+            # in list order — the k-th producer owns the k-th row of both tables (BACKLOG C35).
+            pump_idx, flow_control_idx = secondary_producer_element_indices(net, k)
 
             # Mass flow controller for circulation pump
             placeholder_df = pd.DataFrame({f"mdot_flow_kg_per_s_{producer_index}": [mass_flow]})
@@ -289,7 +318,7 @@ def create_controllers(
                 net,
                 element="circ_pump_mass",
                 variable="mdot_flow_kg_per_s",
-                element_index=0,
+                element_index=pump_idx,
                 data_source=placeholder_data_source,
                 profile_name=f"mdot_flow_kg_per_s_{producer_index}",
             )
@@ -301,7 +330,7 @@ def create_controllers(
                 net,
                 element="flow_control",
                 variable="controlled_mdot_kg_per_s",
-                element_index=0,
+                element_index=flow_control_idx,
                 data_source=placeholder_data_source_flow,
                 profile_name=f"controlled_mdot_kg_per_s_{producer_index}",
             )
@@ -311,7 +340,7 @@ def create_controllers(
                 net,
                 element="circ_pump_mass",
                 variable="t_flow_k",
-                element_index=0,
+                element_index=pump_idx,
                 data_source=placeholder_data_source_supply_temp,
                 profile_name="supply_temperature",
             )

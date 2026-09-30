@@ -571,6 +571,127 @@ class TestSecondaryProducerRoundTrip:
         assert rebuilt == [SecondaryProducer(index=3, load_percentage=10.0)]
 
 
+_T_FLOW_K = 85 + 273.15
+
+
+def _net_with_two_secondary_producers():
+    """Two secondary producers as create_network builds them: one circ_pump_mass + one
+    flow_control each, in producer order. No pipes / pipeflow — controller wiring only."""
+    import pandapipes as pp
+
+    net = pp.create_empty_network(fluid="water")
+    for _ in range(2):
+        ret, mid, flo = (pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(3))
+        pp.create_circ_pump_const_mass_flow(
+            net, ret, mid, p_flow_bar=4, mdot_flow_kg_per_s=1.0, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        pp.create_flow_control(net, mid, flo, controlled_mdot_kg_per_s=1.0)
+    return net
+
+
+def _two_secondary_producers():
+    from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import SecondaryProducer
+
+    return [
+        SecondaryProducer(index=1, load_percentage=20.0, mass_flow=np.array([1.0, 1.2, 1.4])),
+        SecondaryProducer(index=2, load_percentage=10.0, mass_flow=np.array([0.3, 0.4, 0.5])),
+    ]
+
+
+class TestSecondaryProducerControllers:
+    """C35: with two secondary producers each time-series controller must drive *its own*
+    circ_pump_mass / flow_control row. Before the fix every controller was created at
+    element_index=0 and the update handed all of them the last producer's data (KeyError on the
+    first time step). Driven through ConstControl.time_step, which writes into the net."""
+
+    @staticmethod
+    def _add_pre_c35_controllers(net, producers):
+        """The controller layout saved nets carry from before the fix: all at element_index=0."""
+        import pandas as pd
+        from pandapower.control.controller.const_control import ConstControl
+        from pandapower.timeseries import DFData
+
+        for p in producers:
+            for element, variable, profile in (
+                ("circ_pump_mass", "mdot_flow_kg_per_s", f"mdot_flow_kg_per_s_{p.index}"),
+                ("flow_control", "controlled_mdot_kg_per_s", f"controlled_mdot_kg_per_s_{p.index}"),
+                ("circ_pump_mass", "t_flow_k", "supply_temperature"),
+            ):
+                ConstControl(
+                    net,
+                    element=element,
+                    variable=variable,
+                    element_index=0,
+                    data_source=DFData(pd.DataFrame({profile: [0.0]})),
+                    profile_name=profile,
+                )
+
+    @staticmethod
+    def _run_time_step(net, t, variables):
+        # Only the controllers under test: the others still hold their 1-row placeholder data.
+        for ctrl in net.controller.object:
+            if ctrl.variable in variables:
+                ctrl.time_step(net, t)
+
+    def test_each_pump_gets_its_own_mass_flow_profile(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            update_secondary_producer_controller,
+        )
+
+        net = _net_with_two_secondary_producers()
+        producers = _two_secondary_producers()
+        self._add_pre_c35_controllers(net, producers)
+
+        update_secondary_producer_controller(net, producers, range(3), 0, 3)
+
+        for t in range(3):
+            self._run_time_step(net, t, ("mdot_flow_kg_per_s", "controlled_mdot_kg_per_s"))
+            expected = [producers[0].mass_flow[t], producers[1].mass_flow[t]]
+            assert net.circ_pump_mass["mdot_flow_kg_per_s"].tolist() == pytest.approx(expected)
+            assert net.flow_control["controlled_mdot_kg_per_s"].tolist() == pytest.approx(expected)
+
+    def test_supply_temperature_reaches_every_secondary_pump(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            update_heat_generator_supply_temperature_controller,
+        )
+
+        net = _net_with_two_secondary_producers()
+        self._add_pre_c35_controllers(net, _two_secondary_producers())
+
+        update_heat_generator_supply_temperature_controller(net, np.array([80.0, 75.0, 70.0]), range(3), 0, 3)
+
+        t_flow_ctrls = [c for c in net.controller.object if c.element == "circ_pump_mass" and c.variable == "t_flow_k"]
+        assert [c.element_index for c in t_flow_ctrls] == [0, 1]
+        self._run_time_step(net, 1, ("t_flow_k",))
+        assert net.circ_pump_mass["t_flow_k"].tolist() == pytest.approx([75.0 + 273.15] * 2)
+
+
+class TestStaticSupplyTemperatureController:
+    """C36: a static (scalar) supply temperature is not a profile, so it must not be sliced by
+    [start:end] — a run starting at time step > 0 used to build an empty/short DataFrame and
+    crash ("Length of values (0) does not match length of index")."""
+
+    def test_scalar_supply_temperature_with_offset_start(self):
+        import pandapipes as pp
+        from pandapower.control.controller.const_control import ConstControl
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            update_heat_generator_supply_temperature_controller,
+        )
+
+        net = pp.create_empty_network(fluid="water")
+        j0, j1 = (pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(2))
+        pp.create_circ_pump_const_pressure(net, j0, j1, p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K)
+        ctrl = ConstControl(
+            net, element="circ_pump_pressure", variable="t_flow_k", element_index=0, profile_name="supply_temperature"
+        )
+
+        update_heat_generator_supply_temperature_controller(net, 70.0, range(8), 100, 108)
+
+        ctrl.time_step(net, 7)
+        assert net.circ_pump_pressure.at[0, "t_flow_k"] == pytest.approx(70.0 + 273.15)
+
+
 class TestKmrToIsoplus:
     """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
 
@@ -761,6 +882,64 @@ class TestNetworkInitialization:
         assert kpis["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] == pytest.approx(0.22)
         assert kpis["Pumpenstrom [MWh]"] is None  # no pump_results yet
         assert nd.kpi_results is kpis  # cached on the object
+
+
+@pytest.mark.slow
+class TestSecondaryProducerTimeSeries:
+    """C35 end-to-end: the thermohydraulic time series on a tiny net with two secondary
+    producers must run (it crashed with a KeyError on the first step) and each mass-flow pump
+    must follow its own producer's profile."""
+
+    def test_two_secondary_producers_follow_their_profiles(self):
+        from types import SimpleNamespace
+
+        import pandapipes as pp
+        from pandapipes.control.run_control import run_control
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            thermohydraulic_time_series_net,
+        )
+        from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
+
+        net = pp.create_empty_network(fluid="water")
+        coords = [(0, 10), (0, 0), (10, 0), (60, 0), (85, 0), (85, 10), (60, 10), (10, 10)]
+        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K, geodata=c) for c in coords]
+        pp.create_circ_pump_const_pressure(
+            net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        for a, b, length in [(1, 2, 0.01), (2, 3, 0.05), (3, 4, 0.025), (5, 6, 0.25), (6, 7, 0.05), (7, 0, 0.01)]:
+            pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
+        pp.create_heat_consumer(net, j[4], j[5], qext_w=500000, treturn_k=55 + 273.15)
+        pp.create_heat_consumer(net, j[3], j[6], qext_w=200000, treturn_k=60 + 273.15)
+        # Two secondary producers feeding from the return into the flow line (create_network layout).
+        for ret, flo in [(7, 2), (6, 3)]:
+            mid = pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K)
+            pp.create_circ_pump_const_mass_flow(
+                net, j[ret], mid, p_flow_bar=4, mdot_flow_kg_per_s=0.5, t_flow_k=_T_FLOW_K, type="auto"
+            )
+            pp.create_flow_control(net, mid, j[flo], controlled_mdot_kg_per_s=0.5)
+
+        producers = _two_secondary_producers()
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+        net = create_controllers(net, np.array([500000, 200000]), 85, None, np.array([55, 60]), producers)
+        run_control(net, mode="bidirectional", iter=100)
+
+        n = 3
+        nd = SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=np.array([[500000.0] * n, [200000.0] * n]),
+            start_time_step=0,
+            end_time_step=n,
+            secondary_producers=producers,
+            min_supply_temperature_heat_consumer=None,
+            return_temperature_heat_consumer=np.array([55.0, 60.0]),
+            supply_temperature_heat_generator=85.0,
+        )
+        nd = thermohydraulic_time_series_net(nd)
+
+        logged = nd.net_results["res_circ_pump_mass.mdot_from_kg_per_s"]
+        assert logged[:, 0] == pytest.approx(producers[0].mass_flow)
+        assert logged[:, 1] == pytest.approx(producers[1].mass_flow)
 
 
 class TestAvailablePlotParameters:
