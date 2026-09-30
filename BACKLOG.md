@@ -1057,6 +1057,71 @@ on save. Decided model **A** (flow layer = backbone + stubs; consumer/producer p
   view and the wheel only zooms (consumed → the surrounding scroll area stays put). No headless seam
   (QWebEngineView) — ruff-checked only.
 
+### C35. Secondary producers: time-series controllers all target pump 0 → crash with ≥2 (fixed 2026-09-29)
+**Severity: correctness — any network with two or more secondary producers.** Found in the
+2026-09-29 performance audit, **reproduced** on a tiny net with two mass-flow producers: the
+thermohydraulic time series aborts in the first step with `KeyError: 'mdot_flow_kg_per_s_1'`.
+- `utilities.create_controllers` creates the per-producer `ConstControl`s for `circ_pump_mass`
+  (`mdot_flow_kg_per_s`, `t_flow_k`) and `flow_control` (`controlled_mdot_kg_per_s`) with a
+  hard-coded `element_index=0`, although `create_network` creates one `circ_pump_mass` + one
+  `flow_control` **per producer** (in list order). With ≥2 producers every controller drives
+  pump/flow-control 0; the others keep their init mass flow.
+- `update_secondary_producer_controller` assigns each producer's `DFData` to **all**
+  `circ_pump_mass`/`flow_control` controllers (no index check), so the last producer wins — and its
+  column `mdot_flow_kg_per_s_{last}` does not match the other controllers' `profile_name` → the
+  `KeyError` above. It also `print`s the whole mass-flow array per producer.
+- With exactly one secondary producer everything happens to line up (index 0), which is why this
+  went unnoticed. No test covered >1 secondary producer in the time series.
+- **Fixed:** new `utilities.secondary_producer_element_indices(net, k)` (the k-th producer owns the
+  k-th `circ_pump_mass` / `flow_control` row — `create_network` creates them in list order);
+  `create_controllers` uses it instead of the hard-coded 0. `update_secondary_producer_controller`
+  now matches each controller by its `profile_name` and re-points `element_index` at the k-th row,
+  and `update_heat_generator_supply_temperature_controller` does the same for the per-producer
+  `t_flow_k` controllers — so **nets saved before the fix** (all at index 0) run correctly too. The
+  whole-array `print` is gone. Pinned by `tests/test_net_simulation.py::TestSecondaryProducerControllers`
+  (fast, drives `ConstControl.time_step` on the pre-fix controller layout) and
+  `TestSecondaryProducerTimeSeries` (slow, real time series on a tiny net with two producers; each
+  pump follows its own profile). All three fail on the old code.
+
+### C36. Static supply temperature + start time step > 0 crashed the time series (fixed 2026-09-29)
+Found while fixing C35. With `supply_temperature_control == "Statisch"` the supply temperature is a
+scalar; `update_heat_generator_supply_temperature_controller` expanded it to `len(time_steps)` values
+and then **still sliced** `[start:end]` — for any start > 0 (settable in the time-series dialog) the
+slice is empty or short → `ValueError: Length of values (0) does not match length of index`.
+**Fixed:** the scalar is expanded, not sliced (profiles are still sliced). Pinned by
+`tests/test_net_simulation.py::TestStaticSupplyTemperatureController` (fails on the old code).
+
+### C37. Solar thermal lost ~half its yield after a JSON save/load (fixed 2026-09-29)
+Found during G3. `SolarThermal.to_dict()` serialises the IAM tables (`IAM_W`/`IAM_N`,
+`{0: 1, 10: 1, 20: 0.99, …}`); JSON turns the angle keys into strings (`"10"`), and
+`from_dict` kept them because the dict is non-empty. `calculate_solar_radiation` looks angles up
+by value, so string keys never match → the beam IAM became 0 for every hour. **Verified:**
+Vakuumröhrenkollektor 200 m², Görlitz TRY — 93.4 MWh fresh vs **46.0 MWh** after a JSON round
+trip. Affects every energy system with solar thermal that was saved and reloaded (the in-memory
+`__deepcopy__` path does not go through JSON and was fine).
+**Fixed:** `SolarThermal.from_dict` converts numeric-string IAM keys back to floats
+(`_numeric_keys`). Pinned by `tests/test_solar_thermal.py::TestJsonRoundTrip` (fails on the old code).
+
+### C38. Solar thermal standalone model: storage content goes negative (open, 2026-09-29)
+Observation from the G3 characterization tests, not investigated further. In
+`calculate_solar_thermal_with_storage` the storage balance subtracts losses and output without a
+lower bound, so `Speicherinhalt` goes negative (e.g. min −59 kWh with a 2 m³ storage; the summed
+series is negative for the default 20 m³ case). Physically the content should be clamped at 0 and
+the output limited accordingly. Needs a modelling decision (it changes WGK/Wärmemenge) → pin the
+new values deliberately in `tests/test_solar_thermal.py` when fixing.
+
+### C39. Network generation crashed whenever elevation data was available (fixed 2026-09-29)
+Found while verifying G5 on `examples/data`. `generate_and_export_layers` (the GUI's net generation
+path via `net_generation_threads`) elevates the building points in `load_layers`, so the
+connection lines built from them are already 3-D; later, when the elevation lookup (DEM or the
+OpenTopoData API) returns any non-zero height, `assign_elevation_to_geodataframe` unpacked every
+vertex as `(x, y)` → `ValueError: too many values to unpack`. **Any** network generation with
+elevation data crashed (MST, Advanced MST — offline, the lookup is all zeros and the step is
+skipped, which hid it). **Fixed:** vertices are read as `c[0], c[1]` and an existing Z is kept when
+the lookup has no value for that vertex (also for 3-D points). Pinned by
+`tests/test_elevation_integration.py::TestAssignElevationToGeoDataFrame` (+2, fail on the old code);
+the real generation runs through again.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1346,6 +1411,147 @@ source of truth, no standalone requirements files.
   nits already logged under F5 POST-RELEASE, plus the deprecated `display_version` sphinx_rtd_theme
   option in `conf.py` (one line, harmless).
 
+## G. Performance & frontend (2026-09-29 audit)
+Measured on the Görlitz project (9 buildings, 68 pipes) and the test fixtures, Py 3.12 / Windows,
+no numba, **without a profiler** (the first audit pass timed under `cProfile`, which inflated the
+Python-heavy paths ~3× — the numbers below are the re-measured wall-clock times; profiler runs
+were only used to locate hotspots). "Extrapolated" marks projections. Items are tagged
+**quick win** (small, local, high effect), **medium** or **large**.
+
+### G1. Net time series: pump controller gain + solver damping (quick win, done 2026-09-29)
+The thermohydraulic time series cost **275 ms per time step** on Görlitz → a full year
+extrapolates to **~40 min**. Almost all of it is pandapipes itself; our controllers are cheap.
+Two parameters multiplied the number/cost of pipeflows:
+- `BadPointPressureLiftController` was a P-controller with `proportional_gain=0.2`: the bad-point
+  Δp follows the pump lift ~1:1, so the error shrank by only ~20 % per control iteration, and every
+  iteration is a full pipeflow → **3.9 pipeflows per step**. Gain 0.6 → 1.9 per step (gain 1.0 was
+  tried too but lands the Δp at the edge of the 0.2 bar tolerance band).
+- `run_timeseries(..., alpha=0.5)` halved every Newton step → ~60 linear solves per pipeflow.
+
+| Görlitz, 48 steps | ms / step | pipeflows / step | full year (extrapolated) |
+|---|---|---|---|
+| before (gain 0.2, alpha 0.5) | 275 | 3.92 | ~40 min |
+| after (gain 0.6, alpha 1.0 + damped retry) | **74** | 1.92 | **~11 min** |
+
+Heat generation identical (35.3388 MWh), Pumpenstrom −0.14 % (0.021649 → 0.021619 MWh), pipe
+sizing unchanged (same 68 ISOPLUS types). **Done:**
+- `controllers.DEFAULT_PUMP_CONTROLLER_GAIN = 0.6` is the controller default (rationale in the
+  class docstring). `net_migration.migrate_loaded_net` raises pickled controllers still on the
+  legacy 0.2 (`LEGACY_PUMP_CONTROLLER_GAIN`) to the new default, so **loaded projects** get the
+  speed-up too; any other gain is left alone.
+- `pp_net_time_series_simulation.pipeflow_with_damping_fallback` is passed to `run_timeseries` as
+  its `run` function: undamped (`alpha=1`) first, damped (`alpha=0.5`) retry only on
+  `PipeflowNotConverged` — per pipeflow, so a single hard time step does not slow the whole run.
+- Pinned by `tests/test_net_simulation.py::TestPipeflowDampingFallback` (3: undamped only / damped
+  retry / raises when both diverge) and `TestMigrateLoadedNet` (+2: legacy gain raised, custom
+  gain kept). Golden master unchanged (`test_simulation_golden_master.py` green without re-pinning).
+
+### G2. Net time series: numba + parallel chunks (large, open)
+- **numba is not installed** in the dev venv and not declared in `pyproject.toml`, although the
+  `slow` marker text talks about a "numba cold-start". pandapipes silently falls back to pure
+  Python. Measured on Görlitz (after G1): 70 → 62 ms/step (~11 %), but the first pipeflow pays
+  **~5 s JIT compilation** — worth it for full-year runs (~70 s saved), not for short ones. Larger
+  nets gain more. Decide: declare it (optional extra) or drop the wording.
+- Time steps are nearly independent (controllers reset per step) → the year can be split into
+  blocks and solved in parallel processes (≈ linear in cores).
+
+### G3. Solar thermal dominates the energy-system optimizer (quick wins done 2026-09-29; large open)
+`examples/10` (optimizer, ~160 `calculate_mix` calls) ran **28.2 s** standalone (57 s in the smoke
+test, which runs it as a subprocess next to the other examples); **26.8 s** of it were
+`SolarThermal.calculate_solar_thermal_with_storage` (173 ms per call).
+- **Done:** day-of-year was a Python list comprehension over `datetime.fromtimestamp` → one numpy
+  expression; the IAM lookup used `np.vectorize(dict.get)` → `solar_radiation._iam_lookup`
+  (`searchsorted`, same exact-key semantics, always float — `np.vectorize` took the dtype from the
+  first element, so a leading integer IAM value would have truncated the array).
+  `calculate_solar_radiation`: **31.8 → 2.8 ms**. Caching it (the original plan) is no longer worth
+  it: ~0.6 s over all optimizer calls.
+- **Done:** the hourly loop formatted two time stamps with `np.datetime_as_string` every hour for
+  the stagnation same-day check → `solar_thermal._same_day_as_previous` precomputes it once
+  (`calculate`); `generate` compares `datetime64[D]` scalars.
+- **Effect:** `calculate()` **158 → 85 ms**, per-step `generate` year 159 → 95 ms, examples/10
+  173 → 100 ms per solar call (28.2 → 19.3 s; the example optimizes without a seed, so the call
+  count varies). Results bit-identical: new `tests/test_solar_thermal.py` (the first tests for the
+  solar model — radiation, `calculate` for both collector types, a stagnation scenario, `generate`)
+  was captured on the old code and passes on old and new.
+- **Large (open):** the loop itself (~85 ms of the remaining ~100 ms) is a numba/vectorisation
+  candidate. The same per-hour Python-loop pattern exists in `chp.py`, `biomass_boiler.py`,
+  `geothermal_heat_pump.py` (buffer storage).
+
+### G4. Energy system with network storage + optimizer (medium, open)
+- `calculate_mix` without storage: **2 ms** (vectorised). With the 1D `ThermalStorageAdapter`:
+  **0.92 s** (8760 Python steps in `thermal-energy-storage-1d`, ~¼ of it adapter overhead). The
+  optimizer called `calculate_mix` 156× in a 1-variable test → extrapolated **~2.4 min** with storage,
+  growing with every optimization variable (finite differences) and restart.
+- Every objective evaluation deep-copies the whole system (`EnergySystemOptimizer.optimize` →
+  `self.energy_system_copy.copy()`) and `calculate_mix` ends with `getInitialPlotData()` — neither is
+  needed inside the optimizer loop.
+- SLSQP (gradient-based, finite differences) on a piecewise-flat objective (on/off dispatch): in
+  the test, restart 1 stalled on a plateau (objective = 1e6 penalty) and was still counted as
+  `success`. A derivative-free method (Powell / Nelder-Mead) or `differential_evolution` would be
+  more robust; restarts are embarrassingly parallel.
+
+### G5. Net generation: O(n²) MST + full street scans (quick win done 2026-09-29; medium open)
+- **Done:** `generate_mst` built the complete graph with nested `iterrows` + a shapely distance per
+  pair into networkx (`minimal_spanning_tree.py`) → `scipy.spatial.distance.pdist` +
+  `scipy.sparse.csgraph.minimum_spanning_tree`: **300 points 3.9 s → 16 ms, 1000 points ~45 s
+  (extrapolated) → 154 ms**. It is also called again inside `adjust_segments_to_roads`. scipy reads
+  (near-)zero distances as "no edge", so coincident points are merged first and re-attached with
+  zero-length edges (exactly what the complete-graph MST did). Where several trees have exactly
+  the same length the pick is unspecified — it already was: the input comes from a `set` of
+  points whose order changes per process. Pinned by `tests/test_net_generation.py::TestGenerateMst`
+  (same edge set as the networkx reference on 60 random points, coincident points, Z kept, <2
+  points). Real generation (`examples/data`, MST + Advanced MST) produces identical networks
+  (1071.708 m / 18 lines and 1095.517 m / 29 lines) before and after.
+- **Medium:** `adjust_segments_to_roads` computes the distance to *every* street per segment per
+  iteration (`street_layer.distance(pt).idxmin()`, up to 50 iterations) → `street_layer.sindex.nearest`.
+
+### G6. Heat demand: slow profile generation, runs on the UI thread (medium, open)
+- ~**24 ms per building** (180 buildings = 4.3 s; extrapolated ~12 s for 500). Cause is in
+  `pyslpheat` (own package): the TRY file and coefficient tables are re-read per building (360×
+  `read_csv` for 180 buildings; ~40 % of the profile), and `get_weekday_factor` iterates rows with
+  `.iloc` (~35 %). Caching + vectorising → several-fold.
+- `BuildingPresenter.calculate_heat_demand` calls it synchronously on the UI thread → the window
+  freezes. It is the only long computation without a worker thread.
+
+### G7. Data storage: JSON bloat + pickled net (large, open)
+- `Gebäude Lastgang.json` is **15.8 MB for 9 buildings** (written with `indent=4`; `zeitschritte` and
+  `außentemperatur` repeated per building). As Parquet: 2.4 MB (`pyarrow` is already a dependency).
+  Extrapolated ~900 MB at 500 buildings. `Ergebnisse.json` (20.8 MB) has the same pattern.
+- The pandapipes net is persisted with `pp.to_pickle` (`net_simulation_tab.py`): version-fragile
+  (cf. C11 migration) and a security risk when opening someone else's project (unpickling executes
+  code). `pp.to_json` / `pp.from_json` is the robust alternative.
+
+### G8. Startup: eager imports + eager tabs (medium, open)
+- Importing `main_view` takes **4.5 s warm / 15 s on the first run**: all tabs are imported eagerly
+  and with them CoolProp 0.9 s (only for the Aqvaheat heat pump), osmnx 0.7 s, seaborn 0.7 s (only
+  the comparison tab), pandapipes/pandapower ~1.5 s.
+- `initTabs` constructs all six tabs incl. two `QWebEngineView`s (Chromium process) while only the
+  welcome screen is visible → lazy imports + build tabs on first project open.
+
+### G9. Leaflet map: unused/unpinned CDN libraries (quick wins done 2026-09-29; medium open)
+- **Done:** three.js r170 was loaded on every map start but used nowhere (no `THREE` reference in
+  the JS or in any Python-injected script) → removed from `map.html`.
+- **Done:** Leaflet-Geoman was loaded from `@latest` (CSS + JS) with no SRI hash → pinned to
+  **2.20.2** (what `@latest` resolved to on 2026-09-29, so behaviour is unchanged; peer dep
+  Leaflet ^1.2.0) with `sha384` SRI + `crossorigin` (unpkg sends `Access-Control-Allow-Origin: *`,
+  needed because the page is loaded via `file://`). **Verified** by rendering `map.html` headless in
+  Edge: the map container and all Geoman toolbar buttons are in the DOM (the script passed the SRI
+  check and `main.js` ran `map.pm.addControls`). No automated seam (QWebEngineView) — re-check by
+  hand in the app when bumping the version (compute the new hashes from the pinned URLs).
+- Leaflet.draw is only used as a fallback when Geoman is missing → can go once Geoman is pinned.
+- **Medium:** all libraries come from CDNs → no map without internet. Vendoring them into
+  `leaflet/` fixes offline use, pinning and load time at once.
+
+### G10. Hygiene (medium, open)
+- 221 `print` calls vs 49 `logging` calls in `src`; lost in the no-console exe, some in hot paths
+  (whole arrays per producer in the time-series setup). Move to `logging` + a log file.
+- `MinimumSupplyTemperatureController`s are created even when the minimum supply temperature is
+  disabled (then with 5 °C); each checks `all(net.heat_consumer["qext_w"] == 0)` per call → O(N²)
+  per control iteration for many buildings.
+- The network plot polls for clicks every 200 ms via `runJavaScript` (`network_plot_widget.py`) —
+  the existing QWebChannel could push click events instead.
+- `GeoDataFrame.unary_union` is deprecated in geopandas (`osm/area_selection.py`) → `union_all()`.
+
 ---
 
 ## Suggested order
@@ -1360,6 +1566,17 @@ re-audit on **2026-06-15** found the remaining work splits cleanly into *before*
 clean release and *after* (Weiterentwicklung). Most A–E debt is closed; what's left is
 concentrated in newly-found correctness bugs in the un-refactored modules (C16–C22) and the
 release mechanics themselves (section F). See the **Release plan** below.
+
+**2026-09-29 performance/frontend audit (section G + C35) — agreed order:**
+1. ~~C35 (secondary-producer crash) + regression test with two producers.~~ **Done 2026-09-29**
+   (+ C36, found on the way).
+2. Quick wins: ~~G1 (pump gain + damping with fallback)~~ **done 2026-09-29**, ~~G3 quick wins (vectorised
+   day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
+   Geoman)~~ **done 2026-09-29**.
+3. Medium: G6 (heat demand worker thread + `pyslpheat` caching), G8 (lazy imports/tabs), G9
+   vendoring, G5 spatial index, G4 optimizer overhead.
+4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
+   instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.
 
 ## Release plan (2026-06-15 audit)
 
