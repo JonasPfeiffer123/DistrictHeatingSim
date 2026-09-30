@@ -68,7 +68,7 @@ def load_layers(
     coordinates: list[tuple[float, float]],
     dem_path: str | None = None,
     crs: str = "EPSG:25833",
-) -> tuple[gpd.GeoDataFrame | None, gpd.GeoDataFrame | None, gpd.GeoDataFrame | None, pd.DataFrame | None]:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, pd.DataFrame]:
     """
     Load all spatial layers for network generation.
 
@@ -90,83 +90,72 @@ def load_layers(
     :param crs: Projected CRS of the building coordinates (default ``"EPSG:25833"``)
     :type crs: str
     :return: Tuple of (street_layer, consumer_layer, generator_layer, consumer_df)
-    :rtype: Tuple[Optional[gpd.GeoDataFrame], Optional[gpd.GeoDataFrame], Optional[gpd.GeoDataFrame], Optional[pd.DataFrame]]
+    :rtype: Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, pd.DataFrame]
     :raises FileNotFoundError: If files not found
     :raises KeyError: If UTM_X or UTM_Y missing from CSV
     :raises ValueError: If coordinate conversion fails
 
     .. note::
-        CSV uses semicolon separator. Returns (None, None, None, None) on error.
+        CSV uses semicolon separator. Errors propagate to the caller (BACKLOG C44).
         When *dem_path* is ``None`` and no internet connection is available,
         all elevations default to 0.0 m with a warning.
     """
-    try:
-        # Load the street layer as a GeoDataFrame
-        osm_street_layer = gpd.read_file(osm_street_layer_geojson_file)
+    # Load the street layer as a GeoDataFrame
+    osm_street_layer = gpd.read_file(osm_street_layer_geojson_file)
 
-        # Load the heat consumer data as a DataFrame
-        heat_consumer_df = pd.read_csv(data_csv_file_name, sep=";")
-        logger.info("Loaded %d street segments and %d buildings", len(osm_street_layer), len(heat_consumer_df))
+    # Load the heat consumer data as a DataFrame
+    heat_consumer_df = pd.read_csv(data_csv_file_name, sep=";")
+    logger.info("Loaded %d street segments and %d buildings", len(osm_street_layer), len(heat_consumer_df))
 
-        # Validate required columns (clear up-front error naming any missing column)
-        validate_csv_columns(heat_consumer_df, "coordinates")
+    # Validate required columns (clear up-front error naming any missing column)
+    validate_csv_columns(heat_consumer_df, "coordinates")
 
-        # Convert the DataFrame into a GeoDataFrame (2D first)
-        heat_consumer_layer = gpd.GeoDataFrame(
-            heat_consumer_df, geometry=gpd.points_from_xy(heat_consumer_df.UTM_X, heat_consumer_df.UTM_Y), crs=crs
+    # Convert the DataFrame into a GeoDataFrame (2D first)
+    heat_consumer_layer = gpd.GeoDataFrame(
+        heat_consumer_df, geometry=gpd.points_from_xy(heat_consumer_df.UTM_X, heat_consumer_df.UTM_Y), crs=crs
+    )
+
+    # Create the heat generator locations as a GeoDataFrame (2D first)
+    heat_generator_locations = [Point(x, y) for x, y in coordinates]
+    heat_generator_layer = gpd.GeoDataFrame(geometry=heat_generator_locations, crs=crs)
+
+    # Validate data consistency
+    if heat_consumer_layer.empty:
+        logger.warning("No heat consumers found in data")
+    if heat_generator_layer.empty:
+        logger.warning("No heat generators provided")
+
+    # --- Elevation enrichment ------------------------------------------------
+    all_points = collect_unique_points_from_gdfs(heat_consumer_layer, heat_generator_layer)
+    if all_points:
+        logger.info(
+            "Querying elevation for %d unique points (%s)",
+            len(all_points),
+            "GeoTIFF: " + dem_path if dem_path else "OpenTopoData API",
         )
+        elev_lookup = build_elevation_lookup(all_points, dem_path, crs_utm=crs)
 
-        # Create the heat generator locations as a GeoDataFrame (2D first)
-        heat_generator_locations = [Point(x, y) for x, y in coordinates]
-        heat_generator_layer = gpd.GeoDataFrame(geometry=heat_generator_locations, crs=crs)
-
-        # Validate data consistency
-        if heat_consumer_layer.empty:
-            logger.warning("No heat consumers found in data")
-        if heat_generator_layer.empty:
-            logger.warning("No heat generators provided")
-
-        # --- Elevation enrichment ------------------------------------------------
-        all_points = collect_unique_points_from_gdfs(heat_consumer_layer, heat_generator_layer)
-        if all_points:
+        # Only make the points 3-D when there is real terrain (matches the line guard below).
+        # Otherwise points would become 3-D with z=0 while the 2-D street layer stays 2-D,
+        # which mixes dimensions in the geometry construction.
+        z_values = list(elev_lookup.values())
+        if any(z != 0.0 for z in z_values):
+            heat_consumer_layer = assign_elevation_to_geodataframe(heat_consumer_layer, elev_lookup)
+            heat_generator_layer = assign_elevation_to_geodataframe(heat_generator_layer, elev_lookup)
             logger.info(
-                "Querying elevation for %d unique points (%s)",
-                len(all_points),
-                "GeoTIFF: " + dem_path if dem_path else "OpenTopoData API",
+                "Elevation range: %.1f m – %.1f m (Δh = %.1f m)",
+                min(z_values),
+                max(z_values),
+                max(z_values) - min(z_values),
             )
-            elev_lookup = build_elevation_lookup(all_points, dem_path, crs_utm=crs)
+        else:
+            logger.warning(
+                "All elevations are 0.0 m — no DEM data available. Points remain 2-D; "
+                "hydraulic pressure calculations will ignore terrain height."
+            )
+    # -------------------------------------------------------------------------
 
-            # Only make the points 3-D when there is real terrain (matches the line guard below).
-            # Otherwise points would become 3-D with z=0 while the 2-D street layer stays 2-D,
-            # which mixes dimensions in the geometry construction.
-            z_values = list(elev_lookup.values())
-            if any(z != 0.0 for z in z_values):
-                heat_consumer_layer = assign_elevation_to_geodataframe(heat_consumer_layer, elev_lookup)
-                heat_generator_layer = assign_elevation_to_geodataframe(heat_generator_layer, elev_lookup)
-                logger.info(
-                    "Elevation range: %.1f m – %.1f m (Δh = %.1f m)",
-                    min(z_values),
-                    max(z_values),
-                    max(z_values) - min(z_values),
-                )
-            else:
-                logger.warning(
-                    "All elevations are 0.0 m — no DEM data available. Points remain 2-D; "
-                    "hydraulic pressure calculations will ignore terrain height."
-                )
-        # -------------------------------------------------------------------------
-
-        return osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df
-
-    except FileNotFoundError:
-        logger.exception("Required file not found")
-        return None, None, None, None
-    except KeyError:
-        logger.exception("Missing required data columns")
-        return None, None, None, None
-    except Exception:
-        logger.exception("Error loading layers")
-        return None, None, None, None
+    return osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df
 
 
 def generate_and_export_layers(
@@ -212,7 +201,8 @@ def generate_and_export_layers(
     :raises ValueError: If invalid algorithm or malformed data
     :raises OSError: If output directory cannot be created
     """
-    # Load and process all input data layers (includes elevation enrichment for points)
+    # Load and process all input data layers (includes elevation enrichment for points).
+    # Errors propagate: the GUI thread reports them instead of announcing success (BACKLOG C44).
     osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df = load_layers(
         osm_street_layer_geojson_file_name,
         data_csv_file_name,
@@ -220,11 +210,6 @@ def generate_and_export_layers(
         dem_path=dem_path,
         crs=crs,
     )
-
-    # Validate data loading success
-    if any(layer is None for layer in [osm_street_layer, heat_consumer_layer, heat_generator_layer]):
-        logger.error("Failed to load required data layers. Export cancelled.")
-        return
 
     # Generate optimized network backbone using specified algorithm
     logger.info("Generating network using the %s algorithm", algorithm)
@@ -274,22 +259,16 @@ def generate_and_export_layers(
     os.makedirs(output_dir, exist_ok=True)
 
     # Export in unified format
-    try:
-        unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
-            flow_lines=flow_lines_gdf,
-            return_lines=return_lines_gdf,
-            building_connections=heat_consumer_gdf,
-            generator_connections=heat_producer_gdf,
-            state="designed",
-            crs=crs,
-        )
-        # Use default filename for unified network
-        unified_filename = "Wärmenetz.geojson"
-        unified_path = os.path.join(output_dir, unified_filename)
-        NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
-    except Exception:
-        logger.exception("Failed to export the unified network GeoJSON")
-        return
+    unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
+        flow_lines=flow_lines_gdf,
+        return_lines=return_lines_gdf,
+        building_connections=heat_consumer_gdf,
+        generator_connections=heat_producer_gdf,
+        state="designed",
+        crs=crs,
+    )
+    unified_path = os.path.join(output_dir, "Wärmenetz.geojson")
+    NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
 
     # Summary statistics
     logger.info(
