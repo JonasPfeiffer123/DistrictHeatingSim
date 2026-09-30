@@ -14,6 +14,7 @@ import tempfile
 import traceback
 
 try:
+    from PyQt6.QtWebChannel import QWebChannel
     from PyQt6.QtWebEngineCore import QWebEngineSettings
     from PyQt6.QtWebEngineWidgets import QWebEngineView
 
@@ -24,12 +25,43 @@ except ImportError:
         "PyQt6.QtWebEngineWidgets not available. Interactive plot will use fallback label."
     )
 
-from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QUrl, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
 from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import InteractiveNetworkPlot
+from districtheatingsim.utilities.utilities import get_resource_path
 
 logger = logging.getLogger(__name__)
+
+# Qt's QWebChannel client (the copy the Leaflet map uses), inlined into the plot page like
+# plotly.js so the page does not have to load it from another scheme.
+_QWEBCHANNEL_JS_RESOURCE = os.path.join("leaflet", "qwebchannel.js")
+_qwebchannel_js: str | None = None
+
+
+def _qwebchannel_script() -> str:
+    global _qwebchannel_js
+    if _qwebchannel_js is None:
+        with open(get_resource_path(_QWEBCHANNEL_JS_RESOURCE), encoding="utf-8") as f:
+            _qwebchannel_js = f.read()
+    return _qwebchannel_js
+
+
+class PipeClickBridge(QObject):
+    """
+    Receives pipe clicks from the plot page over the QWebChannel.
+
+    The page calls ``pipeBridge.pipeClicked(index)`` in its ``plotly_click`` handler, so a
+    click reaches Python as an event — instead of polling ``window.selectedPipeIndex`` via
+    ``runJavaScript`` every 200 ms for as long as the widget exists (BACKLOG G10).
+    """
+
+    pipe_clicked = pyqtSignal(int)
+
+    @pyqtSlot(int)
+    def pipeClicked(self, pipe_idx: int) -> None:
+        """Slot called from JavaScript with the index of the clicked pipe."""
+        self.pipe_clicked.emit(int(pipe_idx))
 
 
 class NetworkPlotWidget(QWidget):
@@ -44,7 +76,8 @@ class NetworkPlotWidget(QWidget):
 
     pipe_selected = pyqtSignal(int)  # pipe index
 
-    # JavaScript injected into every generated HTML file
+    # JavaScript injected into every generated HTML file (after the inlined qwebchannel.js).
+    # A pipe click highlights the pipe and is pushed to Python through the web channel.
     _CLICK_JS = """
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -52,6 +85,13 @@ class NetworkPlotWidget(QWidget):
         if (!plotDiv) return;
 
         window.lastHighlighted = -1;
+
+        var pipeBridge = null;
+        if (window.qt && window.qt.webChannelTransport && window.QWebChannel) {
+            new QWebChannel(window.qt.webChannelTransport, function(channel) {
+                pipeBridge = channel.objects.pipeBridge;
+            });
+        }
 
         plotDiv.on('plotly_click', function(data) {
             try {
@@ -61,7 +101,9 @@ class NetworkPlotWidget(QWidget):
                         var pipeIdx = point.customdata[0];
                         var traceIdx = point.curveNumber;
                         window.highlightPipe(pipeIdx, traceIdx);
-                        window.selectedPipeIndex = pipeIdx;
+                        if (pipeBridge) {
+                            pipeBridge.pipeClicked(pipeIdx);
+                        }
                     }
                 }
             } catch (e) {
@@ -113,13 +155,8 @@ class NetworkPlotWidget(QWidget):
         super().__init__(parent)
         self._net_data = None
         self._plot_html_path = None
-        self._last_selected_pipe = None
         self._page_ready = False  # True once the WebEngine page has finished loading
         self.project_crs: str = "EPSG:25833"
-
-        self._click_timer = QTimer()
-        self._click_timer.setInterval(200)
-        self._click_timer.timeout.connect(self._poll_click)
 
         self._init_ui()
 
@@ -203,9 +240,6 @@ class NetworkPlotWidget(QWidget):
                 self._inject_click_handler(self._plot_html_path)
                 self._page_ready = False
                 self._canvas.setUrl(QUrl.fromLocalFile(self._plot_html_path))
-
-                if not self._click_timer.isActive():
-                    self._click_timer.start()
             else:
                 self._canvas.setText(
                     "Interactive visualization requires PyQt6-WebEngine.\nPlease install: pip install PyQt6-WebEngine"
@@ -261,6 +295,13 @@ class NetworkPlotWidget(QWidget):
             settings = self._canvas.settings()
             settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
             settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+
+            # Pipe clicks arrive as events over the web channel (see PipeClickBridge).
+            self._click_bridge = PipeClickBridge(self)
+            self._click_bridge.pipe_clicked.connect(self.pipe_selected)
+            self._channel = QWebChannel(self._canvas.page())
+            self._channel.registerObject("pipeBridge", self._click_bridge)
+            self._canvas.page().setWebChannel(self._channel)
         else:
             self._canvas = QLabel("Interactive plot requires PyQt6-WebEngine")
             self._canvas.setMinimumSize(500, 500)
@@ -383,34 +424,31 @@ class NetworkPlotWidget(QWidget):
         ".plotly-graph-div{height:100vh!important;width:100%!important;}</style>"
     )
 
+    @classmethod
+    def patch_plot_html(cls, html: str) -> str:
+        """
+        Add the fill CSS, the QWebChannel client and the click handler to a Plotly HTML page.
+
+        Only the first ``</head>`` and the last ``</body>`` are touched, so the markers
+        can never match inside the inlined plotly.js.
+
+        :param html: HTML written by ``plotly.io.write_html``
+        :type html: str
+        :return: Patched HTML
+        :rtype: str
+        """
+        html = html.replace("</head>", cls._FILL_CSS + "</head>", 1)
+        before, marker, after = html.rpartition("</body>")
+        if not marker:
+            return html
+        scripts = "<script>" + _qwebchannel_script() + "</script>" + cls._CLICK_JS
+        return before + scripts + marker + after
+
     def _inject_click_handler(self, html_path: str):
         try:
             with open(html_path, encoding="utf-8") as f:
                 html = f.read()
-            html = html.replace("</head>", self._FILL_CSS + "</head>")
-            html = html.replace("</body>", self._CLICK_JS + "</body>")
             with open(html_path, "w", encoding="utf-8") as f:
-                f.write(html)
+                f.write(self.patch_plot_html(html))
         except Exception as e:
             logger.error(f"Failed to inject click handler: {e}")
-
-    def _poll_click(self):
-        if not WEBENGINE_AVAILABLE:
-            return
-        try:
-            self._canvas.page().runJavaScript(
-                "window.selectedPipeIndex",
-                self._on_click_result,
-            )
-        except Exception as e:
-            logger.debug(f"Error polling plot click: {e}")
-
-    def _on_click_result(self, pipe_idx):
-        if pipe_idx is None or pipe_idx == self._last_selected_pipe:
-            return
-        self._last_selected_pipe = pipe_idx
-        try:
-            self._canvas.page().runJavaScript("window.selectedPipeIndex = null;")
-        except Exception:
-            pass
-        self.pipe_selected.emit(int(pipe_idx))

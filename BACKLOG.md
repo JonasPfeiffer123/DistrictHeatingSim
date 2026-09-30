@@ -1162,6 +1162,14 @@ standard 8 760-h TRY both BDEW and VDI 4655 fail in pyslpheat (`shapes (365,) (3
 0.4.1. Fix either in pyslpheat (map the 8 760-h weather year onto 366 days, e.g. repeat 28 Feb) or
 restrict the year in the app → decision pending.
 
+### C44. Failed net generation is reported as success (open, 2026-09-30)
+`generate_and_export_layers` (`net_generation/import_and_create_layers.py`) catches every error
+while loading the layers (missing file, missing CSV column, …) and while exporting the network
+GeoJSON, logs it and *returns* — the `NetGenerationThread` then emits `calculation_done`, so the
+GUI reports success although no network was written (and an older `Wärmenetz.geojson` stays in
+place). Found while moving its prints to logging (G10); the errors are at least in the log file
+now. Fix: raise instead of returning, so the thread's existing `calculation_error` path shows it.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1719,17 +1727,41 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   map UI + editor loads (only the base-map tiles are missing). Only remaining console error in both:
   `qt is not defined` (expected outside QtWebEngine).
 
-### G10. Hygiene (partly done 2026-09-30)
-- 221 `print` calls vs 49 `logging` calls in `src`; lost in the no-console exe, some in hot paths
-  (whole arrays per producer in the time-series setup). Move to `logging` + a log file.
+### G10. Hygiene (done 2026-09-30)
+- ~~221 `print` calls vs 49 `logging` calls in `src`; lost in the no-console exe, some in hot paths
+  (whole arrays per producer in the time-series setup).~~ **Done 2026-09-30:** every module logs
+  through `logging.getLogger(__name__)`; the two import-time `logging.basicConfig` calls in library
+  modules (`energy_system.py`, `net_simulation_pandapipes/utilities.py`) and all root-logger calls
+  are gone. `utilities/logging_setup.configure_logging()` is called once by the entry point:
+  package loggers at INFO (`DISTRICTHEATINGSIM_LOG_LEVEL` overrides), root at WARNING (third-party
+  warnings only), Python warnings captured, console (when there is one) + rotating file
+  `%LOCALAPPDATA%\DistrictHeatingSim\logs\districtheatingsim.log` (2 MB × 4,
+  `DISTRICTHEATINGSIM_LOG_DIR` overrides; console only if the folder is not writable). Per-step /
+  per-pipe / per-building chatter and whole arrays went to DEBUG (arrays summarised as maxima),
+  progress summaries to INFO, data problems to WARNING, swallowed exceptions to ERROR with
+  traceback. The global exception handler and startup failures now log with traceback, so
+  crashes of the no-console exe leave a trace. The controllers' `debug=True` flag logs at INFO.
+  Pinned by `tests/test_logging_setup.py` incl. an AST guard: no `print`, `logging.basicConfig`
+  or root-logger call in the package (the entry point's console prompts excepted). Worker
+  processes of the parallel time series (G2) do not configure logging (their warnings go to
+  stderr via Python's last-resort handler). Also fixed an invalid `\*` escape in an
+  `advanced_plots.py` docstring (SyntaxWarning on Python 3.12). Found on the way: C44.
 - ~~`MinimumSupplyTemperatureController`s are created even when the minimum supply temperature is
   disabled~~ **Correction 2026-09-30:** not in the app — the GUI passes `None` when the option is
   off, and then no controllers are created. The 5 °C controllers only appeared in the audit's
   benchmark (the golden-master setup passes `0.0` + ΔT). With the option *on*, each controller's
   `all(net.heat_consumer["qext_w"] == 0)` is O(N) per call: measured 15 → 9 ms per control
   iteration at 500 buildings with a vectorised check — negligible next to a pipeflow. Left as is.
-- The network plot polls for clicks every 200 ms via `runJavaScript` (`network_plot_widget.py`) —
-  the existing QWebChannel could push click events instead.
+- ~~The network plot polls for clicks every 200 ms via `runJavaScript` (`network_plot_widget.py`)~~
+  **Done 2026-09-30:** the page's `plotly_click` handler calls `pipeBridge.pipeClicked(index)` over
+  a `QWebChannel` (`PipeClickBridge` → `pipe_selected`); the timer (5 renderer round trips per
+  second for as long as the widget existed, also with the tab hidden) is gone. `qwebchannel.js`
+  (the Leaflet map's copy) is inlined into the plot HTML like plotly.js; the page patch touches
+  only the first `</head>` and the last `</body>`. Side fix: clicking the same pipe again selects
+  it again (the poller swallowed repeats of the last pipe). Verified end-to-end on the real
+  Windows platform with the Görlitz net (clicks incl. a repeat, and after an in-place
+  `Plotly.react` recolour, arrive in Python); headless tests (`tests/test_network_plot_click.py`)
+  pin the page patch and the bridge — the web view itself still has no headless seam.
 - ~~`GeoDataFrame.unary_union` is deprecated~~ **done 2026-09-30:** `osm/area_selection.py` uses
   `union_all()` (`tests/test_area_selection.py` passes with `-W error::DeprecationWarning`).
 
@@ -1754,15 +1786,15 @@ release mechanics themselves (section F). See the **Release plan** below.
 2. Quick wins: ~~G1 (pump gain + damping with fallback)~~ **done 2026-09-29**, ~~G3 quick wins (vectorised
    day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
    Geoman)~~ **done 2026-09-29**.
-3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), ~~G9
+3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (+ `pyslpheat` 0.4.1 caching, verified), ~~G8 lazy imports + lazy main interface~~ **done 2026-09-30**, ~~G9
    vendoring~~ **done 2026-09-30**, ~~G5 spatial index~~ **done 2026-09-30**, ~~G4 optimizer overhead~~ measured
    2026-09-30: ~1 % of an optimization run — not worth changing.
 4. Large (2026-09-30, decisions: numba optional, parallel opt-in, pickle + Parquet, optimizer
    hardened not replaced): ~~numba for the solar loop (G3)~~ **done**, ~~parallel yearly net
    simulation (G2)~~ **done**, ~~Parquet instead of JSON + JSON instead of pickle (G7)~~ **done**,
-   ~~optimizer (G4)~~ **hardened, C41 fixed**, G10 hygiene partly done (logging + click polling open).
-   Still open elsewhere: pyslpheat caching (G6, other repo), `thermal-energy-storage-1d` step loop
-   (G3/G4, other repo), lazy tabs (G8), C38, C40.
+   ~~optimizer (G4)~~ **hardened, C41 fixed**, ~~G10 hygiene (logging, click events)~~ **done**.
+   Still open: `thermal-energy-storage-1d` step loop (G3/G4, other repo — integrate + verify when
+   pushed); decisions on C38, C40, C42, C43; fix C44.
 
 ## Release plan (2026-06-15 audit)
 
