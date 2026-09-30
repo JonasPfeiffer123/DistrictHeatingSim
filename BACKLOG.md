@@ -1476,23 +1476,28 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
 - **Done:** the hourly loop formatted two time stamps with `np.datetime_as_string` every hour for
   the stagnation same-day check → `solar_thermal._same_day_as_previous` precomputes it once
   (`calculate`); `generate` compares `datetime64[D]` scalars.
-- **Effect:** `calculate()` **158 → 85 ms**, per-step `generate` year 159 → 95 ms, examples/10
-  173 → 100 ms per solar call (28.2 → 19.3 s; the example optimizes without a seed, so the call
-  count varies). Results bit-identical: new `tests/test_solar_thermal.py` (the first tests for the
+- **Effect:** `calculate()` **158 → 85 ms**, per-step `generate` year 159 → 95 ms (short, repeatable
+  measurements). Inside examples/10 the per-call time is **not** a reliable yardstick on this
+  machine: repeated runs of the *same* code gave 100–180 ms per solar call, with the state-free
+  radiation step varying in the same ratio (3.2–5.6 ms) — sustained ~30 s full load throttles the
+  clock. (The example also optimizes without a seed, so its call count varies.) Results bit-identical: new `tests/test_solar_thermal.py` (the first tests for the
   solar model — radiation, `calculate` for both collector types, a stagnation scenario, `generate`)
   was captured on the old code and passes on old and new.
 - **Large (open):** the loop itself (~85 ms of the remaining ~100 ms) is a numba/vectorisation
   candidate. The same per-hour Python-loop pattern exists in `chp.py`, `biomass_boiler.py`,
   `geothermal_heat_pump.py` (buffer storage).
 
-### G4. Energy system with network storage + optimizer (medium, open)
+### G4. Energy system with network storage + optimizer (overhead: measured, not worth it; rest open)
 - `calculate_mix` without storage: **2 ms** (vectorised). With the 1D `ThermalStorageAdapter`:
   **0.92 s** (8760 Python steps in `thermal-energy-storage-1d`, ~¼ of it adapter overhead). The
   optimizer called `calculate_mix` 156× in a 1-variable test → extrapolated **~2.4 min** with storage,
   growing with every optimization variable (finite differences) and restart.
 - Every objective evaluation deep-copies the whole system (`EnergySystemOptimizer.optimize` →
   `self.energy_system_copy.copy()`) and `calculate_mix` ends with `getInitialPlotData()` — neither is
-  needed inside the optimizer loop.
+  needed inside the optimizer loop. **Measured 2026-09-30 (examples/10, 167 evaluations): `copy`
+  2.0 ms/call = 0.35 s total, `getInitialPlotData` 0.2 ms/call = 0.03 s — ~1 % of the 31 s run;
+  `calculate_mix` itself is the other 99 %.** Not worth changing; the levers are the per-hour loops
+  (G3 large) and the optimizer method below.
 - SLSQP (gradient-based, finite differences) on a piecewise-flat objective (on/off dispatch): in
   the test, restart 1 stalled on a plateau (objective = 1e6 penalty) and was still counted as
   `success`. A derivative-free method (Powell / Nelder-Mead) or `differential_evolution` would be
@@ -1622,7 +1627,8 @@ release mechanics themselves (section F). See the **Release plan** below.
    day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
    Geoman)~~ **done 2026-09-29**.
 3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), ~~G9
-   vendoring~~ **done 2026-09-30**, ~~G5 spatial index~~ **done 2026-09-30**, G4 optimizer overhead.
+   vendoring~~ **done 2026-09-30**, ~~G5 spatial index~~ **done 2026-09-30**, ~~G4 optimizer overhead~~ measured
+   2026-09-30: ~1 % of an optimization run — not worth changing.
 4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
    instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.
 
