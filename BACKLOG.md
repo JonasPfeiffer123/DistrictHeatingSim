@@ -1559,7 +1559,7 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   only the welcome screen is visible. Building tabs on first project open would remove both, but
   `main_view` reaches into the tabs directly (save/load/close) — needs a careful refactor.
 
-### G9. Leaflet map: unused/unpinned CDN libraries (quick wins done 2026-09-29; medium open)
+### G9. Leaflet map: unused/unpinned CDN libraries (done 2026-09-29/30)
 - **Done:** three.js r170 was loaded on every map start but used nowhere (no `THREE` reference in
   the JS or in any Python-injected script) → removed from `map.html`.
 - **Done:** Leaflet-Geoman was loaded from `@latest` (CSS + JS) with no SRI hash → pinned to
@@ -1569,9 +1569,17 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   Edge: the map container and all Geoman toolbar buttons are in the DOM (the script passed the SRI
   check and `main.js` ran `map.pm.addControls`). No automated seam (QWebEngineView) — re-check by
   hand in the app when bumping the version (compute the new hashes from the pinned URLs).
-- Leaflet.draw is only used as a fallback when Geoman is missing → can go once Geoman is pinned.
-- **Medium:** all libraries come from CDNs → no map without internet. Vendoring them into
-  `leaflet/` fixes offline use, pinning and load time at once.
+- **Done 2026-09-30 — vendored:** all libraries came from CDNs → **no map at all without internet**
+  (verified: offline the page failed with `L is not defined`, no editor). Leaflet 1.9.4, proj4js
+  2.12.1 and Leaflet-Geoman 2.20.2 now live in `leaflet/vendor/` (byte-identical to the CDN files —
+  same SRI hashes — plus their licenses; sources/update steps in `leaflet/vendor/README.md`); the
+  PyInstaller specs and `package-data` already ship the whole `leaflet/` folder. Dropped two unused
+  includes: **proj4leaflet** (no `L.Proj` anywhere) and **Leaflet.draw** (only a `typeof`-guarded
+  fallback in `main.js` for when Geoman is missing — now dead code, left in place). **Verified**
+  headless in Edge: online the rendered map DOM equals the CDN version (only difference: Leaflet's
+  internal stamp counter in the base-layer radio names) with all Geoman tools; **offline** the whole
+  map UI + editor loads (only the base-map tiles are missing). Only remaining console error in both:
+  `qt is not defined` (expected outside QtWebEngine).
 
 ### G10. Hygiene (medium, open)
 - 221 `print` calls vs 49 `logging` calls in `src`; lost in the no-console exe, some in hot paths
@@ -1604,8 +1612,8 @@ release mechanics themselves (section F). See the **Release plan** below.
 2. Quick wins: ~~G1 (pump gain + damping with fallback)~~ **done 2026-09-29**, ~~G3 quick wins (vectorised
    day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
    Geoman)~~ **done 2026-09-29**.
-3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), G9
-   vendoring, G5 spatial index, G4 optimizer overhead.
+3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), ~~G9
+   vendoring~~ **done 2026-09-30**, G5 spatial index, G4 optimizer overhead.
 4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
    instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.
 

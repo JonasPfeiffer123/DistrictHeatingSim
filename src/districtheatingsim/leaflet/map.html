@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with Leaflet.draw and CRS Support</title>
+    <title>Leaflet Map with Leaflet-Geoman and CRS Support</title>
     
-    <!-- Leaflet CSS - Latest Version -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    
-    <!-- Leaflet Draw CSS - Latest Version -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Libraries are bundled in vendor/ (see vendor/README.md) so the map works offline;
+         only the base-map tiles come from the internet. -->
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="vendor/leaflet-1.9.4/leaflet.css" />
 
-    <!-- Leaflet-Geoman CSS - pinned (was @latest; an upstream release could break the editor) -->
-    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20.2/dist/leaflet-geoman.css"
-          integrity="sha384-++juJE6hRzkkV4Ri9H2C+3yjCTdEk4PaZxptm3cpgKKjuMcAHErn35Q/0sGitZCR" crossorigin="" />
+    <!-- Leaflet-Geoman CSS -->
+    <link rel="stylesheet" href="vendor/leaflet-geoman-free-2.20.2/leaflet-geoman.css" />
 
     <style>
         /* Gesamtcontainer */
@@ -272,20 +269,14 @@
         </div>
     </div>
 
-    <!-- Leaflet JS - Latest Version -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet JS -->
+    <script src="vendor/leaflet-1.9.4/leaflet.js"></script>
 
-    <!-- Leaflet Draw JS - Latest Version -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <!-- Proj4 for coordinate transformation (geojsonHandler.js) -->
+    <script src="vendor/proj4-2.12.1/proj4.js"></script>
 
-    <!-- Proj4 and Proj4Leaflet for coordinate transformation - Latest Versions -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.12.1/proj4.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.js"></script>
-
-    <!-- Leaflet-Geoman for advanced editing - pinned (was @latest; an upstream release could break the editor) -->
-    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20.2/dist/leaflet-geoman.min.js"
-            integrity="sha384-pXNWPiDuE2DMvhW70luPUxtqU3gGa3Fn+Q4CckIXyA9ZcnByNj6FgpHi8Km45rcc" crossorigin=""></script>
+    <!-- Leaflet-Geoman for advanced editing -->
+    <script src="vendor/leaflet-geoman-free-2.20.2/leaflet-geoman.min.js"></script>
 
     <!-- Custom JS -->
     <script src="main.js"></script>
