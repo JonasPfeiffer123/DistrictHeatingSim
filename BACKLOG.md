@@ -1145,6 +1145,23 @@ compete with their actual objective value; if no candidate covers any demand the
 a clear `RuntimeError`. Now every seed lands at ~300 kW / 67 % coverage. Pinned by
 `tests/test_energy_system.py::TestOptimizerPlateau` (4, all fail on the old code).
 
+### C42. Mixing residential (VDI 4655) and commercial (BDEW) buildings crashes the heat demand (open, 2026-09-30)
+Found while verifying pyslpheat 0.4.1 (independent of that version). `generate_profiles_from_csv`
+maps EFH/MFH to VDI 4655, which pyslpheat returns **quarter-hourly** (35 040 values; the code even
+converts kWh/15 min → kW), and all other types to BDEW (hourly, 8 760). One project with both →
+`np.array` over the per-building lists fails ("inhomogeneous shape"). A residential-only project
+"works" but produces 35 040-step profiles while the rest of the app is hourly (time-series dialog
+max 8760, energy system) — it most likely simulates only the first quarter of the year. **Proposed
+fix:** aggregate the VDI profiles to hourly means inside `generate_profiles_from_csv` (energy
+preserving; the air temperature is already taken hourly) — changes results of residential
+projects → decision pending.
+
+### C43. Leap-year calculation year crashes the heat demand (open, 2026-09-30)
+The project tab lets the user pick the calculation year; for a leap year (2024, 2028, …) with the
+standard 8 760-h TRY both BDEW and VDI 4655 fail in pyslpheat (`shapes (365,) (366,)`), also in
+0.4.1. Fix either in pyslpheat (map the 8 760-h weather year onto 366 days, e.g. repeat 28 Feb) or
+restrict the year in the app → decision pending.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1580,12 +1597,14 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   tie → first, empty layer). The remaining cost is `simplify_network`'s O(P²) point merge (0.19 s at
   500 buildings) — not worth touching yet.
 
-### G6. Heat demand: slow profile generation, runs on the UI thread (worker done 2026-09-30; pyslpheat open)
+### G6. Heat demand: slow profile generation, runs on the UI thread (done 2026-09-30)
 - ~**24 ms per building** (180 buildings = 4.3 s; extrapolated ~12 s for 500). Cause is in
   `pyslpheat` (own package, **separate repo**): the TRY file and coefficient tables are re-read per
   building (360× `read_csv` for 180 buildings; ~40 % of the profile), and `get_weekday_factor`
-  iterates rows with `.iloc` (~35 %). Caching + vectorising → several-fold. **Open** — has to land
-  in `pyslpheat` (DistrictHeatingSim passes the TRY *path* per building).
+  iterates rows with `.iloc` (~35 %). **Done in pyslpheat 0.4.1** (commit 8dcfb51, separate agent;
+  installed here 2026-09-30): profiles **bit-identical** to the previous version (2751480) for 45 BDEW
+  + 45 VDI 4655 buildings in 2023 and 2025; **BDEW 25.7 → 2.7 ms, VDI 4655 101.4 → 4.3 ms per
+  building**. `pyproject.toml` still points at the unpinned git URL (installs take the latest commit).
 - **Done:** `BuildingPresenter.calculate_heat_demand` ran the profiles, the formatting and the (large)
   JSON write synchronously on the UI thread → the window froze. New
   `gui/BuildingTab/heat_demand_thread.py`: `compute_and_save_heat_demand` (profiles → formatted
