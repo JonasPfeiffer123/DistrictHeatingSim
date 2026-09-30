@@ -1605,15 +1605,19 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   map UI + editor loads (only the base-map tiles are missing). Only remaining console error in both:
   `qt is not defined` (expected outside QtWebEngine).
 
-### G10. Hygiene (medium, open)
+### G10. Hygiene (partly done 2026-09-30)
 - 221 `print` calls vs 49 `logging` calls in `src`; lost in the no-console exe, some in hot paths
   (whole arrays per producer in the time-series setup). Move to `logging` + a log file.
-- `MinimumSupplyTemperatureController`s are created even when the minimum supply temperature is
-  disabled (then with 5 °C); each checks `all(net.heat_consumer["qext_w"] == 0)` per call → O(N²)
-  per control iteration for many buildings.
+- ~~`MinimumSupplyTemperatureController`s are created even when the minimum supply temperature is
+  disabled~~ **Correction 2026-09-30:** not in the app — the GUI passes `None` when the option is
+  off, and then no controllers are created. The 5 °C controllers only appeared in the audit's
+  benchmark (the golden-master setup passes `0.0` + ΔT). With the option *on*, each controller's
+  `all(net.heat_consumer["qext_w"] == 0)` is O(N) per call: measured 15 → 9 ms per control
+  iteration at 500 buildings with a vectorised check — negligible next to a pipeflow. Left as is.
 - The network plot polls for clicks every 200 ms via `runJavaScript` (`network_plot_widget.py`) —
   the existing QWebChannel could push click events instead.
-- `GeoDataFrame.unary_union` is deprecated in geopandas (`osm/area_selection.py`) → `union_all()`.
+- ~~`GeoDataFrame.unary_union` is deprecated~~ **done 2026-09-30:** `osm/area_selection.py` uses
+  `union_all()` (`tests/test_area_selection.py` passes with `-W error::DeprecationWarning`).
 
 ---
 
