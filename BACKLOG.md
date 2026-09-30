@@ -1498,7 +1498,7 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   `success`. A derivative-free method (Powell / Nelder-Mead) or `differential_evolution` would be
   more robust; restarts are embarrassingly parallel.
 
-### G5. Net generation: O(n²) MST + full street scans (quick win done 2026-09-29; medium open)
+### G5. Net generation: O(n²) MST + full street scans (done 2026-09-29/30)
 - **Done:** `generate_mst` built the complete graph with nested `iterrows` + a shapely distance per
   pair into networkx (`minimal_spanning_tree.py`) → `scipy.spatial.distance.pdist` +
   `scipy.sparse.csgraph.minimum_spanning_tree`: **300 points 3.9 s → 16 ms, 1000 points ~45 s
@@ -1510,8 +1510,17 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   (same edge set as the networkx reference on 60 random points, coincident points, Z kept, <2
   points). Real generation (`examples/data`, MST + Advanced MST) produces identical networks
   (1071.708 m / 18 lines and 1095.517 m / 29 lines) before and after.
-- **Medium:** `adjust_segments_to_roads` computes the distance to *every* street per segment per
-  iteration (`street_layer.distance(pt).idxmin()`, up to 50 iterations) → `street_layer.sindex.nearest`.
+- **Done 2026-09-30:** `adjust_segments_to_roads` computed the distance to *every* street per
+  segment per iteration (`street_layer.distance(pt).idxmin()`, twice per adjusted segment, up to 50
+  iterations), and `find_nearest_line` (building → street connections) looped over every street in
+  Python. Both now use `net_generation/nearest.py::nearest_position` — the layer's cached spatial
+  index (`sindex.nearest(..., return_all=True)`, lowest position on ties = the old first-wins rule).
+  Görlitz streets (1277) + random buildings: **500 buildings 5.5 s → 0.38 s** (connections 2.81 →
+  0.03 s, road alignment 2.70 → 0.35 s; 150: 2.6 → 0.24 s), results identical (same line count +
+  total length at 50/150/500; `examples/data` MST/Advanced MST unchanged). Pinned by
+  `tests/test_net_generation.py::TestNearestPosition` (matches a full scan on 100 random queries,
+  tie → first, empty layer). The remaining cost is `simplify_network`'s O(P²) point merge (0.19 s at
+  500 buildings) — not worth touching yet.
 
 ### G6. Heat demand: slow profile generation, runs on the UI thread (worker done 2026-09-30; pyslpheat open)
 - ~**24 ms per building** (180 buildings = 4.3 s; extrapolated ~12 s for 500). Cause is in
@@ -1613,7 +1622,7 @@ release mechanics themselves (section F). See the **Release plan** below.
    day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
    Geoman)~~ **done 2026-09-29**.
 3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), ~~G9
-   vendoring~~ **done 2026-09-30**, G5 spatial index, G4 optimizer overhead.
+   vendoring~~ **done 2026-09-30**, ~~G5 spatial index~~ **done 2026-09-30**, G4 optimizer overhead.
 4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
    instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.
 
