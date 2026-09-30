@@ -15,7 +15,6 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.geocoding.geocoding import process_data
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
-from districtheatingsim.net_generation.osmnx_steiner_network import generate_and_export_osmnx_layers
 
 
 class NetGenerationThread(QThread):
@@ -52,7 +51,10 @@ class NetGenerationThread(QThread):
         try:
             project_crs = self.inputs.get("project_crs", "EPSG:25833")
             if self.inputs["generation_mode"] == "OSMnx":
-                # Use OSMnx-based network generation
+                # Use OSMnx-based network generation. Imported here: osmnx (+ scikit-learn,
+                # rasterio) costs ~0.7 s and this module loads at application start (BACKLOG G8).
+                from districtheatingsim.net_generation.osmnx_steiner_network import generate_and_export_osmnx_layers
+
                 generate_and_export_osmnx_layers(
                     osm_street_layer_geojson_file_name=self.inputs.get("streetLayer", ""),
                     data_csv_file_name=self.inputs["dataCsv"],
