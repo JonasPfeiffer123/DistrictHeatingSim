@@ -8,9 +8,8 @@ BDEW profiles and Test Reference Year (TRY) climate data.
 """
 
 import json
+import logging
 import os
-import traceback
-from collections import namedtuple
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -36,9 +35,16 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_serializable
-from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
-from districtheatingsim.utilities.schema import add_meta, check_version
+from districtheatingsim.gui.BuildingTab.heat_demand_thread import (
+    HeatDemandResult,
+    HeatDemandThread,
+    calculate_heat_demand,
+    combine_data_with_results,
+    format_heat_demand_results,
+    write_building_json,
+)
+from districtheatingsim.gui.utilities import CheckableComboBox, any_thread_running, stop_qthreads
+from districtheatingsim.utilities.schema import check_version
 
 
 class BuildingModel:
@@ -103,19 +109,17 @@ class BuildingModel:
         :raises Exception: If JSON saving fails
         """
         try:
-            with open(self.json_path, "w", encoding="utf-8") as f:
-                json.dump(add_meta(combined_data, "building_data"), f, indent=4)
+            write_building_json(self.json_path, combined_data)
         except Exception as e:
             raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}") from e
 
-    HeatDemandResult = namedtuple(
-        "HeatDemandResult",
-        ["time_steps", "total_kw", "heating_kw", "warmwater_kw", "max_kw", "supply_temp", "return_temp", "air_temp"],
-    )
+    HeatDemandResult = HeatDemandResult
 
     def calculate_heat_demand(self, data, try_filename, year: int = 2023):
         """
-        Calculate heat demand profiles from building data.
+        Calculate heat demand profiles from building data (synchronously).
+
+        The GUI runs this on a ``HeatDemandThread``; see ``heat_demand_thread.calculate_heat_demand``.
 
         :param data: Building input data
         :type data: pd.DataFrame
@@ -126,28 +130,7 @@ class BuildingModel:
         :return: Calculated heat demand profiles in kW
         :rtype: HeatDemandResult
         """
-        (
-            yearly_time_steps,
-            total_heat_W,
-            heating_heat_W,
-            warmwater_heat_W,
-            max_heat_requirement_W,
-            supply_temperature_curve,
-            return_temperature_curve,
-            hourly_air_temperatures,
-        ) = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz", year=year)
-
-        # Convert from W to kW
-        return self.HeatDemandResult(
-            time_steps=yearly_time_steps,
-            total_kw=total_heat_W / 1000,
-            heating_kw=heating_heat_W / 1000,
-            warmwater_kw=warmwater_heat_W / 1000,
-            max_kw=max_heat_requirement_W / 1000,
-            supply_temp=supply_temperature_curve,
-            return_temp=return_temperature_curve,
-            air_temp=hourly_air_temperatures,
-        )
+        return calculate_heat_demand(data, try_filename, year)
 
 
 class BuildingPresenter:
@@ -179,6 +162,8 @@ class BuildingPresenter:
         self.config_manager = config_manager
 
         self.combined_data = None
+        self._calc_thread = None
+        self._calc_base_path = None
 
         # Connect signals
         self.folder_manager.project_folder_changed.connect(self.standard_path)
@@ -400,74 +385,96 @@ class BuildingPresenter:
                     self.view.show_error_message("Fehler", str(e))
 
     def calculate_heat_demand(self, _=None):
-        """Calculate heat demand profiles and save results."""
+        """
+        Start the heat demand calculation on a worker thread.
+
+        Profile generation, formatting and the JSON write run on a ``HeatDemandThread`` so the
+        window stays responsive (BACKLOG G6); the results are applied in
+        ``_on_heat_demand_done`` on the UI thread.
+        """
+        if any_thread_running(self._calc_thread):
+            self.view.show_error_message("Berechnung läuft", "Die Gebäudelastgänge werden bereits berechnet.")
+            return
+
         self.model.data = self.view.get_table_data()
         if self.model.data.empty:
             self.view.show_error_message("Fehler", "Die Tabelle enthält keine Daten.")
             return
 
-        try:
-            try_filename = self.folder_manager.try_filename
-            year = getattr(self.folder_manager, "calculation_year", 2023)
-            results = self.model.calculate_heat_demand(self.model.data, try_filename, year=year)
-            self.model.results = self.format_results(results, self.model.data)
+        try_filename = self.folder_manager.try_filename
+        year = getattr(self.folder_manager, "calculation_year", 2023)
+        self._calc_base_path = self.model.base_path
+        self._calc_thread = HeatDemandThread(self.model.data, try_filename, year, self.model.json_path)
+        self._calc_thread.calculation_done.connect(self._on_heat_demand_done)
+        self._calc_thread.calculation_error.connect(self._on_heat_demand_error)
+        self.view.set_calculation_running(True)
+        self._calc_thread.start()
 
-            self.view.populate_building_combobox(self.model.results)
-            self.view.plot(self.model.results)
+    def _on_heat_demand_done(self, outcome):
+        """
+        Apply the worker's results to the model and view.
 
-            self.combined_data = self.combine_data_with_results(self.model.data, self.model.results)
-            self.model.save_json(self.combined_data)
+        :param outcome: Results, combined data, JSON path and save error of the run
+        :type outcome: HeatDemandOutcome
+        """
+        self.view.set_calculation_running(False)
+        if self.model.base_path != self._calc_base_path:
+            # The project changed while the worker ran: the results belong to the previous
+            # project (already written to its folder) and must not show up in this one.
+            logging.info("Heat demand results of a previous project discarded (saved to %s)", outcome.json_path)
+            return
 
+        self.model.results = outcome.results
+        self.combined_data = outcome.combined_data
+        self.view.populate_building_combobox(self.model.results)
+        self.view.plot(self.model.results)
+
+        if outcome.save_error:
+            self.view.show_error_message("Fehler", outcome.save_error)
+        else:
             self.view.show_message(
-                "Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {self.model.json_path} gespeichert."
+                "Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {outcome.json_path} gespeichert."
             )
-        except Exception as e:
-            tb_str = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            self.view.show_error_message("Fehler", f"Es ist ein Fehler aufgetreten: {str(e)}\n\nDetails:\n{tb_str}")
+
+    def _on_heat_demand_error(self, message):
+        """
+        Report a failed heat demand calculation.
+
+        :param message: Formatted error message incl. traceback
+        :type message: str
+        """
+        self.view.set_calculation_running(False)
+        self.view.show_error_message("Fehler", message)
+
+    def stop_threads(self):
+        """Stop the running calculation thread (called from the main window on close)."""
+        stop_qthreads(self._calc_thread)
 
     def format_results(self, results, data):
         """
         Format calculation results for JSON storage.
 
         :param results: Raw calculation results
-        :type results: tuple
+        :type results: HeatDemandResult
         :param data: Input building data
         :type data: pd.DataFrame
         :return: Formatted results dictionary
         :rtype: dict
         """
-        formatted_results = {}
-        for idx in range(len(data)):
-            building_id = str(idx)
-            formatted_results[building_id] = {
-                "zeitschritte": [convert_to_serializable(ts) for ts in results.time_steps],
-                "außentemperatur": results.air_temp.tolist(),
-                "wärme": results.total_kw[idx].tolist(),
-                "heizwärme": results.heating_kw[idx].tolist(),
-                "warmwasserwärme": results.warmwater_kw[idx].tolist(),
-                "max_last": results.max_kw.tolist(),
-                "vorlauftemperatur": results.supply_temp[idx].tolist(),
-                "rücklauftemperatur": results.return_temp[idx].tolist(),
-            }
-            for key, value in data.iloc[idx].items():
-                formatted_results[building_id][key] = convert_to_serializable(value)
-        return formatted_results
+        return format_heat_demand_results(results, data)
 
     def combine_data_with_results(self, data, results):
         """
         Combine input data with calculation results.
 
-        :param data: Input data
+        :param data: Input data (not modified)
         :type data: pd.DataFrame
         :param results: Calculation results
         :type results: dict
         :return: Combined data dictionary
         :rtype: dict
         """
-        data.reset_index(drop=True, inplace=True)
-        data_dict = data.map(convert_to_serializable).to_dict(orient="index")
-        combined_data = {str(idx): {**data_dict[idx], **results[str(idx)]} for idx in range(len(data))}
-        return combined_data
+        return combine_data_with_results(data, results)
 
     def on_combobox_selection_changed(self):
         """Update plot when combobox selection changes."""
@@ -488,6 +495,9 @@ class BuildingTabView(QWidget):
     load_json_signal = pyqtSignal()
     save_json_signal = pyqtSignal()
     calculate_heat_demand_signal = pyqtSignal()
+
+    _CALCULATE_TEXT = "Gebäudelastgänge berechnen"
+    _CALCULATING_TEXT = "Gebäudelastgänge werden berechnet …"
 
     def __init__(self, parent=None):
         """
@@ -524,9 +534,9 @@ class BuildingTabView(QWidget):
         save_csv_action.triggered.connect(self.saveCsvFile)
         self.menubar.addAction(save_csv_action)
 
-        calculate_action = QAction("Gebäudelastgänge berechnen", self)
-        calculate_action.triggered.connect(self.calculateHeatDemand)
-        self.menubar.addAction(calculate_action)
+        self.calculate_action = QAction(self._CALCULATE_TEXT, self)
+        self.calculate_action.triggered.connect(self.calculateHeatDemand)
+        self.menubar.addAction(self.calculate_action)
 
         save_json_action = QAction("Gebäudelastgänge speichern", self)
         save_json_action.triggered.connect(self.saveJsonFile)
@@ -840,6 +850,16 @@ class BuildingTabView(QWidget):
         """
         QMessageBox.information(self, title, message)
 
+    def set_calculation_running(self, running):
+        """
+        Reflect a running heat demand calculation in the menu (disabled + progress text).
+
+        :param running: Whether a calculation is in flight
+        :type running: bool
+        """
+        self.calculate_action.setEnabled(not running)
+        self.calculate_action.setText(self._CALCULATING_TEXT if running else self._CALCULATE_TEXT)
+
 
 class BuildingTab(QWidget):
     """
@@ -870,6 +890,10 @@ class BuildingTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
+
+    def stop_threads(self):
+        """Stop running worker threads (called from the main window on close)."""
+        self.presenter.stop_threads()
 
 
 if __name__ == "__main__":

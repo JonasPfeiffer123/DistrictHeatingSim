@@ -1505,13 +1505,24 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
 - **Medium:** `adjust_segments_to_roads` computes the distance to *every* street per segment per
   iteration (`street_layer.distance(pt).idxmin()`, up to 50 iterations) → `street_layer.sindex.nearest`.
 
-### G6. Heat demand: slow profile generation, runs on the UI thread (medium, open)
+### G6. Heat demand: slow profile generation, runs on the UI thread (worker done 2026-09-30; pyslpheat open)
 - ~**24 ms per building** (180 buildings = 4.3 s; extrapolated ~12 s for 500). Cause is in
-  `pyslpheat` (own package): the TRY file and coefficient tables are re-read per building (360×
-  `read_csv` for 180 buildings; ~40 % of the profile), and `get_weekday_factor` iterates rows with
-  `.iloc` (~35 %). Caching + vectorising → several-fold.
-- `BuildingPresenter.calculate_heat_demand` calls it synchronously on the UI thread → the window
-  freezes. It is the only long computation without a worker thread.
+  `pyslpheat` (own package, **separate repo**): the TRY file and coefficient tables are re-read per
+  building (360× `read_csv` for 180 buildings; ~40 % of the profile), and `get_weekday_factor`
+  iterates rows with `.iloc` (~35 %). Caching + vectorising → several-fold. **Open** — has to land
+  in `pyslpheat` (DistrictHeatingSim passes the TRY *path* per building).
+- **Done:** `BuildingPresenter.calculate_heat_demand` ran the profiles, the formatting and the (large)
+  JSON write synchronously on the UI thread → the window froze. New
+  `gui/BuildingTab/heat_demand_thread.py`: `compute_and_save_heat_demand` (profiles → formatted
+  results → combined data → JSON, no widget access; a failed write keeps the results and reports
+  `save_error`, as before) + `HeatDemandThread`. The presenter starts the worker, disables the menu
+  entry while it runs ("Gebäudelastgänge werden berechnet …"), refuses a second start, applies the
+  results on the UI thread — and **discards** them if the project changed meanwhile (they were
+  already written to the old project's folder). `BuildingTab.stop_threads` joins it on close.
+  `combine_data_with_results` no longer resets the caller's index in place (the B2 side effect).
+  `BuildingModel.calculate_heat_demand` / `save_json` keep their API and delegate. Pinned by
+  `tests/test_heat_demand_thread.py` (7: job + JSON + untouched input, failed write, thread
+  done/error signals, presenter applies results, project change discards them, double start refused).
 
 ### G7. Data storage: JSON bloat + pickled net (large, open)
 - `Gebäude Lastgang.json` is **15.8 MB for 9 buildings** (written with `indent=4`; `zeitschritte` and
@@ -1573,7 +1584,7 @@ release mechanics themselves (section F). See the **Release plan** below.
 2. Quick wins: ~~G1 (pump gain + damping with fallback)~~ **done 2026-09-29**, ~~G3 quick wins (vectorised
    day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
    Geoman)~~ **done 2026-09-29**.
-3. Medium: G6 (heat demand worker thread + `pyslpheat` caching), G8 (lazy imports/tabs), G9
+3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), G8 (lazy imports/tabs), G9
    vendoring, G5 spatial index, G4 optimizer overhead.
 4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
    instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.
