@@ -38,3 +38,39 @@ def test_net_generation_reexports_resolve_lazily():
     assert generate_osmnx_network is direct
     with pytest.raises(AttributeError):
         net_generation.does_not_exist  # noqa: B018
+
+
+_WELCOME_WINDOW = """
+import sys
+from PyQt6 import QtWebEngineWidgets  # as in the entry point: before the QApplication
+from PyQt6.QtWidgets import QApplication
+from districtheatingsim.gui.MainTab.main_data_manager import DataManager, ProjectConfigManager, ProjectFolderManager
+from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
+from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI
+
+app = QApplication(sys.argv)
+config_manager = ProjectConfigManager()
+folder_manager = ProjectFolderManager(config_manager)
+data_manager = DataManager()
+view = HeatSystemDesignGUI(folder_manager, data_manager)
+view.set_presenter(HeatSystemPresenter(view, folder_manager, data_manager, config_manager))
+heavy = ("pandapipes", "pandapower", "geopandas", "matplotlib", "pyarrow", "scipy", "osmnx", "CoolProp")
+print("BUILT:" + str(view.main_interface_widget is not None))
+print("LOADED:" + ",".join(m for m in heavy if m in sys.modules))
+view.close()  # closing from the welcome screen must work without any tab
+print("CLOSED:" + str(not view.isVisible()))
+"""
+
+
+def test_welcome_screen_builds_no_tabs_and_loads_no_heavy_packages():
+    # G8: the main interface (six tabs incl. two web views) and the tab modules are only built /
+    # imported when it is first shown; the welcome screen came up after 3.7 s, now ~0.5 s.
+    env = {**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8"}
+    result = subprocess.run(
+        [sys.executable, "-c", _WELCOME_WINDOW], capture_output=True, text=True, env=env, timeout=300
+    )
+    assert result.returncode == 0, result.stderr
+    lines = dict(line.split(":", 1) for line in result.stdout.splitlines() if line.split(":", 1)[0].isupper())
+    assert lines["BUILT"] == "False"
+    assert lines["LOADED"] == ""
+    assert lines["CLOSED"] == "True"

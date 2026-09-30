@@ -199,15 +199,15 @@ class HeatPumpDataDialog(QDialog):
         fileRow.addWidget(self.selectCOPFileButton)
         mainLayout.addLayout(fileRow)
 
-        # Kennfeld canvas
-        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-        from matplotlib.figure import Figure
-
-        self._fig = Figure(figsize=(5.5, 3.8), tight_layout=True)
-        self._ax = self._fig.add_subplot(111)
-        self._canvas = FigureCanvasQTAgg(self._fig)
+        # Kennfeld canvas: created on the first show. The dialog itself is built at application
+        # start (its file path is needed), and matplotlib + the heatmap cost ~0.75 s there
+        # (BACKLOG G8).
+        self._fig = None
+        self._ax = None
+        self._canvas = None
         self._colorbar = None
-        mainLayout.addWidget(self._canvas)
+        self._canvasHolder = QVBoxLayout()
+        mainLayout.addLayout(self._canvasHolder)
 
         # OK/Cancel buttons
         buttonLayout = QHBoxLayout()
@@ -221,14 +221,32 @@ class HeatPumpDataDialog(QDialog):
 
         self.setLayout(mainLayout)
 
-        # Wire up live preview
+        # Wire up live preview (drawn once the canvas exists, see showEvent)
         self.heatPumpDataFileInput.textChanged.connect(self._update_kennfeld)
+
+    def showEvent(self, event):
+        """Create the Kennfeld canvas on the first show and draw the current file."""
+        self._ensure_canvas()
+        super().showEvent(event)
+
+    def _ensure_canvas(self):
+        if self._fig is not None:
+            return
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+        from matplotlib.figure import Figure
+
+        self._fig = Figure(figsize=(5.5, 3.8), tight_layout=True)
+        self._ax = self._fig.add_subplot(111)
+        self._canvas = FigureCanvasQTAgg(self._fig)
+        self._canvasHolder.addWidget(self._canvas)
         self._update_kennfeld(self.heatPumpDataFileInput.text())
 
     # ------------------------------------------------------------------
 
     def _update_kennfeld(self, path: str):
         """Re-draw the COP heatmap for *path*. Silently clears on any error."""
+        if self._fig is None:  # not shown yet — drawn in _ensure_canvas
+            return
         import numpy as np
 
         self._ax.clear()

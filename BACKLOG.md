@@ -1667,7 +1667,7 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   missing) + `TestNetJsonRoundTrip` (slow: controllers survive, reloaded net re-solves identically)
   and `tests/test_project_progress.py::TestAlternativeRequiredFiles`.
 
-### G8. Startup: eager imports + eager tabs (lazy imports done 2026-09-30; lazy tabs open)
+### G8. Startup: eager imports + eager tabs (done 2026-09-30)
 - Importing `main_view` took **4.5 s warm / 15 s on the first run** (re-measured 3.97 s warm before
   the fix): all tabs are imported eagerly and with them CoolProp 0.85 s (only for the Aqvaheat heat
   pump), osmnx 0.66 s (+ scikit-learn, rasterio), pandapipes/pandapower ~0.8 s.
@@ -1681,10 +1681,21 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   `sns.set_style("whitegrid")`), but **pandapower imports seaborn itself**
   (`pandapower.create` → `plotting` → `get_colors`), so it stays on the path as long as pandapower
   does. The comparison-tab change was reverted.
-- **Open (medium/large):** pandapipes/pandapower (~0.8 s) are needed by the net-simulation tab at
-  construction; `initTabs` builds all six tabs incl. two `QWebEngineView`s (Chromium process) while
-  only the welcome screen is visible. Building tabs on first project open would remove both, but
-  `main_view` reaches into the tabs directly (save/load/close) — needs a careful refactor.
+- **Done 2026-09-30 — lazy main interface:** `initUI` builds only the welcome screen; the main
+  interface (menu, six tabs incl. two `QWebEngineView`s, logo) is built — and the tab modules are
+  imported (inside `initTabs`) — by `show_main_interface` on first use (`_ensure_main_interface`,
+  wait cursor, theme toggle + folder label synced). It is still built completely *before* a project
+  is opened, so the tabs see the same folder-change sequence as before; `closeEvent` copes with
+  tabs that were never built. QtWebEngineWidgets is now imported explicitly in the entry point
+  before the `QApplication` (Qt requires that; the tab imports used to do it implicitly). The COP
+  dialog (built at startup because its file path is needed) creates its matplotlib Kennfeld canvas
+  on first show instead of at construction (758 → 2 ms). **Startup to the welcome screen 3.7 s →
+  0.5 s** with none of pandapipes/pandapower/geopandas/matplotlib/pyarrow/scipy loaded; the first
+  switch to the main interface then takes ~2.7 s once (imports + tabs). Pinned by
+  `tests/test_startup_imports.py::test_welcome_screen_builds_no_tabs_and_loads_no_heavy_packages`
+  (subprocess: welcome window built headless, no tabs, no heavy packages, closes cleanly — the
+  first test that constructs the main window at all). *Possible follow-up:* pre-import the heavy
+  packages in a background thread while the welcome screen is shown, to hide most of the 2.7 s.
 
 ### G9. Leaflet map: unused/unpinned CDN libraries (done 2026-09-29/30)
 - **Done:** three.js r170 was loaded on every map start but used nowhere (no `THREE` reference in

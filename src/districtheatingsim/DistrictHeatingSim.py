@@ -34,6 +34,7 @@ import warnings
 # DeprecationWarnings, so these imports are intentionally below it (noqa: E402).
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+from PyQt6 import QtWebEngineWidgets  # noqa: E402, F401 - must be imported before the QApplication exists
 from PyQt6.QtCore import QTimer  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
