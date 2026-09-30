@@ -183,7 +183,8 @@ class ProjectPresenter:
                 "name": "Schritt 4: Thermohydraulische Berechnung",
                 "description": "Führen Sie die Thermohydraulische Berechnung mit den generierten Netzdaten durch.",
                 "required_files": [
-                    "Wärmenetz/Ergebnisse Netzinitialisierung.p",
+                    # Current JSON, or the pickle of projects saved before BACKLOG G7
+                    ["Wärmenetz/Ergebnisse Netzinitialisierung.json", "Wärmenetz/Ergebnisse Netzinitialisierung.p"],
                     "Wärmenetz/Ergebnisse Netzinitialisierung.csv",
                     "Wärmenetz/Konfiguration Netzinitialisierung.json",
                     "Lastgang/Lastgang.csv",
