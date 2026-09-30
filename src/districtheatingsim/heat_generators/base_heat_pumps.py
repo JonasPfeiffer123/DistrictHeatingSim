@@ -7,6 +7,7 @@ Base classes for heat pump modeling with COP calculations and economic analysis.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 from typing import Any
 
 import numpy as np
@@ -18,6 +19,8 @@ from districtheatingsim.constants import (
     PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP,
 )
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+
+logger = logging.getLogger(__name__)
 
 
 class HeatPump(BaseHeatGenerator):
@@ -142,10 +145,10 @@ class HeatPump(BaseHeatGenerator):
             COP_L[out_of_bounds_mask] = 0
 
             if np.any(out_of_bounds_mask):
-                print("Some values were outside the valid range and were set to 0.")
+                logger.debug("Some COP values were outside the valid range and were set to 0")
 
         except ValueError as e:
-            print(f"Interpolation error: {e}. Setting COP to 0 for values out of bounds.")
+            logger.warning("COP interpolation error: %s. Setting COP to 0 for values out of bounds.", e)
             COP_L = np.zeros_like(VLT_L)
 
         return COP_L, VLT_L

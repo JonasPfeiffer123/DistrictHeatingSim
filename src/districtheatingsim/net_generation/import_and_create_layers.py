@@ -7,7 +7,7 @@ heat generator coordinates into geospatial layers for network optimization.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import traceback
+import logging
 import warnings
 
 import geopandas as gpd
@@ -22,6 +22,8 @@ from districtheatingsim.net_generation.elevation_utils import (
 from districtheatingsim.net_generation.net_generation import generate_connection_lines, generate_network
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.utilities.csv_schemas import validate_csv_columns
+
+logger = logging.getLogger(__name__)
 
 # Suppress pyogrio warnings about the GeoJSON driver not supporting the DRIVER open
 # option — emitted at GeoJSON I/O time, so set after the imports (module load is still
@@ -41,24 +43,22 @@ def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFr
     :raises ValueError: If invalid GeoJSON format
 
     .. note::
-        Returns None on error to prevent cascading failures. Prints diagnostic messages.
+        Returns None on error to prevent cascading failures. Logs diagnostic messages.
     """
     try:
         layer = gpd.read_file(osm_street_layer_geojson_file)
-        print(f"Street layer successfully loaded from {osm_street_layer_geojson_file}")
-        print(f"Loaded {len(layer)} street segments")
+        logger.info("Loaded %d street segments from %s", len(layer), osm_street_layer_geojson_file)
 
         # Basic validation
         if layer.empty:
-            print("Warning: Loaded street layer is empty")
+            logger.warning("Loaded street layer is empty")
 
         return layer
     except FileNotFoundError:
-        print(f"Error: File not found - {osm_street_layer_geojson_file}")
+        logger.error("Street layer file not found: %s", osm_street_layer_geojson_file)
         return None
-    except Exception as e:
-        print(f"Error loading street layer from {osm_street_layer_geojson_file}: {e}")
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Error loading street layer from %s", osm_street_layer_geojson_file)
         return None
 
 
@@ -103,11 +103,10 @@ def load_layers(
     try:
         # Load the street layer as a GeoDataFrame
         osm_street_layer = gpd.read_file(osm_street_layer_geojson_file)
-        print(f"Street layer successfully loaded: {len(osm_street_layer)} segments")
 
         # Load the heat consumer data as a DataFrame
         heat_consumer_df = pd.read_csv(data_csv_file_name, sep=";")
-        print(f"Heat consumer data successfully loaded: {len(heat_consumer_df)} buildings")
+        logger.info("Loaded %d street segments and %d buildings", len(osm_street_layer), len(heat_consumer_df))
 
         # Validate required columns (clear up-front error naming any missing column)
         validate_csv_columns(heat_consumer_df, "coordinates")
@@ -116,25 +115,24 @@ def load_layers(
         heat_consumer_layer = gpd.GeoDataFrame(
             heat_consumer_df, geometry=gpd.points_from_xy(heat_consumer_df.UTM_X, heat_consumer_df.UTM_Y), crs=crs
         )
-        print(f"Heat consumer layer successfully created: {len(heat_consumer_layer)} points")
 
         # Create the heat generator locations as a GeoDataFrame (2D first)
         heat_generator_locations = [Point(x, y) for x, y in coordinates]
         heat_generator_layer = gpd.GeoDataFrame(geometry=heat_generator_locations, crs=crs)
-        print(f"Heat generator layer successfully created: {len(heat_generator_layer)} generators")
 
         # Validate data consistency
         if heat_consumer_layer.empty:
-            print("Warning: No heat consumers found in data")
+            logger.warning("No heat consumers found in data")
         if heat_generator_layer.empty:
-            print("Warning: No heat generators provided")
+            logger.warning("No heat generators provided")
 
         # --- Elevation enrichment ------------------------------------------------
         all_points = collect_unique_points_from_gdfs(heat_consumer_layer, heat_generator_layer)
         if all_points:
-            print(
-                f"Querying elevation for {len(all_points)} unique points "
-                f"({'GeoTIFF: ' + dem_path if dem_path else 'OpenTopoData API'})..."
+            logger.info(
+                "Querying elevation for %d unique points (%s)",
+                len(all_points),
+                "GeoTIFF: " + dem_path if dem_path else "OpenTopoData API",
             )
             elev_lookup = build_elevation_lookup(all_points, dem_path, crs_utm=crs)
 
@@ -145,30 +143,29 @@ def load_layers(
             if any(z != 0.0 for z in z_values):
                 heat_consumer_layer = assign_elevation_to_geodataframe(heat_consumer_layer, elev_lookup)
                 heat_generator_layer = assign_elevation_to_geodataframe(heat_generator_layer, elev_lookup)
-                print(
-                    f"Elevation range: {min(z_values):.1f} m – {max(z_values):.1f} m "
-                    f"(Δh = {max(z_values) - min(z_values):.1f} m)"
+                logger.info(
+                    "Elevation range: %.1f m – %.1f m (Δh = %.1f m)",
+                    min(z_values),
+                    max(z_values),
+                    max(z_values) - min(z_values),
                 )
             else:
-                print(
-                    "Warning: All elevations are 0.0 m — no DEM data available. Points remain 2-D; "
+                logger.warning(
+                    "All elevations are 0.0 m — no DEM data available. Points remain 2-D; "
                     "hydraulic pressure calculations will ignore terrain height."
                 )
         # -------------------------------------------------------------------------
 
         return osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df
 
-    except FileNotFoundError as e:
-        print(f"Error: Required file not found - {e}")
-        traceback.print_exc()
+    except FileNotFoundError:
+        logger.exception("Required file not found")
         return None, None, None, None
-    except KeyError as e:
-        print(f"Error: Missing required data columns - {e}")
-        traceback.print_exc()
+    except KeyError:
+        logger.exception("Missing required data columns")
         return None, None, None, None
-    except Exception as e:
-        print(f"Error loading layers: {e}")
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Error loading layers")
         return None, None, None, None
 
 
@@ -226,11 +223,11 @@ def generate_and_export_layers(
 
     # Validate data loading success
     if any(layer is None for layer in [osm_street_layer, heat_consumer_layer, heat_generator_layer]):
-        print("Error: Failed to load required data layers. Export cancelled.")
+        logger.error("Failed to load required data layers. Export cancelled.")
         return
 
     # Generate optimized network backbone using specified algorithm
-    print(f"Generating network using {algorithm} algorithm...")
+    logger.info("Generating network using the %s algorithm", algorithm)
     flow_lines_gdf, return_lines_gdf = generate_network(
         heat_consumer_layer,
         heat_generator_layer,
@@ -241,12 +238,10 @@ def generate_and_export_layers(
     )
 
     # Generate service connections for heat consumers and producers
-    print("Generating service connections...")
     heat_consumer_gdf = generate_connection_lines(heat_consumer_layer, offset_distance, offset_angle, heat_consumer_df)
     heat_producer_gdf = generate_connection_lines(heat_generator_layer, offset_distance, offset_angle)
 
     # Standardize coordinate reference system
-    print(f"Standardizing coordinate reference systems to {crs}...")
     heat_consumer_gdf = heat_consumer_gdf.set_crs(crs)
     return_lines_gdf = return_lines_gdf.set_crs(crs)
     flow_lines_gdf = flow_lines_gdf.set_crs(crs)
@@ -259,7 +254,7 @@ def generate_and_export_layers(
     all_line_gdfs = [flow_lines_gdf, return_lines_gdf, heat_consumer_gdf, heat_producer_gdf]
     all_line_points = collect_unique_points_from_gdfs(*all_line_gdfs)
     if all_line_points:
-        print(f"Querying elevation for {len(all_line_points)} line vertices...")
+        logger.info("Querying elevation for %d line vertices", len(all_line_points))
         line_elev_lookup = build_elevation_lookup(all_line_points, dem_path, crs_utm=crs)
 
         if any(z != 0.0 for z in line_elev_lookup.values()):
@@ -267,9 +262,9 @@ def generate_and_export_layers(
             return_lines_gdf = assign_elevation_to_geodataframe(return_lines_gdf, line_elev_lookup)
             heat_consumer_gdf = assign_elevation_to_geodataframe(heat_consumer_gdf, line_elev_lookup)
             heat_producer_gdf = assign_elevation_to_geodataframe(heat_producer_gdf, line_elev_lookup)
-            print("3-D coordinates assigned to all network line geometries.")
+            logger.debug("3-D coordinates assigned to all network line geometries")
         else:
-            print("No elevation data available — network lines remain 2-D.")
+            logger.info("No elevation data available — network lines remain 2-D")
     # -------------------------------------------------------------------------
 
     # Create output directory structure
@@ -277,9 +272,6 @@ def generate_and_export_layers(
 
     output_dir = os.path.join(base_path, "Wärmenetz")
     os.makedirs(output_dir, exist_ok=True)
-
-    # Export all network components as GeoJSON files
-    print(f"Exporting network layers to {output_dir}...")
 
     # Export in unified format
     try:
@@ -295,24 +287,20 @@ def generate_and_export_layers(
         unified_filename = "Wärmenetz.geojson"
         unified_path = os.path.join(output_dir, unified_filename)
         NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
-        print(
-            f"✓ Exported unified network: {unified_filename} ({len(flow_lines_gdf) + len(return_lines_gdf) + len(heat_consumer_gdf) + len(heat_producer_gdf)} features)"
-        )
-    except Exception as e:
-        print(f"✗ Failed to export unified format: {e}")
+    except Exception:
+        logger.exception("Failed to export the unified network GeoJSON")
         return
 
-    # Generate summary statistics
-    print("\nNetwork Generation Summary:")
-    print(f"Algorithm used: {algorithm}")
-    print(f"Heat consumers: {len(heat_consumer_gdf)}")
-    print(f"Heat generators: {len(heat_producer_gdf)}")
-    print(f"Supply line segments: {len(flow_lines_gdf)}")
-    print(f"Return line segments: {len(return_lines_gdf)}")
-
-    # Calculate total network length
-    total_supply_length = flow_lines_gdf.geometry.length.sum()
-    total_return_length = return_lines_gdf.geometry.length.sum()
-    print(f"Total supply network length: {total_supply_length / 1000:.2f} km")
-    print(f"Total return network length: {total_return_length / 1000:.2f} km")
-    print("Network generation completed successfully!")
+    # Summary statistics
+    logger.info(
+        "Network generated (%s) and exported to %s: %d heat consumers, %d heat generators, "
+        "%d supply / %d return segments, %.2f km supply / %.2f km return",
+        algorithm,
+        unified_path,
+        len(heat_consumer_gdf),
+        len(heat_producer_gdf),
+        len(flow_lines_gdf),
+        len(return_lines_gdf),
+        flow_lines_gdf.geometry.length.sum() / 1000,
+        return_lines_gdf.geometry.length.sum() / 1000,
+    )

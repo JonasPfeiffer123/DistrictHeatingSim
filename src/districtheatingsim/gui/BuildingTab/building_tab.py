@@ -50,6 +50,8 @@ from districtheatingsim.heat_requirement.building_profiles_io import (
 )
 from districtheatingsim.utilities.schema import check_version
 
+logger = logging.getLogger(__name__)
+
 
 class BuildingModel:
     """
@@ -432,7 +434,7 @@ class BuildingPresenter:
         if self.model.base_path != self._calc_base_path:
             # The project changed while the worker ran: the results belong to the previous
             # project (already written to its folder) and must not show up in this one.
-            logging.info("Heat demand results of a previous project discarded (saved to %s)", outcome.json_path)
+            logger.info("Heat demand results of a previous project discarded (saved to %s)", outcome.json_path)
             return
 
         self.model.results = outcome.results

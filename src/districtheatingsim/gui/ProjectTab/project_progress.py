@@ -16,6 +16,8 @@ import json
 import logging
 import os
 
+logger = logging.getLogger(__name__)
+
 # Network whose "dimensioned" flag a step may additionally require (relative to base_path).
 _DIMENSIONED_NETWORK_FILE = "Wärmenetz/Wärmenetz.geojson"
 
@@ -65,7 +67,7 @@ def check_csv_status(csv_file_path: str) -> str:
     except (OSError, csv.Error, UnicodeDecodeError, ValueError) as e:
         # If we can't read the CSV, assume it exists but is problematic — but log it,
         # so a corrupt/locked CSV is not silently reported as "ist vorhanden".
-        logging.warning("Konnte CSV-Status von %s nicht lesen: %s", csv_file_path, e)
+        logger.warning("Konnte CSV-Status von %s nicht lesen: %s", csv_file_path, e)
         return "ist vorhanden"
 
 
@@ -91,7 +93,7 @@ def check_network_dimensioned(network_file_path: str) -> bool:
         return state == "dimensioned"
 
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
-        logging.warning("Konnte Netz-Status von %s nicht lesen: %s", network_file_path, e)
+        logger.warning("Konnte Netz-Status von %s nicht lesen: %s", network_file_path, e)
         return False
 
 

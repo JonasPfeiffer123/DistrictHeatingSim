@@ -29,6 +29,8 @@ from districtheatingsim.net_simulation_pandapipes.result_validation import (
 from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, secondary_producer_element_indices
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
+logger = logging.getLogger(__name__)
+
 
 def update_heat_consumer_qext_controller(
     net, qext_w_profiles: list[np.ndarray], time_steps: range, start: int, end: int
@@ -305,13 +307,18 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
        Implements static/sliding temperature control, COP calculations for cold networks,
        applies 2% minimum load, calculates secondary producer mass flows. Converts W to kW.
     """
-    print(f"Maximale Vorlauftemperatur Netz: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
-    print(f"Mindestvorlauftemperatur HAST: {NetworkGenerationData.min_supply_temperature_heat_consumer} °C")
-    print(f"Rücklauftemperatur HAST: {NetworkGenerationData.return_temperature_heat_consumer} °C")
-    print(f"Vorlauftemperatur Gebäude: {NetworkGenerationData.supply_temperature_buildings} °C")
-    print(f"Rücklauftemperatur Gebäude: {NetworkGenerationData.return_temperature_buildings} °C")
-    print(f"building_temperature_checked: {NetworkGenerationData.building_temperature_checked}")
-    print(f"Netconfiguration: {NetworkGenerationData.netconfiguration}")
+    logger.debug(
+        "Time series preprocessing: max supply temperature net %s °C, min supply temperature HAST %s °C, "
+        "return temperature HAST %s °C, building supply/return temperatures %s / %s °C, "
+        "building_temperature_checked %s, net configuration %s",
+        NetworkGenerationData.max_supply_temperature_heat_generator,
+        NetworkGenerationData.min_supply_temperature_heat_consumer,
+        NetworkGenerationData.return_temperature_heat_consumer,
+        NetworkGenerationData.supply_temperature_buildings,
+        NetworkGenerationData.return_temperature_buildings,
+        NetworkGenerationData.building_temperature_checked,
+        NetworkGenerationData.netconfiguration,
+    )
 
     # The COP characteristic field is only needed for a cold network (heat-pump house stations).
     # A normal network has no heat pumps, so COP_filename may be None — don't load it then.
@@ -350,7 +357,7 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
                 + slope * (air_temperature_data - NetworkGenerationData.min_air_temperature_heat_generator),
             ),
         )
-    print(f"Vorlauftemperatur Netz: {NetworkGenerationData.supply_temperature_heat_generator} °C")
+    logger.debug("Supply temperature net: %s °C", NetworkGenerationData.supply_temperature_heat_generator)
 
     # Temperature processing based on network configuration
     ### if building_temperature_checked is True, the time dependent building temperatures are used
@@ -437,12 +444,16 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
             cp * (NetworkGenerationData.supply_temperature_heat_generator - avg_return_temperature)
         )  # kW / (kJ/kgK * K) = kg/s
 
-        print(f"Mass flow of main producer: {mass_flow} kg/s")
+        logger.debug("Mass flow of main producer: max %.3f kg/s", np.max(mass_flow))
 
         # Update each secondary producer's dictionary with calculated mass flow
         for secondary_producer in NetworkGenerationData.secondary_producers:
             secondary_producer.mass_flow = secondary_producer.load_percentage / 100 * mass_flow
-            print(f"Mass flow of secondary producer {secondary_producer.index}: {secondary_producer.mass_flow} kg/s")
+            logger.debug(
+                "Mass flow of secondary producer %s: max %.3f kg/s",
+                secondary_producer.index,
+                np.max(secondary_producer.mass_flow),
+            )
 
     return NetworkGenerationData
 
@@ -464,7 +475,7 @@ def pipeflow_with_damping_fallback(net, **kwargs) -> None:
     try:
         pipeflow(net, **{**kwargs, "alpha": 1.0})
     except PipeflowNotConverged:
-        logging.debug("Undamped pipeflow did not converge, retrying with alpha=0.5")
+        logger.debug("Undamped pipeflow did not converge, retrying with alpha=0.5")
         pipeflow(net, **{**kwargs, "alpha": 0.5})
 
 
@@ -617,7 +628,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
         and np.any(np.array(NetworkGenerationData.min_supply_temperature_heat_consumer) != 0)
         and isinstance(NetworkGenerationData.min_supply_temperature_heat_consumer, np.ndarray)
     ):
-        print("Update TemperatureController")
+        logger.debug("Updating minimum supply temperature controllers")
         update_heat_consumer_temperature_controller(
             NetworkGenerationData.net,
             NetworkGenerationData.min_supply_temperature_heat_consumer,
@@ -629,7 +640,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
     if NetworkGenerationData.return_temperature_heat_consumer is not None and isinstance(
         NetworkGenerationData.return_temperature_heat_consumer, np.ndarray
     ):
-        print("Update Return Temperature Const Control")
+        logger.debug("Updating return temperature controllers")
         update_heat_consumer_return_temperature_controller(
             NetworkGenerationData.net,
             NetworkGenerationData.return_temperature_heat_consumer,
@@ -688,7 +699,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
        Much faster than thermohydraulic_time_series_net.
     """
 
-    print("Starte vereinfachte Zeitreihenberechnung (basierend auf Auslegung)...")
+    logger.info("Starting simplified time series (scaled from the design state)")
 
     # Get time steps for selected simulation range
     time_steps = range(
@@ -705,7 +716,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     max_load_idx = np.argmax(NetworkGenerationData.waerme_ges_kW)
     total_building_demand_design = NetworkGenerationData.waerme_ges_kW[max_load_idx]
 
-    print(f"Nutze Auslegungszustand bei max. Last: {total_building_demand_design:.1f} kW")
+    logger.debug("Design state at maximum load: %.1f kW", total_building_demand_design)
 
     # Extract design state results from already calculated network
     # (these were calculated during initialization)
@@ -727,8 +738,10 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "flow_temp_design": res["t_to_k"] - KELVIN_OFFSET,
                 "qext_kW_design": res["mdot_from_kg_per_s"] * CP_WATER_KJ_KGK * (res["t_to_k"] - res["t_from_k"]),
             }
-            print(
-                f"  Haupteinspeisung {idx}: {design_results['Heizentrale Haupteinspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung"
+            logger.debug(
+                "Main producer %s: %.1f kW design output",
+                idx,
+                design_results["Heizentrale Haupteinspeisung"][idx]["qext_kW_design"],
             )
 
     # Get design state from mass pumps (secondary producers)
@@ -747,8 +760,10 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "flow_temp_design": res["t_to_k"] - KELVIN_OFFSET,
                 "qext_kW_design": res["mdot_from_kg_per_s"] * CP_WATER_KJ_KGK * (res["t_to_k"] - res["t_from_k"]),
             }
-            print(
-                f"  Weitere Einspeisung {idx}: {design_results['weitere Einspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung"
+            logger.debug(
+                "Secondary producer %s: %.1f kW design output",
+                idx,
+                design_results["weitere Einspeisung"][idx]["qext_kW_design"],
             )
 
     # Fail loudly if the design state is NaN/inf (init pipeflow did not converge)
@@ -762,7 +777,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     design_losses_kW = total_generation_design - total_building_demand_design
     design_loss_factor = design_losses_kW / total_building_demand_design if total_building_demand_design > 0 else 0
 
-    print(f"Auslegungsverluste: {design_losses_kW:.1f} kW ({design_loss_factor * 100:.2f}%)")
+    logger.debug("Design losses: %.1f kW (%.2f %%)", design_losses_kW, design_loss_factor * 100)
 
     # Create time series by scaling with building demand
     NetworkGenerationData.pump_results = {"Heizentrale Haupteinspeisung": {}, "weitere Einspeisung": {}}
@@ -778,11 +793,13 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
         supply_temp_series = NetworkGenerationData.supply_temperature_heat_generator[
             NetworkGenerationData.start_time_step : NetworkGenerationData.end_time_step
         ]
-        print("Verwende gleitende Vorlauftemperatur")
+        logger.debug("Using the sliding supply temperature")
     else:
         # Statische Vorlauftemperatur
         supply_temp_series = np.full(n_steps, NetworkGenerationData.supply_temperature_heat_generator)
-        print(f"Verwende statische Vorlauftemperatur: {NetworkGenerationData.supply_temperature_heat_generator:.1f} °C")
+        logger.debug(
+            "Using the static supply temperature: %.1f °C", NetworkGenerationData.supply_temperature_heat_generator
+        )
 
     # Scale results for each time step
     for pump_type, pumps in design_results.items():
@@ -820,7 +837,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "qext_kW": qext_series,
             }
 
-    print(f"Vereinfachte Berechnung erfolgreich abgeschlossen ({n_steps} Zeitschritte).")
+    logger.info("Simplified time series completed (%d time steps)", n_steps)
 
     return NetworkGenerationData
 
@@ -1005,6 +1022,6 @@ def import_results_csv(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarra
                 # Add parameter data to corresponding pump
                 pump_results[pump_type][idx][value] = data[column].values.astype("float64")
             else:
-                print(f"Warning: Column name '{column}' has an unexpected format and is ignored.")
+                logger.warning("Column name %r has an unexpected format and is ignored", column)
 
     return time_steps, total_heat_KW, strom_wp_kW, pump_results

@@ -575,7 +575,7 @@ def enhanced_config_plot(net, ax, plot_mode="traditional", **kwargs):
     :type ax: matplotlib.axes.Axes
     :param plot_mode: Mode: 'traditional', 'pressure', 'temperature', 'velocity', 'dashboard'
     :type plot_mode: str
-    :param \**kwargs: Additional arguments for plotting functions
+    :param kwargs: Additional arguments for plotting functions
     :return: Matplotlib axis (or figure for dashboard mode)
     :rtype: plt.Axes
 

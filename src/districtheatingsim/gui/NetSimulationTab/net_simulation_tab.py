@@ -55,6 +55,8 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 
+logger = logging.getLogger(__name__)
+
 
 class NetSimulationTab(QWidget):
     """
@@ -241,7 +243,7 @@ class NetSimulationTab(QWidget):
             dialog = NetGenerationDialog(self.generateNetworkCallback, self.base_path, self)
             dialog.exec()
         except Exception as e:
-            logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
+            logger.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
             QMessageBox.critical(self, "Fehler", f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
 
     def generateNetworkCallback(self, network_data):
@@ -586,7 +588,7 @@ class NetSimulationTab(QWidget):
             if show_dialog:
                 QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten:\n\n{str(e)}")
             else:
-                logging.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
+                logger.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
 
     def load_net_results(self, show_dialog=True):
         """
@@ -657,7 +659,7 @@ class NetSimulationTab(QWidget):
                     self, "Export fehlgeschlagen", f"Fehler beim Exportieren des Wärmenetzes:\n\n{str(e)}"
                 )
             else:
-                logging.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
+                logger.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
 
     # ------------------------------------------------------------------
     # Helper kept for compatibility (used by data_added consumers)

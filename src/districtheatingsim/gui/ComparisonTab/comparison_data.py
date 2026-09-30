@@ -21,6 +21,8 @@ import os
 
 from districtheatingsim.gui.EnergySystemTab.config_naming import discover_configs
 
+logger = logging.getLogger(__name__)
+
 
 def format_kpi_range(variant_data: list[dict], key: str, fmt: str, *, empty: str = "--") -> str:
     """
@@ -105,7 +107,7 @@ def load_network_kpis(variant_path: str) -> dict:
         network_data["Pumpenenergie"] = kpi_results.get("Pumpenstrom [MWh]", 0)
         network_data["Anzahl_Gebäude"] = kpi_results.get("Anzahl angeschlossene Gebäude", 0)
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
-        logging.warning("Konnte Netz-KPIs der Variante nicht lesen: %s", e)
+        logger.warning("Konnte Netz-KPIs der Variante nicht lesen: %s", e)
     return network_data
 
 

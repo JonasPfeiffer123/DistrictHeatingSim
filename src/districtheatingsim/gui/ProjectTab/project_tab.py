@@ -43,6 +43,8 @@ from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
+logger = logging.getLogger(__name__)
+
 
 class ProjectModel:
     """
@@ -294,7 +296,7 @@ class ProjectPresenter:
             self.folder_manager.set_project_crs(suggested)
             self.view.set_crs(suggested)
         except Exception as e:
-            logging.warning("CRS-Vorschlag aus den Koordinaten fehlgeschlagen: %s", e)
+            logger.warning("CRS-Vorschlag aus den Koordinaten fehlgeschlagen: %s", e)
 
     def import_csv(self):
         """
@@ -331,7 +333,7 @@ class ProjectPresenter:
                 return
         except Exception as e:
             # Best-effort fast path; fall through to the mapping dialog on any error.
-            logging.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
+            logger.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
 
         # Show column-mapping dialog
         dialog = CsvImportDialog(fname, parent=self.view)
@@ -492,7 +494,7 @@ class ProjectPresenter:
                             sample_coords = centroid
             except Exception as e:
                 # Best-effort; continue without sample coordinates.
-                logging.debug("Konnte Beispielkoordinaten nicht extrahieren: %s", e)
+                logger.debug("Konnte Beispielkoordinaten nicht extrahieren: %s", e)
 
             dialog = OSMImportDialog(
                 self.view, sample_utm_coords=sample_coords, project_crs=self.folder_manager.project_crs

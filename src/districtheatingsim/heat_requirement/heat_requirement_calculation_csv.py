@@ -7,11 +7,15 @@ of building portfolios with temperature curves for district heating design.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
 from pyslpheat import bdew_calculate, vdi4655_calculate
 
 from districtheatingsim.utilities.csv_schemas import validate_csv_columns
+
+logger = logging.getLogger(__name__)
 
 
 def _easter_sunday(year: int) -> pd.Timestamp:
@@ -156,7 +160,7 @@ def generate_profiles_from_csv(
             try:
                 current_calc_method = building_type_to_method.get(current_building_type, "VDI4655")
             except KeyError:
-                print(f"Building type '{current_building_type}' not found in mapping, using VDI4655")
+                logger.warning("Building type %r not found in mapping, using VDI4655", current_building_type)
                 current_calc_method = "VDI4655"
         else:
             current_calc_method = calc_method
