@@ -157,6 +157,54 @@ class TestOptimizerCoverage:
         assert _run() == pytest.approx(_run())
 
 
+class TestOptimizerPlateau:
+    """C41: above ~570 kW the CHP never reaches its minimum part load on a 50-400 kW load, so it
+    covers nothing and the objective is flat. SLSQP stopped there after one iteration reporting
+    success, while the good runs ended at the iteration limit (success=False) and were discarded:
+    with the GUI's 5 restarts, 8 of 12 seeds returned a CHP covering 0 % of the demand."""
+
+    _WEIGHTS = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 1.0, "primärenergiefaktor_Gesamt": 1.0}
+
+    @staticmethod
+    def _system(configured_kw=300, low=0, high=5000):
+        es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+        es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=configured_kw, opt_BHKW_min=low, opt_BHKW_max=high))
+        return es
+
+    @staticmethod
+    def _covered(system):
+        r = system.calculate_mix()
+        return (r["Jahreswärmebedarf"] - r["Restwärmebedarf"]) / r["Jahreswärmebedarf"]
+
+    def test_flat_start_is_retried_from_configured_values(self):
+        # seed 0 draws a 3185 kW start: flat objective. Before C41 that was returned as optimum.
+        opt = self._system().optimize_mix(self._WEIGHTS, num_restarts=1, seed=0)
+        assert self._covered(opt) > 0.5
+        assert opt.technologies[0].th_Leistung_kW < 570
+
+    def test_gui_default_restarts_find_a_covering_optimum(self):
+        opt = self._system().optimize_mix(self._WEIGHTS, num_restarts=5, seed=0)
+        assert self._covered(opt) > 0.5
+
+    def test_raises_when_no_configuration_covers_demand(self):
+        # Every capacity in the bounds (and the configured one) is above the part-load limit.
+        with pytest.raises(RuntimeError, match="covers any demand"):
+            self._system(configured_kw=3000, low=1000, high=5000).optimize_mix(self._WEIGHTS, num_restarts=2, seed=0)
+
+    def test_iteration_limited_and_line_search_results_are_usable(self):
+        from types import SimpleNamespace
+
+        from districtheatingsim.heat_generators.energy_system import EnergySystemOptimizer
+
+        usable = EnergySystemOptimizer._is_usable
+        dummy = SimpleNamespace(_USABLE_SLSQP_STATUS=EnergySystemOptimizer._USABLE_SLSQP_STATUS)
+        assert usable(dummy, SimpleNamespace(fun=1.0, success=True, status=0))
+        assert usable(dummy, SimpleNamespace(fun=1.0, success=False, status=9))  # iteration limit
+        assert usable(dummy, SimpleNamespace(fun=1.0, success=False, status=8))  # line search
+        assert not usable(dummy, SimpleNamespace(fun=1.0, success=False, status=6))  # singular matrix
+        assert not usable(dummy, SimpleNamespace(fun=float("inf"), success=True, status=0))
+
+
 class TestEnergySystemRobustness:
     """C21: domain-core edge cases that used to fail silently or opaquely."""
 
