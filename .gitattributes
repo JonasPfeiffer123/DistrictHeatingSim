@@ -1,0 +1,3 @@
+# Third-party files bundled verbatim (see src/districtheatingsim/leaflet/vendor/README.md):
+# no line-ending conversion, so they stay byte-identical to the published releases.
+src/districtheatingsim/leaflet/vendor/** -text
