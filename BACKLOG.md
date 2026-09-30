@@ -1483,9 +1483,19 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   clock. (The example also optimizes without a seed, so its call count varies.) Results bit-identical: new `tests/test_solar_thermal.py` (the first tests for the
   solar model — radiation, `calculate` for both collector types, a stagnation scenario, `generate`)
   was captured on the old code and passes on old and new.
-- **Large (open):** the loop itself (~85 ms of the remaining ~100 ms) is a numba/vectorisation
-  candidate. The same per-hour Python-loop pattern exists in `chp.py`, `biomass_boiler.py`,
-  `geothermal_heat_pump.py` (buffer storage).
+- **Done 2026-09-30 — loop on plain floats:** the hourly loop read/wrote ~40 numpy array elements
+  per step (each read creates a numpy scalar). It now runs on local Python lists/floats with the
+  expressions unchanged and writes the 18 result arrays back once — **~2× faster, bit-identical**
+  (all 18 arrays compared with `np.array_equal` against the old code in 5 scenarios: both collector
+  types, stagnation, varying VLT + integer RLT + start content, partial year; `** 2` stays `** 2`
+  because numpy and Python both evaluate it via `pow`, while `x*x` would differ in the last bit).
+  examples/10 now ~13.5 s, of which the solar loop is still ~90 %.
+- **Open — numba:** the loop has an hour-to-hour recurrence (no vectorisation); plain CPython is at
+  its floor. A numba kernel would cut it further but makes numba a dependency (PyInstaller size,
+  JIT warm-up, cache dir in the frozen app) — decision pending, see G2.
+- **Not here:** the per-hour buffer loops in `chp.py` / `biomass_boiler.py` and the network storage
+  spend ~70 % in `ThermalStorage1D.step` of the external `thermal-energy-storage-1d` package — like
+  pyslpheat (G6), that optimisation belongs in that repo.
 
 ### G4. Energy system with network storage + optimizer (overhead: measured, not worth it; rest open)
 - `calculate_mix` without storage: **2 ms** (vectorised). With the 1D `ThermalStorageAdapter`:
