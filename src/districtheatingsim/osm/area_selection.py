@@ -70,7 +70,7 @@ def polygon_from_csv(csv_file, project_crs, buffer_m):
     # Convert to WGS84 and buffer in degrees (approximate, matches original code).
     gdf_wgs84 = gdf.to_crs("EPSG:4326")
     buffer_deg = buffer_m / _METERS_PER_DEGREE
-    return gdf_wgs84.unary_union.buffer(buffer_deg)
+    return gdf_wgs84.union_all().buffer(buffer_deg)
 
 
 def polygon_from_geojson(geojson_file):
@@ -87,7 +87,7 @@ def polygon_from_geojson(geojson_file):
     gdf = gpd.read_file(geojson_file)
     if gdf.crs != "EPSG:4326":
         gdf = gdf.to_crs("EPSG:4326")
-    return gdf.unary_union
+    return gdf.union_all()
 
 
 def resolve_area_polygon(area_params, buffer_m):
