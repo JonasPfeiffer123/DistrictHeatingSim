@@ -63,7 +63,8 @@ class TechnologyTab(QWidget):
     :signal data_added: Signal that emits data as an object.
     """
 
-    # Globale Zähler für jede Technologieklasse
+    # Globale Zähler für jede Technologieklasse — zugleich die Technologien, die die GUI anbietet
+    # (AqvaHeat fehlt bewusst: das Modell ist unfertig, BACKLOG C40)
     global_counters = {
         "Solarthermie": 0,
         "BHKW": 0,
@@ -73,7 +74,6 @@ class TechnologyTab(QWidget):
         "Flusswärmepumpe": 0,
         "Biomassekessel": 0,
         "Gaskessel": 0,
-        "AqvaHeat": 0,
         "Power-to-Heat": 0,
         "Thermischer Netzspeicher": 0,
     }
@@ -236,6 +236,8 @@ class TechnologyTab(QWidget):
         tech_class = tech_classes.get(base_tech_type)
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
+        if base_tech_type not in self.global_counters:
+            raise ValueError(f"Technologie '{base_tech_type}' ist in der Oberfläche nicht verfügbar.")
 
         # Erhöhe den globalen Zähler für diese Technologieklasse
         self.global_counters[base_tech_type] += 1
@@ -319,16 +321,19 @@ class TechnologyTab(QWidget):
         """
         self.schematic_scene.delete_all()  # Lösche alle Objekte aus der Szene
 
+        # Counters restart from the technologies present. The reset used to sit inside the loop,
+        # so only the last technology type kept its count and the next added technology of an
+        # earlier type got a duplicate name (e.g. a second "Gaskessel_1", BACKLOG C45).
+        for key in self.global_counters:
+            self.global_counters[key] = 0
+
         for tech in self.tech_objects:
             # Füge jede Technologie wieder zur Szene hinzu
             self.addTechToScene(tech)
 
-            # Aktualisiere die Namen und Zähler basierend auf der Reihenfolge in der Liste
+            # Aktualisiere die Zähler basierend auf den vorhandenen Technologien
             tech_type = tech.name.split("_")[0]
-            # every other global counter should be 0
-            for key in self.global_counters:
-                self.global_counters[key] = 0
-            self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.startswith(tech_type))
+            self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.split("_")[0] == tech_type)
 
         # Aktualisiere die Liste der Technologien in der UI
         self.updateTechList()
@@ -582,8 +587,6 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component("Waste Heat Pump", name, storage=False)
         elif tech.name.startswith("Flusswärmepumpe"):
             tech.scene_item = self.schematic_scene.add_component("River Heat Pump", name, storage=False)
-        elif tech.name.startswith("AqvaHeat"):
-            tech.scene_item = self.schematic_scene.add_component("Aqva Heat Pump", name, storage=False)
         elif tech.name.startswith("Biomassekessel"):
             tech.scene_item = self.schematic_scene.add_component("Biomass Boiler", name, storage=has_storage)
         elif tech.name.startswith("Gaskessel"):

@@ -91,6 +91,11 @@ class RiverHeatPumpDialog(SchemaDialog):
 
 
 class AqvaHeatDialog(SchemaDialog):
-    """Configure AqvaHeat parameters (no inputs yet)."""
+    """
+    Configure AqvaHeat parameters (no inputs yet).
+
+    Not offered in the GUI: the AqvaHeat model is unfinished (BACKLOG C40). Kept for when it
+    is completed — then route it in ``TechInputDialog`` and add it to the technology menu.
+    """
 
     main_schema = []

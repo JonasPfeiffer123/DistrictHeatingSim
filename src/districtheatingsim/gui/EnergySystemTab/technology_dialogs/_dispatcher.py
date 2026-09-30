@@ -16,10 +16,7 @@ from districtheatingsim.gui.EnergySystemTab.technology_dialogs._combustion impor
     HolzgasCHPDialog,
 )
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._geothermal import GeothermalDialog
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._heat_pump import (
-    AqvaHeatDialog,
-    RiverHeatPumpDialog,
-)
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._heat_pump import RiverHeatPumpDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._simple import (
     GasBoilerDialog,
     PowerToHeatDialog,
@@ -74,8 +71,6 @@ class TechInputDialog(QDialog):
             self.dialog = WasteHeatPumpDialog(self.tech_data)
         elif self.tech_type.startswith("Flusswärmepumpe"):
             self.dialog = RiverHeatPumpDialog(self.tech_data)
-        elif self.tech_type.startswith("AqvaHeat"):
-            self.dialog = AqvaHeatDialog(self.tech_data)
         elif self.tech_type.startswith("Power-to-Heat"):
             self.dialog = PowerToHeatDialog(self.tech_data)
         elif self.tech_type.startswith("Thermischer Netzspeicher"):
