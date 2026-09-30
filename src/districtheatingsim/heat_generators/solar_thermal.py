@@ -10,6 +10,8 @@ Solar thermal collector modeling with flat-plate and vacuum tube technologies.
     Based on Scenocalc 2.0 solar thermal model (https://www.scfw.de)
 """
 
+import logging
+import os
 from math import exp
 from typing import Any
 
@@ -54,6 +56,265 @@ def _numeric_keys(table: dict) -> dict:
         except (TypeError, ValueError):
             converted[key] = value
     return converted
+
+
+# Environment switch to force the plain-Python path (debugging, comparisons).
+NUMBA_DISABLE_ENV = "DISTRICTHEATINGSIM_DISABLE_NUMBA"
+
+_jit_kernel = None  # resolved on first use: the compiled kernel, or False if unavailable
+
+
+def _solar_storage_steps(
+    n_steps,
+    same_day_L,
+    Last,
+    VLT,
+    RLT,
+    Luft,
+    Wind,
+    K_beam,
+    GbT,
+    GdT_H_Dk,
+    TS_unten,
+    TRL_Solar,
+    Zieltemperatur,
+    Tm_a,
+    Pkoll_a,
+    Tgkoll_a,
+    T_koll_a,
+    Pkoll_b,
+    T_koll_b,
+    Tgkoll,
+    Tm_koll,
+    Tm,
+    Kollektorfeldertrag,
+    Waermeleistung,
+    Verlustwaermestrom,
+    Speicherinhalt,
+    Speicherfuellstand,
+    Stagnation,
+    Eta0b_neu,
+    Kthetadiff,
+    Koll_c1,
+    Koll_c2,
+    Koll_c3,
+    wcorr,
+    KollCeff_A,
+    Bezugsflaeche,
+    Vorwaermung_K,
+    DT_WT_Solar_K,
+    DT_WT_Netz_K,
+    QSmax,
+    Tm_rl,
+    Tsmax,
+    vs,
+    Speicherinhalt_0,
+    exp_c1,
+):
+    """
+    Hourly collector + storage simulation (the loop of ``calculate_solar_thermal_with_storage``).
+
+    Writes steps ``0 … n_steps-1`` of the output sequences in place. The same source runs as
+    plain Python on lists (bit-identical to the former loop over the instance arrays, ~2× faster
+    because list access avoids creating numpy scalars) and, when numba is installed, JIT-compiled
+    on float arrays (BACKLOG G3). Inputs and scalars are only read.
+    """
+    for i in range(n_steps):
+        # Calculate effective solar radiation terms
+        Eta0b_neu_K_beam_GbT = Eta0b_neu * K_beam[i] * GbT[i]
+        Eta0b_neu_Kthetadiff_GdT_H_Dk = Eta0b_neu * Kthetadiff * GdT_H_Dk[i]
+
+        if i == 0:
+            # Initialize first time step
+            TS_unten[i] = RLT[i]
+            TRL_Solar[i] = RLT[i]
+            Zieltemperatur[i] = TS_unten[i] + Vorwaermung_K + DT_WT_Solar_K + DT_WT_Netz_K
+            Tm_a[i] = (Zieltemperatur[i] + TRL_Solar[i]) / 2
+            Pkoll_a[i] = 0
+            Tgkoll_a[i] = 9.3
+            T_koll_a[i] = (
+                Luft[i] - (Luft[i] - Tgkoll_a[i]) * exp_c1 + (Pkoll_a[i] * 3600) / (KollCeff_A * Bezugsflaeche)
+            )
+            Pkoll_b[i] = 0
+            T_koll_b[i] = Luft[i] - (Luft[i] - 0) * exp_c1 + (Pkoll_b[i] * 3600) / (KollCeff_A * Bezugsflaeche)
+            Tgkoll[i] = 9.3
+            Tm_koll[i] = (T_koll_a[i] + T_koll_b[i]) / 2
+
+            Kollektorfeldertrag[i] = 0
+            Waermeleistung[i] = min(Kollektorfeldertrag[i], Last[i])
+            Verlustwaermestrom[i] = 0
+            Speicherinhalt[i] = Speicherinhalt_0
+            Speicherfuellstand[i] = Speicherinhalt[i] / QSmax
+            Stagnation[i] = 0
+
+        else:
+            # Calculate storage temperature stratification
+            if Speicherfuellstand[i - 1] >= 0.8:
+                TS_unten[i] = (
+                    RLT[i]
+                    + DT_WT_Netz_K
+                    + (2 / 3 * (VLT[i] - RLT[i]) / 0.2 * Speicherfuellstand[i - 1])
+                    + (1 / 3 * (VLT[i] - RLT[i]))
+                    - (2 / 3 * (VLT[i] - RLT[i]) / 0.2 * Speicherfuellstand[i - 1])
+                )
+            else:
+                TS_unten[i] = RLT[i] + DT_WT_Netz_K + (1 / 3 * (VLT[i] - RLT[i]) / 0.8) * Speicherfuellstand[i - 1]
+
+            # Calculate solar circuit temperatures
+            Zieltemperatur[i] = TS_unten[i] + Vorwaermung_K + DT_WT_Solar_K + DT_WT_Netz_K
+            TRL_Solar[i] = TS_unten[i] + DT_WT_Solar_K
+            Tm_a[i] = (Zieltemperatur[i] + TRL_Solar[i]) / 2
+
+            # Calculate collector performance with thermal losses
+            c1a = Koll_c1 * (Tm_a[i] - Luft[i])
+            c2a = Koll_c2 * (Tm_a[i] - Luft[i]) ** 2
+            c3a = Koll_c3 * wcorr * Wind[i] * (Tm_a[i] - Luft[i])
+
+            Pkoll_a[i] = max(
+                0,
+                (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1a - c2a - c3a) * Bezugsflaeche / 1000,
+            )
+            T_koll_a[i] = (
+                Luft[i] - (Luft[i] - Tgkoll_a[i - 1]) * exp_c1 + (Pkoll_a[i] * 3600) / (KollCeff_A * Bezugsflaeche)
+            )
+
+            # Calculate alternative collector state
+            c1b = Koll_c1 * (T_koll_b[i - 1] - Luft[i])
+            c2b = Koll_c2 * (T_koll_b[i - 1] - Luft[i]) ** 2
+            c3b = Koll_c3 * wcorr * Wind[i] * (T_koll_b[i - 1] - Luft[i])
+
+            Pkoll_b[i] = max(
+                0,
+                (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1b - c2b - c3b) * Bezugsflaeche / 1000,
+            )
+            T_koll_b[i] = (
+                Luft[i] - (Luft[i] - Tgkoll_a[i - 1]) * exp_c1 + (Pkoll_b[i] * 3600) / (KollCeff_A * Bezugsflaeche)
+            )
+
+            # Temperature control and collector field output
+            Tgkoll_a[i] = min(Zieltemperatur[i], T_koll_a[i])
+            Tm_koll[i] = (T_koll_a[i] + T_koll_b[i]) / 2
+            Tm_sys = (Zieltemperatur[i] + TRL_Solar[i]) / 2
+
+            if Tm_koll[i] < Tm_sys and Tm_koll[i - 1] < Tm_sys:
+                Tm[i] = Tm_koll[i]
+            else:
+                Tm[i] = Tm_sys
+
+            # Final collector output calculation
+            c1 = Koll_c1 * (Tm[i] - Luft[i])
+            c2 = Koll_c2 * (Tm[i] - Luft[i]) ** 2
+            c3 = Koll_c3 * wcorr * Wind[i] * (Tm[i] - Luft[i])
+            Pkoll = max(0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1 - c2 - c3) * Bezugsflaeche / 1000)
+
+            # Temperature rise calculation
+            T_koll = Luft[i] - (Luft[i] - Tgkoll[i - 1]) * exp_c1 + (Pkoll * 3600) / (KollCeff_A * Bezugsflaeche)
+            Tgkoll[i] = min(Zieltemperatur[i], T_koll)
+
+            # Collector field yield calculation
+            if T_koll > Tgkoll[i - 1]:
+                Pkoll_temp_corr = (
+                    (T_koll - Tgkoll[i]) / (T_koll - Tgkoll[i - 1]) * Pkoll if Tgkoll[i] >= Zieltemperatur[i] else 0
+                )
+                Kollektorfeldertrag[i] = max(0, min(Pkoll, Pkoll_temp_corr)) if Stagnation[i - 1] <= 0 else 0
+            else:
+                Kollektorfeldertrag[i] = 0
+
+            # Heat output and storage balance
+            Waermeleistung[i] = (
+                min(Kollektorfeldertrag[i] + Speicherinhalt[i - 1], Last[i])
+                if Kollektorfeldertrag[i] + Speicherinhalt[i - 1] > 0
+                else 0
+            )
+
+            # Storage energy balance
+            Stagnationsverluste = max(
+                0,
+                Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + Kollektorfeldertrag[i] - Waermeleistung[i] - QSmax,
+            )
+            PSin = Kollektorfeldertrag[i] - Stagnationsverluste
+
+            if Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + PSin - Waermeleistung[i] > QSmax:
+                Speicherinhalt[i] = QSmax
+            else:
+                Speicherinhalt[i] = Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + PSin - Waermeleistung[i]
+
+            # Storage temperature and heat loss calculation
+            Speicherfuellstand[i] = Speicherinhalt[i] / QSmax
+
+            TS_oben = Zieltemperatur[i] - DT_WT_Solar_K
+            if Speicherinhalt[i] <= 0:
+                berechnete_temperatur = TS_oben
+            else:
+                temperaturverhältnis = (TS_oben - Tm_rl) / (Tsmax - Tm_rl)
+                if Speicherfuellstand[i] < temperaturverhältnis:
+                    berechnete_temperatur = VLT[i] + DT_WT_Netz_K
+                else:
+                    berechnete_temperatur = Tsmax
+
+            gewichtete_untere_temperatur = (1 - Speicherfuellstand[i]) * TS_unten[i]
+            Tms = Speicherfuellstand[i] * berechnete_temperatur + gewichtete_untere_temperatur
+
+            Verlustwaermestrom[i] = 0.75 * (vs * 1000) ** 0.5 * 0.16 * (Tms - Luft[i]) / 1000
+
+            # Stagnation detection
+            Stagnation[i] = (
+                1 if same_day_L[i] and Kollektorfeldertrag[i] > Last[i] and Speicherinhalt[i] >= QSmax else 0
+            )
+
+
+def _jit_solar_storage_steps():
+    """The numba-compiled kernel, or ``None`` if numba is missing, disabled or failed before."""
+    global _jit_kernel
+    if _jit_kernel is None:
+        _jit_kernel = False
+        if os.environ.get(NUMBA_DISABLE_ENV):
+            return None
+        try:
+            import numba
+        except ImportError:
+            return None
+        try:
+            _jit_kernel = numba.njit(cache=True)(_solar_storage_steps)
+        except Exception:  # e.g. no writable cache location in a frozen build
+            _jit_kernel = numba.njit(_solar_storage_steps)
+    return _jit_kernel or None
+
+
+def _run_solar_storage_steps(n_steps, same_day_L, inputs, outputs, scalars) -> list:
+    """
+    Run the hourly kernel — compiled if possible, else in plain Python — and return the outputs.
+
+    :return: One sequence per output (length unchanged; steps ≥ ``n_steps`` keep their values)
+    :rtype: list
+    """
+    global _jit_kernel
+    kernel = _jit_solar_storage_steps()
+    # numba does not bounds-check: take the compiled path only when every sequence covers
+    # n_steps; otherwise the Python path raises the IndexError it always did.
+    if kernel is not None and all(len(seq) >= n_steps for seq in (same_day_L, *inputs, *outputs)):
+        arrays = [np.array(seq, dtype=float) for seq in outputs]
+        try:
+            kernel(
+                n_steps,
+                np.asarray(same_day_L, dtype=np.bool_),
+                *[np.asarray(seq, dtype=float) for seq in inputs],
+                *arrays,
+                *[float(value) for value in scalars],
+            )
+            return arrays
+        except Exception as e:  # compilation/typing failure: fall back for the rest of the session
+            logging.warning("numba solar-thermal kernel unavailable (%s); using the Python loop", e)
+            _jit_kernel = False
+    lists = [np.asarray(seq).tolist() for seq in outputs]
+    _solar_storage_steps(
+        n_steps,
+        np.asarray(same_day_L).tolist(),
+        *[np.asarray(seq).tolist() for seq in inputs],
+        *lists,
+        *scalars,
+    )
+    return lists
 
 
 class SolarThermal(BaseHeatGenerator):
@@ -403,216 +664,60 @@ class SolarThermal(BaseHeatGenerator):
             self.IAM_N,
         )
 
-        # Hourly simulation loop.
-        # It runs on plain Python floats and lists: every element access on a numpy array creates a
-        # numpy scalar, and that dominated the loop's cost. The expressions are unchanged — the same
-        # IEEE operations (numpy and Python both evaluate ``** 2`` via pow) — so the results are
-        # bit-identical (BACKLOG G3, pinned by tests/test_solar_thermal.py).
+        # Hourly simulation loop (see _solar_storage_steps: plain Python or numba-compiled)
         n_steps = len(time_steps)
-        same_day_L = _same_day_as_previous(time_steps).tolist()
-        Last = np.asarray(Last_L).tolist()
-        VLT = np.asarray(VLT_L).tolist()
-        RLT = np.asarray(RLT_L).tolist()
-        Luft = np.asarray(self.Lufttemperatur_L).tolist()
-        Wind = np.asarray(self.Windgeschwindigkeit_L).tolist()
-        K_beam = np.asarray(self.K_beam_L).tolist()
-        GbT = np.asarray(self.GbT_L).tolist()
-        GdT_H_Dk = np.asarray(self.GdT_H_Dk_L).tolist()
-
-        TS_unten = self.TS_unten_L.tolist()
-        TRL_Solar = self.TRL_Solar_L.tolist()
-        Zieltemperatur = self.Zieltemperatur_Solaranlage_L.tolist()
-        Tm_a = self.Tm_a_L.tolist()
-        Pkoll_a = self.Pkoll_a_L.tolist()
-        Tgkoll_a = self.Tgkoll_a_L.tolist()
-        T_koll_a = self.T_koll_a_L.tolist()
-        Pkoll_b = self.Pkoll_b_L.tolist()
-        T_koll_b = self.T_koll_b_L.tolist()
-        Tgkoll = self.Tgkoll_L.tolist()
-        Tm_koll = self.Tm_koll_L.tolist()
-        Tm = self.Tm_L.tolist()
-        Kollektorfeldertrag = self.Kollektorfeldertrag_L.tolist()
-        Waermeleistung = self.Wärmeleistung_kW.tolist()
-        Verlustwaermestrom = self.Verlustwärmestrom_Speicher_L.tolist()
-        Speicherinhalt = self.Speicherinhalt.tolist()
-        Speicherfuellstand = self.Speicherfüllstand.tolist()
-        Stagnation = self.Stagnation_L.tolist()
-
-        Eta0b_neu, Kthetadiff = self.Eta0b_neu, self.Kthetadiff
-        Koll_c1, Koll_c2, Koll_c3, wcorr = self.Koll_c1, self.Koll_c2, self.Koll_c3, self.wcorr
-        KollCeff_A, Bezugsflaeche = self.KollCeff_A, self.Bezugsfläche
-        Vorwaermung_K, DT_WT_Solar_K, DT_WT_Netz_K = self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K
-        QSmax, Tm_rl, Tsmax, vs = self.QSmax, self.Tm_rl, self.Tsmax, self.vs
-        exp_c1 = exp(-Koll_c1 / KollCeff_A * 3.6)
-
-        for i in range(n_steps):
-            # Calculate effective solar radiation terms
-            Eta0b_neu_K_beam_GbT = Eta0b_neu * K_beam[i] * GbT[i]
-            Eta0b_neu_Kthetadiff_GdT_H_Dk = Eta0b_neu * Kthetadiff * GdT_H_Dk[i]
-
-            if i == 0:
-                # Initialize first time step
-                TS_unten[i] = RLT[i]
-                TRL_Solar[i] = RLT[i]
-                Zieltemperatur[i] = TS_unten[i] + Vorwaermung_K + DT_WT_Solar_K + DT_WT_Netz_K
-                Tm_a[i] = (Zieltemperatur[i] + TRL_Solar[i]) / 2
-                Pkoll_a[i] = 0
-                Tgkoll_a[i] = 9.3
-                T_koll_a[i] = (
-                    Luft[i] - (Luft[i] - Tgkoll_a[i]) * exp_c1 + (Pkoll_a[i] * 3600) / (KollCeff_A * Bezugsflaeche)
-                )
-                Pkoll_b[i] = 0
-                T_koll_b[i] = Luft[i] - (Luft[i] - 0) * exp_c1 + (Pkoll_b[i] * 3600) / (KollCeff_A * Bezugsflaeche)
-                Tgkoll[i] = 9.3
-                Tm_koll[i] = (T_koll_a[i] + T_koll_b[i]) / 2
-
-                Kollektorfeldertrag[i] = 0
-                Waermeleistung[i] = min(Kollektorfeldertrag[i], Last[i])
-                Verlustwaermestrom[i] = 0
-                Speicherinhalt[i] = self.Qsa * 1000
-                Speicherfuellstand[i] = Speicherinhalt[i] / QSmax
-                Stagnation[i] = 0
-
-            else:
-                # Calculate storage temperature stratification
-                if Speicherfuellstand[i - 1] >= 0.8:
-                    TS_unten[i] = (
-                        RLT[i]
-                        + DT_WT_Netz_K
-                        + (2 / 3 * (VLT[i] - RLT[i]) / 0.2 * Speicherfuellstand[i - 1])
-                        + (1 / 3 * (VLT[i] - RLT[i]))
-                        - (2 / 3 * (VLT[i] - RLT[i]) / 0.2 * Speicherfuellstand[i - 1])
-                    )
-                else:
-                    TS_unten[i] = RLT[i] + DT_WT_Netz_K + (1 / 3 * (VLT[i] - RLT[i]) / 0.8) * Speicherfuellstand[i - 1]
-
-                # Calculate solar circuit temperatures
-                Zieltemperatur[i] = TS_unten[i] + Vorwaermung_K + DT_WT_Solar_K + DT_WT_Netz_K
-                TRL_Solar[i] = TS_unten[i] + DT_WT_Solar_K
-                Tm_a[i] = (Zieltemperatur[i] + TRL_Solar[i]) / 2
-
-                # Calculate collector performance with thermal losses
-                c1a = Koll_c1 * (Tm_a[i] - Luft[i])
-                c2a = Koll_c2 * (Tm_a[i] - Luft[i]) ** 2
-                c3a = Koll_c3 * wcorr * Wind[i] * (Tm_a[i] - Luft[i])
-
-                Pkoll_a[i] = max(
-                    0,
-                    (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1a - c2a - c3a) * Bezugsflaeche / 1000,
-                )
-                T_koll_a[i] = (
-                    Luft[i] - (Luft[i] - Tgkoll_a[i - 1]) * exp_c1 + (Pkoll_a[i] * 3600) / (KollCeff_A * Bezugsflaeche)
-                )
-
-                # Calculate alternative collector state
-                c1b = Koll_c1 * (T_koll_b[i - 1] - Luft[i])
-                c2b = Koll_c2 * (T_koll_b[i - 1] - Luft[i]) ** 2
-                c3b = Koll_c3 * wcorr * Wind[i] * (T_koll_b[i - 1] - Luft[i])
-
-                Pkoll_b[i] = max(
-                    0,
-                    (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1b - c2b - c3b) * Bezugsflaeche / 1000,
-                )
-                T_koll_b[i] = (
-                    Luft[i] - (Luft[i] - Tgkoll_a[i - 1]) * exp_c1 + (Pkoll_b[i] * 3600) / (KollCeff_A * Bezugsflaeche)
-                )
-
-                # Temperature control and collector field output
-                Tgkoll_a[i] = min(Zieltemperatur[i], T_koll_a[i])
-                Tm_koll[i] = (T_koll_a[i] + T_koll_b[i]) / 2
-                Tm_sys = (Zieltemperatur[i] + TRL_Solar[i]) / 2
-
-                if Tm_koll[i] < Tm_sys and Tm_koll[i - 1] < Tm_sys:
-                    Tm[i] = Tm_koll[i]
-                else:
-                    Tm[i] = Tm_sys
-
-                # Final collector output calculation
-                c1 = Koll_c1 * (Tm[i] - Luft[i])
-                c2 = Koll_c2 * (Tm[i] - Luft[i]) ** 2
-                c3 = Koll_c3 * wcorr * Wind[i] * (Tm[i] - Luft[i])
-                Pkoll = max(
-                    0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1 - c2 - c3) * Bezugsflaeche / 1000
-                )
-
-                # Temperature rise calculation
-                T_koll = Luft[i] - (Luft[i] - Tgkoll[i - 1]) * exp_c1 + (Pkoll * 3600) / (KollCeff_A * Bezugsflaeche)
-                Tgkoll[i] = min(Zieltemperatur[i], T_koll)
-
-                # Collector field yield calculation
-                if T_koll > Tgkoll[i - 1]:
-                    Pkoll_temp_corr = (
-                        (T_koll - Tgkoll[i]) / (T_koll - Tgkoll[i - 1]) * Pkoll if Tgkoll[i] >= Zieltemperatur[i] else 0
-                    )
-                    Kollektorfeldertrag[i] = max(0, min(Pkoll, Pkoll_temp_corr)) if Stagnation[i - 1] <= 0 else 0
-                else:
-                    Kollektorfeldertrag[i] = 0
-
-                # Heat output and storage balance
-                Waermeleistung[i] = (
-                    min(Kollektorfeldertrag[i] + Speicherinhalt[i - 1], Last[i])
-                    if Kollektorfeldertrag[i] + Speicherinhalt[i - 1] > 0
-                    else 0
-                )
-
-                # Storage energy balance
-                Stagnationsverluste = max(
-                    0,
-                    Speicherinhalt[i - 1]
-                    - Verlustwaermestrom[i - 1]
-                    + Kollektorfeldertrag[i]
-                    - Waermeleistung[i]
-                    - QSmax,
-                )
-                PSin = Kollektorfeldertrag[i] - Stagnationsverluste
-
-                if Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + PSin - Waermeleistung[i] > QSmax:
-                    Speicherinhalt[i] = QSmax
-                else:
-                    Speicherinhalt[i] = Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + PSin - Waermeleistung[i]
-
-                # Storage temperature and heat loss calculation
-                Speicherfuellstand[i] = Speicherinhalt[i] / QSmax
-
-                TS_oben = Zieltemperatur[i] - DT_WT_Solar_K
-                if Speicherinhalt[i] <= 0:
-                    berechnete_temperatur = TS_oben
-                else:
-                    temperaturverhältnis = (TS_oben - Tm_rl) / (Tsmax - Tm_rl)
-                    if Speicherfuellstand[i] < temperaturverhältnis:
-                        berechnete_temperatur = VLT[i] + DT_WT_Netz_K
-                    else:
-                        berechnete_temperatur = Tsmax
-
-                gewichtete_untere_temperatur = (1 - Speicherfuellstand[i]) * TS_unten[i]
-                Tms = Speicherfuellstand[i] * berechnete_temperatur + gewichtete_untere_temperatur
-
-                Verlustwaermestrom[i] = 0.75 * (vs * 1000) ** 0.5 * 0.16 * (Tms - Luft[i]) / 1000
-
-                # Stagnation detection
-                Stagnation[i] = (
-                    1 if same_day_L[i] and Kollektorfeldertrag[i] > Last[i] and Speicherinhalt[i] >= QSmax else 0
-                )
-
-        # Write the per-step results back into the (pre-allocated) result arrays.
-        self.TS_unten_L[:] = TS_unten
-        self.TRL_Solar_L[:] = TRL_Solar
-        self.Zieltemperatur_Solaranlage_L[:] = Zieltemperatur
-        self.Tm_a_L[:] = Tm_a
-        self.Pkoll_a_L[:] = Pkoll_a
-        self.Tgkoll_a_L[:] = Tgkoll_a
-        self.T_koll_a_L[:] = T_koll_a
-        self.Pkoll_b_L[:] = Pkoll_b
-        self.T_koll_b_L[:] = T_koll_b
-        self.Tgkoll_L[:] = Tgkoll
-        self.Tm_koll_L[:] = Tm_koll
-        self.Tm_L[:] = Tm
-        self.Kollektorfeldertrag_L[:] = Kollektorfeldertrag
-        self.Wärmeleistung_kW[:] = Waermeleistung
-        self.Verlustwärmestrom_Speicher_L[:] = Verlustwaermestrom
-        self.Speicherinhalt[:] = Speicherinhalt
-        self.Speicherfüllstand[:] = Speicherfuellstand
-        self.Stagnation_L[:] = Stagnation
+        outputs = (
+            self.TS_unten_L,
+            self.TRL_Solar_L,
+            self.Zieltemperatur_Solaranlage_L,
+            self.Tm_a_L,
+            self.Pkoll_a_L,
+            self.Tgkoll_a_L,
+            self.T_koll_a_L,
+            self.Pkoll_b_L,
+            self.T_koll_b_L,
+            self.Tgkoll_L,
+            self.Tm_koll_L,
+            self.Tm_L,
+            self.Kollektorfeldertrag_L,
+            self.Wärmeleistung_kW,
+            self.Verlustwärmestrom_Speicher_L,
+            self.Speicherinhalt,
+            self.Speicherfüllstand,
+            self.Stagnation_L,
+        )
+        inputs = (
+            Last_L,
+            VLT_L,
+            RLT_L,
+            self.Lufttemperatur_L,
+            self.Windgeschwindigkeit_L,
+            self.K_beam_L,
+            self.GbT_L,
+            self.GdT_H_Dk_L,
+        )
+        scalars = (
+            self.Eta0b_neu,
+            self.Kthetadiff,
+            self.Koll_c1,
+            self.Koll_c2,
+            self.Koll_c3,
+            self.wcorr,
+            self.KollCeff_A,
+            self.Bezugsfläche,
+            self.Vorwärmung_K,
+            self.DT_WT_Solar_K,
+            self.DT_WT_Netz_K,
+            self.QSmax,
+            self.Tm_rl,
+            self.Tsmax,
+            self.vs,
+            self.Qsa * 1000,
+            exp(-self.Koll_c1 / self.KollCeff_A * 3.6),
+        )
+        results = _run_solar_storage_steps(n_steps, _same_day_as_previous(time_steps), inputs, outputs, scalars)
+        for target, values in zip(outputs, results, strict=True):
+            target[:] = values
 
         # Calculate total annual heat generation
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW) * duration / 1000  # kWh -> MWh

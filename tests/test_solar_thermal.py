@@ -152,8 +152,25 @@ class TestIamLookup:
         np.testing.assert_array_equal(_iam_lookup({}, np.array([10.0, 20.0])), [0.0, 0.0])
 
 
+@pytest.fixture(params=["python", "numba"])
+def kernel_path(request, monkeypatch):
+    """Run a test once on the plain-Python hourly loop and once numba-compiled (if installed)."""
+    from districtheatingsim.heat_generators import solar_thermal
+
+    if request.param == "numba":
+        pytest.importorskip("numba")
+        monkeypatch.delenv(solar_thermal.NUMBA_DISABLE_ENV, raising=False)
+        monkeypatch.setattr(solar_thermal, "_jit_kernel", None)  # resolve (and compile) afresh
+    else:
+        monkeypatch.setattr(solar_thermal, "_jit_kernel", False)
+    return request.param
+
+
+@pytest.mark.usefixtures("kernel_path")
 class TestSolarThermalCalculate:
-    """Standalone hourly simulation (``calculate`` → ``calculate_solar_thermal_with_storage``)."""
+    """Standalone hourly simulation (``calculate`` → ``calculate_solar_thermal_with_storage``),
+    on both kernel paths: plain Python is bit-identical to the pre-G3 loop; the numba build
+    differs by at most one ulp in single steps (LLVM evaluates ``x ** 2`` as ``x * x``)."""
 
     @pytest.mark.parametrize(
         "typ, waermemenge, wgk, betriebsstunden, starts, speicher_sum",
@@ -177,6 +194,34 @@ class TestSolarThermalCalculate:
         r = _calculate(st, try_data, time_steps, np.full(8760, 5.0))
         assert int(np.sum(st.Stagnation_L)) == 710
         assert r["Wärmemenge"] == pytest.approx(25.251349143881527, rel=REL)
+
+
+class TestKernelSelection:
+    def test_numba_kernel_is_used_when_installed(self, monkeypatch):
+        pytest.importorskip("numba")
+        from districtheatingsim.heat_generators import solar_thermal
+
+        monkeypatch.delenv(solar_thermal.NUMBA_DISABLE_ENV, raising=False)
+        monkeypatch.setattr(solar_thermal, "_jit_kernel", None)
+        assert solar_thermal._jit_solar_storage_steps() is not None
+
+    def test_env_switch_forces_python(self, monkeypatch):
+        from districtheatingsim.heat_generators import solar_thermal
+
+        monkeypatch.setenv(solar_thermal.NUMBA_DISABLE_ENV, "1")
+        monkeypatch.setattr(solar_thermal, "_jit_kernel", None)
+        assert solar_thermal._jit_solar_storage_steps() is None
+
+    def test_short_inputs_raise_instead_of_reading_out_of_bounds(self, try_data, time_steps, monkeypatch):
+        # numba does not bounds-check; too-short inputs must take the Python path and raise.
+        from districtheatingsim.heat_generators import solar_thermal
+
+        monkeypatch.setattr(solar_thermal, "_jit_kernel", None)
+        st = _make()
+        with pytest.raises(IndexError):
+            st.calculate_solar_thermal_with_storage(
+                np.full(100, 50.0), np.full(8760, 85.0), np.full(8760, 55.0), try_data, time_steps, 1.0
+            )
 
 
 class TestJsonRoundTrip:
