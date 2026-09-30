@@ -1122,13 +1122,21 @@ the lookup has no value for that vertex (also for 3-D points). Pinned by
 `tests/test_elevation_integration.py::TestAssignElevationToGeoDataFrame` (+2, fail on the old code);
 the real generation runs through again.
 
-### C40. AqvaHeat heat pump cannot be calculated (open, 2026-09-30)
+### C40. AqvaHeat heat pump cannot be calculated (hidden from the GUI 2026-09-30; model open)
 Found while moving its CoolProp import (G8). `AqvaHeat.__init__` does not call `super().__init__()`,
 so `calculate` fails at the end with `AttributeError: 'AqvaHeat' object has no attribute
 'primärenergiefaktor'` — before and after G8 (the CoolProp part runs fine). The technology is
 selectable in the GUI dialogs; it also reports placeholder values (`WGK = -1`, `spec_co2_total = -1`)
 and has no optimization parameters, i.e. it looks unfinished. Decide: finish it (factors, costs,
 tests) or hide it from the GUI.
+**Decision 2026-09-30: hide it for now.** Correction: it was never in the "Wärmeerzeuger
+hinzufügen" menu — only half-wired (dialog dispatch, schematic mapping, name counter), reachable
+through a saved configuration. Those remnants are removed; `TechnologyTab.createTechnology` now
+accepts only the technologies the GUI offers (the `global_counters` keys), so a configuration
+with AqvaHeat is refused with a clear message instead of failing mid-calculation. The model
+(`heat_generators/aqvaheat_heat_pump.py`, `TECH_CLASS_REGISTRY`) and the empty `AqvaHeatDialog`
+stay for when it is finished (then: dispatch branch, counter, schematic mapping, menu entry).
+Tests: `tests/test_technology_tab_counters.py`, `tests/test_technology_dialogs.py`.
 
 ### C41. Energy-system optimizer returned systems that cover no demand (fixed 2026-09-30)
 Found while hardening the optimizer (G4). Where no generator runs — e.g. a CHP capacity whose
@@ -1145,7 +1153,7 @@ compete with their actual objective value; if no candidate covers any demand the
 a clear `RuntimeError`. Now every seed lands at ~300 kW / 67 % coverage. Pinned by
 `tests/test_energy_system.py::TestOptimizerPlateau` (4, all fail on the old code).
 
-### C42. Mixing residential (VDI 4655) and commercial (BDEW) buildings crashes the heat demand (open, 2026-09-30)
+### C42. Mixing residential (VDI 4655) and commercial (BDEW) buildings crashes the heat demand (fixed 2026-09-30)
 Found while verifying pyslpheat 0.4.1 (independent of that version). `generate_profiles_from_csv`
 maps EFH/MFH to VDI 4655, which pyslpheat returns **quarter-hourly** (35 040 values; the code even
 converts kWh/15 min → kW), and all other types to BDEW (hourly, 8 760). One project with both →
@@ -1155,20 +1163,47 @@ max 8760, energy system) — it most likely simulates only the first quarter of 
 fix:** aggregate the VDI profiles to hourly means inside `generate_profiles_from_csv` (energy
 preserving; the air temperature is already taken hourly) — changes results of residential
 projects → decision pending.
+**Fixed 2026-09-30 (decision: never mix the two methods — BDEW has residential profiles, HEF/HMF).**
+Verified first: a VDI-only portfolio returned 35 040 quarter-hour values while temperatures had
+8 760 — read as hours that is 4× the annual energy (20 MWh → 80 MWh) and only Jan–Mar simulated.
+- `resolve_calculation_method` picks **one** method per portfolio in `Datensatz` mode (the GUI's
+  mode): VDI 4655 if all buildings are EFH/MFH, BDEW if all are BDEW types. Mixing raises a
+  `ValueError` that points to HEF/HMF; unknown types (they silently fell back to VDI 4655 and
+  failed inside pyslpheat) raise one naming them.
+- VDI 4655 profiles are summed to hourly values (kWh per hour = mean kW) — energy preserving,
+  8 760 steps like BDEW; the hourly peak is lower than the old quarter-hour peak.
+- Existing residential projects must recalculate the heat demand (their stored profiles have
+  35 040 rows). Projects are BDEW by default (`HMF`), the golden masters are unaffected.
+Tests: `tests/test_heat_requirement_csv.py` (hourly VDI incl. annual energy, BDEW portfolio with
+HEF/HMF, mixing rejected, method resolution).
 
 ### C43. Leap-year calculation year crashes the heat demand (open, 2026-09-30)
 The project tab lets the user pick the calculation year; for a leap year (2024, 2028, …) with the
 standard 8 760-h TRY both BDEW and VDI 4655 fail in pyslpheat (`shapes (365,) (366,)`), also in
 0.4.1. Fix either in pyslpheat (map the 8 760-h weather year onto 366 days, e.g. repeat 28 Feb) or
 restrict the year in the app → decision pending.
+**Decision 2026-09-30: fix in pyslpheat** (prompt for the pyslpheat agent written); then verify
+here with a leap-year test in `tests/test_heat_requirement_csv.py` (8 784 hourly steps, annual
+energy kept, VDI via the new hourly aggregation).
 
-### C44. Failed net generation is reported as success (open, 2026-09-30)
+### C44. Failed net generation is reported as success (fixed 2026-09-30)
 `generate_and_export_layers` (`net_generation/import_and_create_layers.py`) catches every error
 while loading the layers (missing file, missing CSV column, …) and while exporting the network
 GeoJSON, logs it and *returns* — the `NetGenerationThread` then emits `calculation_done`, so the
 GUI reports success although no network was written (and an older `Wärmenetz.geojson` stays in
 place). Found while moving its prints to logging (G10); the errors are at least in the log file
 now. Fix: raise instead of returning, so the thread's existing `calculation_error` path shows it.
+**Fixed 2026-09-30:** `load_layers` and the export no longer catch errors (the docstring already
+promised `:raises`); the GUI now shows the real cause (missing file, missing `UTM_X`/`UTM_Y`, …)
+and nothing is written. The OSMnx variant already re-raised. Tests:
+`tests/test_import_and_create_layers.py` (fail before any elevation lookup — no network access).
+
+### C45. Duplicate technology names after reloading/reordering (fixed 2026-09-30)
+Found while hiding AqvaHeat (C40). `TechnologyTab.rebuildScene` (after loading a configuration
+and after reordering) reset *all* name counters inside its loop, so only the last technology type
+kept its count: with `Gaskessel_1, BHKW_1, BHKW_2` loaded, the next added gas boiler was named
+`Gaskessel_1` again (verified). The reset now runs once before the loop.
+Test: `tests/test_technology_tab_counters.py`.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
@@ -1794,7 +1829,8 @@ release mechanics themselves (section F). See the **Release plan** below.
    simulation (G2)~~ **done**, ~~Parquet instead of JSON + JSON instead of pickle (G7)~~ **done**,
    ~~optimizer (G4)~~ **hardened, C41 fixed**, ~~G10 hygiene (logging, click events)~~ **done**.
    Still open: `thermal-energy-storage-1d` step loop (G3/G4, other repo — integrate + verify when
-   pushed); decisions on C38, C40, C42, C43; fix C44.
+   pushed); ~~C42~~, ~~C44~~, ~~C45~~ fixed and C40 hidden (2026-09-30); C43 waits for pyslpheat;
+   C38 (solar storage model) needs a modelling decision.
 
 ## Release plan (2026-06-15 audit)
 
