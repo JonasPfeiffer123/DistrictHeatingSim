@@ -944,6 +944,40 @@ class EnergySystem:
         except Exception as e:
             raise ValueError(f"Error loading JSON file: {e}") from e
 
+    def save_to_file(self, file_path: str) -> None:
+        """
+        Save the EnergySystem as a Parquet array store (``.json`` path: legacy JSON).
+
+        Same content as :meth:`save_to_json`, ~10× smaller (BACKLOG G7).
+
+        :param file_path: Target file
+        :type file_path: str
+        """
+        if file_path.lower().endswith(".json"):
+            self.save_to_json(file_path)
+            return
+        from districtheatingsim.utilities import array_store
+
+        array_store.dump(self.to_dict(), file_path, json_encoder=CustomJSONEncoder)
+
+    @classmethod
+    def load_from_file(cls, file_path: str):
+        """
+        Load an EnergySystem saved by :meth:`save_to_file` or :meth:`save_to_json` (format detected).
+
+        :param file_path: File to load
+        :type file_path: str
+        :return: Loaded EnergySystem
+        :rtype: EnergySystem
+        :raises ValueError: If the file cannot be loaded
+        """
+        from districtheatingsim.utilities import array_store
+
+        try:
+            return cls.from_dict(array_store.load_json_compatible(file_path))
+        except Exception as e:
+            raise ValueError(f"Error loading energy system file: {e}") from e
+
 
 class EnergySystemOptimizer:
     """

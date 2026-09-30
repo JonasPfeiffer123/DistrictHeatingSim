@@ -16,6 +16,8 @@ Windows).  If the model changes intentionally, regenerate them in the same commi
 so the diff makes the behaviour change explicit.
 """
 
+import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -23,6 +25,7 @@ import pytest
 from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
+from districtheatingsim.heat_generators.json_encoder import CustomJSONEncoder
 from districtheatingsim.heat_generators.results import TechnologyResult
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage, ThermalStorageAdapter
 from districtheatingsim.utilities.schema import SCHEMA_VERSIONS
@@ -656,3 +659,58 @@ class TestBufferStorage:
         assert len(buf.soc_history) == 0
         assert len(buf.Q_loss_history) == 0
         assert len(buf.Q_net_history) == 0
+
+
+class TestEnergySystemFileFormat:
+    """G7: an energy system saved with save_to_file (Parquet array store) loads back to exactly the
+    same dict as the JSON path; load_from_file also reads legacy JSON."""
+
+    @staticmethod
+    def _system():
+        es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+        es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=100))
+        es.add_technology(GasBoiler("Gaskessel_1", thermal_capacity_kW=500))
+        es.calculate_mix()
+        return es
+
+    def test_parquet_round_trip_equals_json_round_trip(self, tmp_path):
+        import json
+
+        es = self._system()
+        parquet, legacy = str(tmp_path / "Ergebnisse.parquet"), str(tmp_path / "Ergebnisse.json")
+        es.save_to_file(parquet)
+        es.save_to_file(legacy)  # a .json path still writes JSON
+
+        from_parquet = EnergySystem.load_from_file(parquet)
+        from_json = EnergySystem.load_from_file(legacy)
+
+        assert json.dumps(from_parquet.to_dict(), cls=CustomJSONEncoder) == json.dumps(
+            from_json.to_dict(), cls=CustomJSONEncoder
+        )
+        assert from_parquet.results["WGK_Gesamt"] == pytest.approx(es.results["WGK_Gesamt"])
+        assert os.path.getsize(parquet) < 0.3 * os.path.getsize(legacy)
+
+    def test_load_from_file_wraps_errors(self, tmp_path):
+        broken = tmp_path / "Ergebnisse.parquet"
+        broken.write_text("not a results file", encoding="utf-8")
+        with pytest.raises(ValueError, match="energy system file"):
+            EnergySystem.load_from_file(str(broken))
+
+
+_GOERLITZ_RESULTS = (
+    os.path.join(os.path.dirname(__file__), "..", "src", "districtheatingsim", "project_data", "Görlitz", "Variante 1")
+    + "/Ergebnisse/Ergebnisse.json"
+)
+
+
+@pytest.mark.skipif(not os.path.exists(_GOERLITZ_RESULTS), reason="Görlitz project data not present")
+def test_goerlitz_results_survive_json_to_parquet(tmp_path):
+    import json
+
+    legacy = EnergySystem.load_from_file(_GOERLITZ_RESULTS)
+    parquet = str(tmp_path / "Ergebnisse.parquet")
+    legacy.save_to_file(parquet)
+    reloaded = EnergySystem.load_from_file(parquet)
+
+    assert json.dumps(reloaded.to_dict(), cls=CustomJSONEncoder) == json.dumps(legacy.to_dict(), cls=CustomJSONEncoder)
+    assert os.path.getsize(parquet) < 0.15 * os.path.getsize(_GOERLITZ_RESULTS)

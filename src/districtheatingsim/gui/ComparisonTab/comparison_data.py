@@ -19,7 +19,7 @@ import json
 import logging
 import os
 
-from districtheatingsim.gui.EnergySystemTab.config_naming import filename_to_config_name
+from districtheatingsim.gui.EnergySystemTab.config_naming import discover_configs
 
 
 def format_kpi_range(variant_data: list[dict], key: str, fmt: str, *, empty: str = "--") -> str:
@@ -66,17 +66,7 @@ def discover_variant_configs(variant_path: str) -> list[tuple[str, str]]:
     :return: List of ``(config_name, filename)`` tuples, ``Standard`` first.
     :rtype: list[tuple[str, str]]
     """
-    ergebnisse_dir = os.path.join(variant_path, "Ergebnisse")
-    configs: list[tuple[str, str]] = []
-    if not os.path.isdir(ergebnisse_dir):
-        return configs
-    files = sorted(os.listdir(ergebnisse_dir))
-    if "Ergebnisse.json" in files:
-        configs.append(("Standard", "Ergebnisse.json"))
-    for f in files:
-        if f.startswith("Ergebnisse_") and f.endswith(".json"):
-            configs.append((filename_to_config_name(f), f))
-    return configs
+    return discover_configs(os.path.join(variant_path, "Ergebnisse"))
 
 
 def variant_has_results(variant_path: str) -> bool:
@@ -87,10 +77,7 @@ def variant_has_results(variant_path: str) -> bool:
     :return: ``True`` if the variant is usable for comparison.
     :rtype: bool
     """
-    ergebnisse_dir = os.path.join(variant_path, "Ergebnisse")
-    return os.path.isdir(ergebnisse_dir) and any(
-        f.startswith("Ergebnisse") and f.endswith(".json") for f in os.listdir(ergebnisse_dir)
-    )
+    return bool(discover_configs(os.path.join(variant_path, "Ergebnisse")))
 
 
 def load_network_kpis(variant_path: str) -> dict:

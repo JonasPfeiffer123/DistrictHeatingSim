@@ -148,6 +148,21 @@ def is_array_store(path: str) -> bool:
     return _META_KEY in metadata
 
 
+def load_json_compatible(path: str):
+    """
+    Read a file that is either an array store or a (legacy) JSON file — detected from the content.
+
+    :param path: File to read
+    :type path: str
+    :return: The data, as ``json.load`` would have returned it
+    :rtype: Any
+    """
+    if is_array_store(path):
+        return load(path)
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load(path: str):
     """
     Read an array-store Parquet file.
