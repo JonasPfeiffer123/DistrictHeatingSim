@@ -1379,3 +1379,71 @@ class TestRecalculateNet:
         # with run context instead (BACKLOG B2/C2).
         with pytest.raises(RuntimeError, match="recalculation failed"):
             recalculate_net(pp.create_empty_network(fluid="water"))
+
+
+class TestNetIo:
+    """G7: the network is saved as pandapipes JSON (not pickle); old pickles still load, and when
+    both exist the newer file wins (an older app version may have re-saved the pickle)."""
+
+    @staticmethod
+    def _save_both(tmp_path, json_newer):
+        import os
+
+        import pandapipes as pp
+
+        json_path, pickle_path = str(tmp_path / "net.json"), str(tmp_path / "net.p")
+        json_net, pickle_net = pp.create_empty_network(fluid="water"), pp.create_empty_network(fluid="water")
+        pp.create_junction(json_net, pn_bar=1.0, tfluid_k=300.0, name="from json")
+        pp.create_junction(pickle_net, pn_bar=1.0, tfluid_k=300.0, name="from pickle")
+        pp.to_json(json_net, json_path)
+        pp.to_pickle(pickle_net, pickle_path)
+        older, newer = (pickle_path, json_path) if json_newer else (json_path, pickle_path)
+        os.utime(older, (1_000_000_000, 1_000_000_000))
+        os.utime(newer, (1_100_000_000, 1_100_000_000))
+        return json_path, pickle_path
+
+    def test_newer_json_wins(self, tmp_path):
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net
+
+        json_path, pickle_path = self._save_both(tmp_path, json_newer=True)
+        net, source = load_net(json_path, pickle_path)
+        assert source == json_path and net.junction.name.iloc[0] == "from json"
+
+    def test_newer_pickle_wins(self, tmp_path):
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net
+
+        json_path, pickle_path = self._save_both(tmp_path, json_newer=False)
+        net, source = load_net(json_path, pickle_path)
+        assert source == pickle_path and net.junction.name.iloc[0] == "from pickle"
+
+    def test_legacy_pickle_only_and_missing(self, tmp_path):
+        import pandapipes as pp
+
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net
+
+        pickle_path = str(tmp_path / "old.p")
+        pp.to_pickle(pp.create_empty_network(fluid="water"), pickle_path)
+        _, source = load_net(str(tmp_path / "new.json"), pickle_path)
+        assert source == pickle_path
+        with pytest.raises(FileNotFoundError):
+            load_net(str(tmp_path / "none.json"), str(tmp_path / "none.p"))
+
+
+@pytest.mark.slow
+class TestNetJsonRoundTrip:
+    def test_controllers_survive_and_net_recalculates(self, tmp_path):
+        # The project's own controllers (BadPointPressureLiftController, ConstControls with DFData)
+        # must survive the JSON round trip and the reloaded net must solve to the same state.
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net, save_net
+        from districtheatingsim.net_simulation_pandapipes.utilities import recalculate_net
+
+        net = TestNetworkInitialization._build_and_init()
+        path = str(tmp_path / "net.json")
+        save_net(net, path)
+        loaded, _ = load_net(path)
+
+        assert [type(c).__name__ for c in loaded.controller.object] == [type(c).__name__ for c in net.controller.object]
+        assert list(loaded.pipe.std_type) == list(net.pipe.std_type)
+        recalculate_net(net)
+        recalculate_net(loaded)
+        np.testing.assert_allclose(loaded.res_junction.values, net.res_junction.values, rtol=1e-9, atol=1e-9)

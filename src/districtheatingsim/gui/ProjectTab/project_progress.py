@@ -95,6 +95,11 @@ def check_network_dimensioned(network_file_path: str) -> bool:
         return False
 
 
+def _alternatives(entry) -> list[str]:
+    """A ``required_files`` entry is one path or a list of alternatives (current format first)."""
+    return [entry] if isinstance(entry, str) else list(entry)
+
+
 def evaluate_process_steps(base_path, process_steps: list[dict]) -> tuple[str, float]:
     """
     Update each process step's completion state from the filesystem.
@@ -128,27 +133,30 @@ def evaluate_process_steps(base_path, process_steps: list[dict]) -> tuple[str, f
             first_step["geocoding_status"] = "not_applicable"
 
         for step in process_steps:
-            full_paths = [os.path.join(base_path, path) for path in step["required_files"]]
-            generated_files = [file for file in full_paths if os.path.exists(file)]
+            missing = [
+                os.path.join(base_path, _alternatives(entry)[0])
+                for entry in step["required_files"]
+                if not any(os.path.exists(os.path.join(base_path, path)) for path in _alternatives(entry))
+            ]
 
             # Special check for the dimensioned-network flag in Wärmenetz.geojson
             if step.get("check_dimensioned_network", False):
                 network_file = os.path.join(base_path, _DIMENSIONED_NETWORK_FILE)
                 network_dimensioned = check_network_dimensioned(network_file)
 
-                step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
+                step["missing_files"] = missing
                 if not network_dimensioned:
                     step["missing_files"].append(f"{_DIMENSIONED_NETWORK_FILE} (nicht dimensioniert)")
                     step["completed"] = False
                 else:
                     step["completed"] = len(step["missing_files"]) == 0
             else:
-                step["completed"] = len(generated_files) == len(full_paths)
-                step["missing_files"] = [path for path in full_paths if not os.path.exists(path)]
+                step["completed"] = not missing
+                step["missing_files"] = missing
     else:
         for step in process_steps:
             step["completed"] = False
-            step["missing_files"] = step["required_files"]
+            step["missing_files"] = [_alternatives(entry)[0] for entry in step["required_files"]]
 
     total_steps = len(process_steps)
     completed_steps = sum(1 for step in process_steps if step["completed"])

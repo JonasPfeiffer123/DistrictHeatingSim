@@ -1589,9 +1589,20 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
 - `Gebäude Lastgang.json` is **15.8 MB for 9 buildings** (written with `indent=4`; `zeitschritte` and
   `außentemperatur` repeated per building). As Parquet: 2.4 MB (`pyarrow` is already a dependency).
   Extrapolated ~900 MB at 500 buildings. `Ergebnisse.json` (20.8 MB) has the same pattern.
-- The pandapipes net is persisted with `pp.to_pickle` (`net_simulation_tab.py`): version-fragile
-  (cf. C11 migration) and a security risk when opening someone else's project (unpickling executes
-  code). `pp.to_json` / `pp.from_json` is the robust alternative.
+- ~~The pandapipes net is persisted with `pp.to_pickle`~~ **Done 2026-09-30:** saved as pandapipes
+  JSON (`Wärmenetz/Ergebnisse Netzinitialisierung.json`, new `file_paths.json` key `pp_net_file_path`)
+  via `net_simulation_pandapipes/net_io.py`; `load_net` still reads the legacy `.p` of older projects
+  and, if both exist, takes the **newer** file (an older app version may re-save the pickle).
+  Verified on Görlitz: all 29 controllers incl. the project's own classes round-trip, the file is
+  225 kB instead of 508 kB, and a 12-step time series on the reloaded net matches the pickle run to
+  rounding noise (≤ 3e-13 K, ≤ 5e-15 bar — pandas' JSON writer keeps ~15 significant digits; pipe
+  lengths differ ≤ 5e-16 km, geodata coordinate tuples come back as lists, values identical).
+  pandapower's JSON reader still imports the modules/classes named in the file (no `__init__`,
+  no pickle-style arbitrary code) — much less exposed than unpickling, not a sandbox. The progress
+  tracker accepts either file (`required_files` entries may now be lists of alternatives).
+  Pinned by `tests/test_net_simulation.py::TestNetIo` (newer file wins both ways, legacy-only,
+  missing) + `TestNetJsonRoundTrip` (slow: controllers survive, reloaded net re-solves identically)
+  and `tests/test_project_progress.py::TestAlternativeRequiredFiles`.
 
 ### G8. Startup: eager imports + eager tabs (lazy imports done 2026-09-30; lazy tabs open)
 - Importing `main_view` took **4.5 s warm / 15 s on the first run** (re-measured 3.97 s warm before

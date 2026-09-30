@@ -5,6 +5,7 @@
     "results_path": "Ergebnisse\\Ergebnisse.json",
     "building_load_profile_path": "Lastgang\\Gebäude Lastgang.json",
     "load_profile_path": "Lastgang\\Lastgang.csv",
+    "pp_net_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.json",
     "pp_pickle_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
     "csv_net_init_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
     "json_net_init_file_path": "Wärmenetz\\Konfiguration Netzinitialisierung.json",
