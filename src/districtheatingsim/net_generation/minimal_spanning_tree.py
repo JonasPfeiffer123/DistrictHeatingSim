@@ -16,6 +16,8 @@ from scipy.spatial.distance import pdist, squareform
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
+from districtheatingsim.net_generation.nearest import nearest_position
+
 
 def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
@@ -117,8 +119,7 @@ def adjust_segments_to_roads(
 
             # Check if segment needs adjustment
             midpoint = line.interpolate(0.5, normalized=True)
-            nearest_line_idx = street_layer.distance(midpoint).idxmin()
-            nearest_street = street_layer.iloc[nearest_line_idx].geometry
+            nearest_street = street_layer.geometry.iloc[nearest_position(street_layer, midpoint)]
             point_on_street = nearest_points(midpoint, nearest_street)[1]
             distance_to_street = midpoint.distance(point_on_street)
 
@@ -141,8 +142,7 @@ def adjust_segments_to_roads(
                     if new_line.is_valid and not new_line.is_empty:
                         # Check improvement quality
                         new_midpoint = new_line.interpolate(0.5, normalized=True)
-                        nearest_line_new_idx = street_layer.distance(new_midpoint).idxmin()
-                        nearest_street_new = street_layer.iloc[nearest_line_new_idx].geometry
+                        nearest_street_new = street_layer.geometry.iloc[nearest_position(street_layer, new_midpoint)]
                         point_on_street_new = nearest_points(new_midpoint, nearest_street_new)[1]
                         new_distance = new_midpoint.distance(point_on_street_new)
                         improvement = orig_distance - new_distance
