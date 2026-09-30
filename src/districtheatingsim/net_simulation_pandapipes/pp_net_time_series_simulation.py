@@ -19,7 +19,7 @@ from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
     validate_simulation_results,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
+from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, secondary_producer_element_indices
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 
@@ -157,9 +157,11 @@ def update_secondary_producer_controller(
     :type end: int
 
     .. note::
-       Updates both circ_pump_mass and flow_control controllers for each producer.
+       Updates both circ_pump_mass and flow_control controllers for each producer. Each
+       controller is matched by its ``profile_name`` and pointed at the k-th producer's pump /
+       flow control, which also repairs nets saved before BACKLOG C35 (all at index 0).
     """
-    for producer in secondary_producers:
+    for k, producer in enumerate(secondary_producers):
         producer_index = producer.index if hasattr(producer, "index") else 0
         mass_flow_data = producer.mass_flow if hasattr(producer, "mass_flow") else np.zeros(len(time_steps))
 
@@ -171,31 +173,32 @@ def update_secondary_producer_controller(
         else:
             mass_flow_slice = np.full(len(time_steps), mass_flow_data)
 
-        print(f"Mass flow for secondary producer {producer_index}: {mass_flow_slice}")
+        pump_idx, flow_control_idx = secondary_producer_element_indices(net, k)
+        mdot_column = f"mdot_flow_kg_per_s_{producer_index}"
+        flow_control_column = f"controlled_mdot_kg_per_s_{producer_index}"
 
-        df_secondary_producer = pd.DataFrame(
-            index=time_steps, data={f"mdot_flow_kg_per_s_{producer_index}": mass_flow_slice}
+        data_source_secondary_producer = DFData(pd.DataFrame(index=time_steps, data={mdot_column: mass_flow_slice}))
+        data_source_secondary_producer_flow_control = DFData(
+            pd.DataFrame(index=time_steps, data={flow_control_column: mass_flow_slice})
         )
-        data_source_secondary_producer = DFData(df_secondary_producer)
-
-        df_secondary_producer_flow_control = pd.DataFrame(
-            index=time_steps, data={f"controlled_mdot_kg_per_s_{producer_index}": mass_flow_slice}
-        )
-        data_source_secondary_producer_flow_control = DFData(df_secondary_producer_flow_control)
 
         for ctrl in net.controller.object.values:
+            if not isinstance(ctrl, ConstControl):
+                continue
             if (
-                isinstance(ctrl, ConstControl)
-                and ctrl.element == "circ_pump_mass"
+                ctrl.element == "circ_pump_mass"
                 and ctrl.variable == "mdot_flow_kg_per_s"
+                and ctrl.profile_name == mdot_column
             ):
                 ctrl.data_source = data_source_secondary_producer
+                ctrl.element_index = pump_idx
             elif (
-                isinstance(ctrl, ConstControl)
-                and ctrl.element == "flow_control"
+                ctrl.element == "flow_control"
                 and ctrl.variable == "controlled_mdot_kg_per_s"
+                and ctrl.profile_name == flow_control_column
             ):
                 ctrl.data_source = data_source_secondary_producer_flow_control
+                ctrl.element_index = flow_control_idx
 
 
 def update_heat_generator_supply_temperature_controller(
@@ -216,22 +219,29 @@ def update_heat_generator_supply_temperature_controller(
     :type end: int
 
     .. note::
-       Converts °C to K, updates both circ_pump_pressure and circ_pump_mass controllers.
+       Converts °C to K, updates both circ_pump_pressure and circ_pump_mass controllers. The
+       circ_pump_mass controllers are created one per secondary producer, in order, so the k-th
+       one is pointed at the k-th pump (repairs nets saved before BACKLOG C35, all at index 0).
     """
     if np.isscalar(supply_temperature):
-        # If a single value is provided, repeat it for all time steps
-        supply_temperature = np.full(len(time_steps), supply_temperature)
+        # A single value (static control) is repeated for all time steps — it is not a profile,
+        # so it must not be sliced by [start:end] (BACKLOG C36).
+        values = np.full(len(time_steps), supply_temperature)
+    else:
+        values = supply_temperature[start:end]
 
     # Create the DataFrame for the supply temperature
-    df_supply_temp = pd.DataFrame(
-        index=time_steps, data={"supply_temperature": supply_temperature[start:end] + KELVIN_OFFSET}
-    )
+    df_supply_temp = pd.DataFrame(index=time_steps, data={"supply_temperature": values + KELVIN_OFFSET})
     data_source_supply_temp = DFData(df_supply_temp)
+    mass_pump_k = 0
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, ConstControl) and ctrl.element == "circ_pump_pressure" and ctrl.variable == "t_flow_k":
             ctrl.data_source = data_source_supply_temp
         elif isinstance(ctrl, ConstControl) and ctrl.element == "circ_pump_mass" and ctrl.variable == "t_flow_k":
             ctrl.data_source = data_source_supply_temp
+            if mass_pump_k < len(net.circ_pump_mass):
+                ctrl.element_index = int(net.circ_pump_mass.index[mass_pump_k])
+            mass_pump_k += 1
 
 
 def create_log_variables(net) -> list[tuple[str, str]]:
