@@ -195,7 +195,10 @@ class ProjectPresenter:
             {
                 "name": "Schritt 5: Erzeugermix auslegen und berechnen",
                 "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
-                "required_files": ["Ergebnisse/calculated_heat_generation.csv", "Ergebnisse/Ergebnisse.json"],
+                "required_files": [
+                    "Ergebnisse/calculated_heat_generation.csv",
+                    ["Ergebnisse/Ergebnisse.parquet", "Ergebnisse/Ergebnisse.json"],
+                ],
             },
         ]
 

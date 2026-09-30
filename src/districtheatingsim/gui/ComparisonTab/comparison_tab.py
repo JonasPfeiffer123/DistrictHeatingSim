@@ -7,7 +7,6 @@ visualization of economic and technical metrics.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import json
 import logging
 import os
 
@@ -43,6 +42,7 @@ from districtheatingsim.gui.ComparisonTab.comparison_data import (
     variant_has_results,
 )
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
+from districtheatingsim.utilities import array_store
 
 # Re-exported so existing importers (`from ...comparison_tab import format_kpi_range`)
 # keep working; the canonical home is now comparison_data.py.
@@ -976,8 +976,7 @@ class ComparisonTab(QWidget):
                 display_name = item["display_name"]
 
                 results_path = os.path.join(variant_path, "Ergebnisse", config_file)
-                with open(results_path, encoding="utf-8") as f:
-                    data = json.load(f)
+                data = array_store.load_json_compatible(results_path)  # Parquet or legacy JSON (G7)
 
                 results = data.get("results", {})
                 processed_data = process_variant_results(results)

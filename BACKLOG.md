@@ -1605,7 +1605,20 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   round trip identical + < 20 % size, JSON export, content detection, newer-file rule),
   `tests/test_heat_demand_thread.py` (worker writes Parquet; legacy JSON load → Parquet target) and
   `test_simulation_golden_master.py::test_net_initialisation_reads_parquet_profiles_identically`
-  (slow). `Ergebnisse.json` → next step (config discovery is by `*.json` name).
+  (slow).
+- **Done 2026-09-30 — energy-system results:** `Ergebnisse.parquet` / `Ergebnisse_<name>.parquet`
+  (`EnergySystem.save_to_file` / `load_from_file`, format detected from the content; `save_to_json` /
+  `load_from_json` unchanged for scripts). The naming *and* the discovery now live only in
+  `gui/EnergySystemTab/config_naming.py` (`discover_configs`, `config_file`, `config_files`) —
+  previously the EnergySystem tab and the comparison tab each scanned for `*.json` themselves. Both
+  formats are recognised; a config present in both is listed once with the newer file; deleting a
+  config removes both files (a leftover JSON would bring it back). The comparison tab and the
+  progress tracker read either format. Görlitz `Ergebnisse.json` 20.8 MB → 1.8 MB, identical
+  `to_dict()` after JSON → Parquet → load. Pinned by `tests/test_config_naming.py` (naming both
+  ways, other files ignored, newer-file rule, delete-both) and
+  `tests/test_energy_system.py::TestEnergySystemFileFormat` + `test_goerlitz_results_survive_json_to_parquet`.
+  *No GUI test constructs the EnergySystem main tab* — its config combo / new / save-as / delete
+  flow is covered only through the `config_naming` functions → check by hand once in the app.
 - ~~The pandapipes net is persisted with `pp.to_pickle`~~ **Done 2026-09-30:** saved as pandapipes
   JSON (`Wärmenetz/Ergebnisse Netzinitialisierung.json`, new `file_paths.json` key `pp_net_file_path`)
   via `net_simulation_pandapipes/net_io.py`; `load_net` still reads the legacy `.p` of older projects

@@ -26,10 +26,7 @@ def read_building_profiles(path: str) -> dict:
     :return: The stored dict, exactly as ``json.load`` returned it for the JSON format
     :rtype: dict
     """
-    if array_store.is_array_store(path):
-        return array_store.load(path)
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return array_store.load_json_compatible(path)
 
 
 def write_building_profiles(path: str, combined_data: dict) -> None:
