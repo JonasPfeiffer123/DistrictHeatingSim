@@ -29,6 +29,7 @@ import pandas as pd
 from pandapipes.control.run_control import run_control
 
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
+from districtheatingsim.heat_requirement.building_profiles_io import read_building_profiles
 from districtheatingsim.net_generation.network_connectivity import check_geojson_connectivity
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
@@ -99,10 +100,10 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
 
     # Load and process heat demand data
-    with open(NetworkGenerationData.heat_demand_json_path, encoding="utf-8") as f:
-        loaded_data = json.load(f)
-        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
-        heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient="index")
+    # Parquet array store or legacy JSON (BACKLOG G7)
+    loaded_data = read_building_profiles(NetworkGenerationData.heat_demand_json_path)
+    results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
+    heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient="index")
 
     # Extract building temperature data
     supply_temperature_buildings = heat_demand_df["VLT_max"].values.astype(float)

@@ -162,3 +162,34 @@ def test_normal_network_runs_without_cop_file():
     nd.end_time_step = 8
     nd = time_series_preprocessing(nd)  # must not raise on a normal network without a COP file
     assert nd.waerme_hast_ges_W is not None
+
+
+@pytest.mark.slow
+def test_net_initialisation_reads_parquet_profiles_identically(tmp_path):
+    # G7: the building profiles file is now a Parquet array store; network initialisation must
+    # get exactly the same demand / temperature data from it as from the legacy Görlitz JSON.
+    import json
+
+    import pandas as pd
+
+    from districtheatingsim.heat_requirement.building_profiles_io import write_building_profiles
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    parquet = tmp_path / "Gebäude Lastgang.parquet"
+    original = json.loads(_LOAD.read_text(encoding="utf-8"))
+    write_building_profiles(str(parquet), {k: v for k, v in original.items() if k != "_meta"})
+
+    from_json = initialize_geojson(_make_nd(str(_COP)))
+    nd = _make_nd(str(_COP))
+    nd.heat_demand_json_path = str(parquet)
+    from_parquet = initialize_geojson(nd)
+
+    for attr in (
+        "waerme_hast_ges_W",
+        "heizwaerme_hast_ges_W",
+        "supply_temperature_buildings_curve",
+        "yearly_time_steps",
+    ):
+        if hasattr(from_json, attr):
+            np.testing.assert_array_equal(getattr(from_parquet, attr), getattr(from_json, attr))
+    pd.testing.assert_frame_equal(from_parquet.net.heat_consumer, from_json.net.heat_consumer)  # NaN-aware

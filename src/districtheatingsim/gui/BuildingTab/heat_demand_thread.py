@@ -5,12 +5,11 @@ Heat Demand Thread Module
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
 Worker thread for the building heat demand calculation. Generating the profiles, formatting
-them and writing the (large) building JSON used to run on the UI thread and froze the window
-for the whole calculation (BACKLOG G6). The work itself is in ``compute_and_save_heat_demand``,
+them and writing the (large) building profiles file used to run on the UI thread and froze the
+window for the whole calculation (BACKLOG G6). The work itself is in ``compute_and_save_heat_demand``,
 which touches no widgets and is unit-testable without a ``QThread``.
 """
 
-import json
 import traceback
 from collections import namedtuple
 
@@ -18,8 +17,8 @@ import pandas as pd
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.gui.utilities import convert_to_serializable
+from districtheatingsim.heat_requirement.building_profiles_io import write_building_profiles
 from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
-from districtheatingsim.utilities.schema import add_meta
 
 HeatDemandResult = namedtuple(
     "HeatDemandResult",
@@ -111,24 +110,11 @@ def combine_data_with_results(data: pd.DataFrame, results: dict) -> dict:
     return {str(idx): {**data_dict[idx], **results[str(idx)]} for idx in range(len(data))}
 
 
-def write_building_json(path: str, combined_data: dict) -> None:
-    """
-    Write the building results JSON (with the ``_meta`` schema block).
-
-    :param path: Target file
-    :type path: str
-    :param combined_data: Data to save
-    :type combined_data: dict
-    """
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(add_meta(combined_data, "building_data"), f, indent=4)
-
-
 def compute_and_save_heat_demand(data: pd.DataFrame, try_filename: str, year: int, json_path: str) -> HeatDemandOutcome:
     """
-    Run the whole heat demand job: profiles → formatted results → combined data → JSON file.
+    Run the whole heat demand job: profiles → formatted results → combined data → profiles file.
 
-    A failing JSON write does not discard the computed results (the UI still shows them, as
+    A failing write does not discard the computed results (the UI still shows them, as
     before the move to a worker thread); it is reported in ``save_error`` instead.
 
     :param data: Building input data (not modified)
@@ -137,7 +123,7 @@ def compute_and_save_heat_demand(data: pd.DataFrame, try_filename: str, year: in
     :type try_filename: str
     :param year: Calculation year
     :type year: int
-    :param json_path: Where to write the building results JSON
+    :param json_path: Where to write the building profiles file (Parquet; ``.json`` = legacy JSON)
     :type json_path: str
     :return: Results, combined data, the JSON path and the save error message (or ``None``)
     :rtype: HeatDemandOutcome
@@ -146,7 +132,7 @@ def compute_and_save_heat_demand(data: pd.DataFrame, try_filename: str, year: in
     results = format_heat_demand_results(calculate_heat_demand(data, try_filename, year), data)
     combined_data = combine_data_with_results(data, results)
     try:
-        write_building_json(json_path, combined_data)
+        write_building_profiles(json_path, combined_data)
         save_error = None
     except Exception as e:
         save_error = f"Fehler beim Speichern der Ergebnisse: {e}"
@@ -174,7 +160,7 @@ class HeatDemandThread(QThread):
         :type try_filename: str
         :param year: Calculation year
         :type year: int
-        :param json_path: Where to write the building results JSON
+        :param json_path: Where to write the building profiles file (Parquet; ``.json`` = legacy JSON)
         :type json_path: str
         """
         super().__init__()

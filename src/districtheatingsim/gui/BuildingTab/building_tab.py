@@ -41,9 +41,13 @@ from districtheatingsim.gui.BuildingTab.heat_demand_thread import (
     calculate_heat_demand,
     combine_data_with_results,
     format_heat_demand_results,
-    write_building_json,
 )
 from districtheatingsim.gui.utilities import CheckableComboBox, any_thread_running, stop_qthreads
+from districtheatingsim.heat_requirement.building_profiles_io import (
+    current_format_path,
+    read_building_profiles,
+    write_building_profiles,
+)
 from districtheatingsim.utilities.schema import check_version
 
 
@@ -86,13 +90,12 @@ class BuildingModel:
 
     def load_json(self):
         """
-        Load results from JSON file.
+        Load results from the building profiles file (Parquet or legacy JSON).
 
-        :raises Exception: If JSON loading fails
+        :raises Exception: If loading fails
         """
         try:
-            with open(self.json_path, encoding="utf-8") as f:
-                loaded_data = json.load(f)
+            loaded_data = read_building_profiles(self.json_path)
             check_version(loaded_data, "building_data")
             # Building entries are keyed by index; the _meta block (and any other
             # non-building key) is naturally skipped by the 'wärme' filter.
@@ -109,7 +112,7 @@ class BuildingModel:
         :raises Exception: If JSON saving fails
         """
         try:
-            write_building_json(self.json_path, combined_data)
+            write_building_profiles(self.json_path, combined_data)
         except Exception as e:
             raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}") from e
 
@@ -341,7 +344,10 @@ class BuildingPresenter:
         if fname is None or fname == "":
             if show_dialog:
                 fname, _ = QFileDialog.getOpenFileName(
-                    self.view, "Select JSON File", self.model.json_path, "JSON Files (*.json);;All Files (*)"
+                    self.view,
+                    "Gebäudelastgänge laden",
+                    self.model.json_path,
+                    "Gebäudelastgänge (*.parquet *.json);;Alle Dateien (*)",
                 )
             else:
                 return
@@ -349,6 +355,8 @@ class BuildingPresenter:
             try:
                 self.model.json_path = fname
                 self.model.load_json()
+                # Later saves go to the current format next to it (a legacy .json is not rewritten).
+                self.model.json_path = current_format_path(fname)
                 self.view.populate_building_combobox(self.model.results)
                 self.view.plot(self.model.results)
             except Exception as e:
@@ -370,7 +378,10 @@ class BuildingPresenter:
         if fname is None or fname == "":
             if show_dialog:
                 fname, _ = QFileDialog.getSaveFileName(
-                    self.view, "Save JSON File", self.model.json_path, "JSON Files (*.json);;All Files (*)"
+                    self.view,
+                    "Gebäudelastgänge speichern",
+                    self.model.json_path,
+                    "Parquet (*.parquet);;JSON (*.json)",
                 )
             else:
                 fname = self.model.json_path
