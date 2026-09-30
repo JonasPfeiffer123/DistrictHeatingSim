@@ -1114,25 +1114,27 @@ class EnergySystemOptimizer:
                     logging.debug("Error in objective function evaluation: %s", e)
                     return float("inf")  # Return large value for infeasible solutions
 
-            # Perform optimization with SLSQP algorithm
-            try:
-                result = scipy_minimize(
-                    objective_function,
-                    random_initial_values,
-                    method="SLSQP",
-                    bounds=bounds,
-                    options={"maxiter": 1000, "ftol": 1e-6},
+            # Perform optimization with SLSQP algorithm.
+            # Where no generator runs (e.g. a capacity whose minimum part load exceeds the whole
+            # load), the objective is flat: SLSQP stops after one iteration and reports success
+            # although nothing is covered. Such a restart is retried once from the configured
+            # values instead of competing with its "no demand covered" result (BACKLOG C41).
+            result = self._run_slsqp(objective_function, random_initial_values, bounds, restart)
+            if result is not None and self._covers_no_demand(result.x, variables_order):
+                logging.warning(
+                    "Restart %d covers no demand (flat objective); retrying from the configured values", restart + 1
                 )
+                configured_start = np.clip(initial_values, [b[0] for b in bounds], [b[1] for b in bounds]).tolist()
+                result = self._run_slsqp(objective_function, configured_start, bounds, restart)
+                if result is not None and self._covers_no_demand(result.x, variables_order):
+                    logging.warning("Restart %d covers no demand from the configured values either", restart + 1)
+                    result = None
 
-                # Check if current solution is better than previous best
-                if result.success and result.fun < best_objective_value:
-                    best_objective_value = result.fun
-                    best_solution = result
-                    logging.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
-
-            except Exception as e:
-                logging.warning("Optimization failed in restart %d: %s", restart + 1, e)
-                continue
+            # Check if current solution is better than previous best
+            if result is not None and self._is_usable(result) and result.fun < best_objective_value:
+                best_objective_value = result.fun
+                best_solution = result
+                logging.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
 
         # Apply best solution if found
         if best_solution is not None:
@@ -1150,9 +1152,48 @@ class EnergySystemOptimizer:
             return self.energy_system_copy
         else:
             raise RuntimeError(
-                "Optimization failed to find valid solution in all restart attempts. "
+                "Optimization failed to find valid solution in all restart attempts "
+                "(or no configuration within the bounds covers any demand). "
                 "Consider adjusting parameter bounds, weights, or increasing restart attempts."
             )
+
+    # SLSQP exit modes that still return a valid, evaluated point: 8 = positive directional
+    # derivative in the line search, 9 = iteration limit. On the non-smooth dispatch objective the
+    # good runs typically end here, and discarding them left only the flat "success" runs.
+    _USABLE_SLSQP_STATUS = frozenset({8, 9})
+
+    @staticmethod
+    def _run_slsqp(objective_function, start, bounds, restart):
+        """Run SLSQP from ``start``; return the result, or ``None`` if it raised."""
+        try:
+            return scipy_minimize(
+                objective_function,
+                start,
+                method="SLSQP",
+                bounds=bounds,
+                options={"maxiter": 1000, "ftol": 1e-6},
+            )
+        except Exception as e:
+            logging.warning("Optimization failed in restart %d: %s", restart + 1, e)
+            return None
+
+    def _is_usable(self, result) -> bool:
+        """Converged, or stopped by the line search / iteration limit at a finite objective value."""
+        return bool(np.isfinite(result.fun)) and (result.success or result.status in self._USABLE_SLSQP_STATUS)
+
+    def _covers_no_demand(self, variables, variables_order) -> bool:
+        """
+        Whether the system with these parameters covers none of the heat demand.
+
+        That is the flat part of the objective (only the unmet-demand penalty remains), where
+        SLSQP cannot move. An evaluation error is not treated as such — the objective already
+        maps it to ``inf``.
+        """
+        try:
+            results = self.energy_system_copy.copy().calculate_mix(variables, variables_order)
+        except Exception:
+            return False
+        return results["Restwärmebedarf"] >= results["Jahreswärmebedarf"] * (1 - 1e-9)
 
     def get_optimization_summary(self) -> dict[str, float | int | bool]:
         """

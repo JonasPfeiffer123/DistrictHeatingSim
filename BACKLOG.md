@@ -1130,6 +1130,21 @@ selectable in the GUI dialogs; it also reports placeholder values (`WGK = -1`, `
 and has no optimization parameters, i.e. it looks unfinished. Decide: finish it (factors, costs,
 tests) or hide it from the GUI.
 
+### C41. Energy-system optimizer returned systems that cover no demand (fixed 2026-09-30)
+Found while hardening the optimizer (G4). Where no generator runs — e.g. a CHP capacity whose
+minimum part load exceeds the whole load — the objective is flat (only the unmet-demand penalty).
+SLSQP stops there after **one** iteration and reports `success`. The good runs on the non-smooth
+dispatch objective typically end at the **iteration limit** (`success=False`, status 9) and were
+**discarded** by `if result.success and …`. Result: the "best" solution was the flat one.
+Reproduced with CHP bounds 0–5000 kW on a 50–400 kW load: with the GUI's 5 restarts **8 of 12
+seeds returned a CHP covering 0 % of the demand** (its size = the random start); with 1 restart 11
+of 12. **Fixed** in `EnergySystemOptimizer.optimize`: a restart whose result covers no demand is
+retried once from the configured values (clipped to the bounds; the random draws of the other
+restarts are unchanged); results stopped by the line search or the iteration limit (status 8/9)
+compete with their actual objective value; if no candidate covers any demand the optimizer raises
+a clear `RuntimeError`. Now every seed lands at ~300 kW / 67 % coverage. Pinned by
+`tests/test_energy_system.py::TestOptimizerPlateau` (4, all fail on the old code).
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1508,10 +1523,10 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   2.0 ms/call = 0.35 s total, `getInitialPlotData` 0.2 ms/call = 0.03 s — ~1 % of the 31 s run;
   `calculate_mix` itself is the other 99 %.** Not worth changing; the levers are the per-hour loops
   (G3 large) and the optimizer method below.
-- SLSQP (gradient-based, finite differences) on a piecewise-flat objective (on/off dispatch): in
-  the test, restart 1 stalled on a plateau (objective = 1e6 penalty) and was still counted as
-  `success`. A derivative-free method (Powell / Nelder-Mead) or `differential_evolution` would be
-  more robust; restarts are embarrassingly parallel.
+- ~~SLSQP stalled on a plateau and was still counted as `success`~~ **hardened 2026-09-30 (C41):**
+  flat "covers nothing" results are retried from the configured values, iteration-limited runs
+  compete. Decided to keep SLSQP (no method switch) — a derivative-free/global method remains an
+  option; restarts are embarrassingly parallel.
 
 ### G5. Net generation: O(n²) MST + full street scans (done 2026-09-29/30)
 - **Done:** `generate_mst` built the complete graph with nested `iterrows` + a shapely distance per
