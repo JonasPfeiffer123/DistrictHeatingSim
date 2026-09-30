@@ -10,9 +10,10 @@ managing UI elements, menu system, theme management, and tab coordination.
 
 import os
 
-from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QAction, QFont, QIcon
 from PyQt6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -26,16 +27,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
-from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
+# The six tab modules (pandapipes, geopandas, matplotlib, QtWebEngine, …) are imported in
+# initTabs, i.e. only when the main interface is first shown — not while the welcome screen is
+# up (BACKLOG G8). QtWebEngineWidgets itself is imported by the entry point before the
+# QApplication exists, as Qt requires.
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
-from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
-from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
 from districtheatingsim.gui.MainTab.project_structure import discover_variants, resolve_new_project_start_dir
-from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
-from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
-from districtheatingsim.heat_requirement.building_profiles_io import preferred_profiles_path
+
+_TAB_ATTRIBUTES = ("projectTab", "buildingTab", "visTab2", "calcTab", "energySystemTab", "comparisonTab")
 
 
 class HeatSystemDesignGUI(QMainWindow):
@@ -119,15 +119,9 @@ class HeatSystemDesignGUI(QMainWindow):
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
 
-        # Create welcome screen
+        # Create welcome screen; the main interface (menu + tabs) is built when it is first shown
         self.init_welcome_screen()
-
-        # Create main interface widget
-        self.init_main_interface()
-
-        # Add both views to the stacked widget
         self.stacked_widget.addWidget(self.welcome_screen)
-        self.stacked_widget.addWidget(self.main_interface_widget)
 
         # Show welcome screen by default if enabled
         if self.show_welcome_on_startup:
@@ -201,10 +195,31 @@ class HeatSystemDesignGUI(QMainWindow):
             self.menuBar().hide()
 
     def show_main_interface(self) -> None:
-        """Switch to showing the main interface."""
+        """Switch to showing the main interface (built on first use)."""
+        self._ensure_main_interface()
         if self.stacked_widget and self.main_interface_widget:
             self.stacked_widget.setCurrentWidget(self.main_interface_widget)
             self.menuBar().show()
+
+    def _ensure_main_interface(self) -> None:
+        """
+        Build the main interface (menu, tabs, logo) the first time it is needed.
+
+        Building it — and importing the tab modules — used to happen at startup although only the
+        welcome screen is visible then (~2.5 s of imports + ~0.6–1 s for the six tabs incl. two web
+        views, BACKLOG G8). It is still built completely before any project is opened, so the tabs
+        see the same sequence of folder changes as before.
+        """
+        if self.main_interface_widget is not None:
+            return
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            self.init_main_interface()
+            self.stacked_widget.addWidget(self.main_interface_widget)
+            self.sync_theme_toggle_state()
+            self.update_project_folder_label(self.folder_manager.variant_folder)
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def add_theme_toggle_to_main_interface(self):
         """Add theme toggle switch to the main interface next to menu bar."""
@@ -535,6 +550,13 @@ class HeatSystemDesignGUI(QMainWindow):
         network calculation, energy system design, and variant comparison.
         Supports dynamic tab visibility control.
         """
+        from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
+        from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
+        from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
+        from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
+        from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
+        from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
+
         # Create main tab widget with closeable tabs
         self.tabWidget = QTabWidget()
         self.tabWidget.setTabsClosable(False)
@@ -949,6 +971,8 @@ class HeatSystemDesignGUI(QMainWindow):
                 building_data_path = os.path.join(
                     self.base_path, self.presenter.config_manager.get_relative_path("current_building_data_path")
                 )
+                from districtheatingsim.heat_requirement.building_profiles_io import preferred_profiles_path
+
                 building_profile_path = preferred_profiles_path(
                     os.path.join(
                         self.base_path, self.presenter.config_manager.get_relative_path("building_load_profile_path")
@@ -1174,16 +1198,10 @@ class HeatSystemDesignGUI(QMainWindow):
             # If 'discard', proceed with closing without saving
 
         # Stop any running worker threads before the widgets are destroyed, so Qt does
-        # not abort on a QThread that is still running (C1).
-        for tab in (
-            self.projectTab,
-            self.buildingTab,
-            self.visTab2,
-            self.calcTab,
-            self.energySystemTab,
-            self.comparisonTab,
-        ):
-            stop = getattr(tab, "stop_threads", None)
+        # not abort on a QThread that is still running (C1). The tabs do not exist if the
+        # app is closed from the welcome screen before the main interface was built.
+        for name in _TAB_ATTRIBUTES:
+            stop = getattr(getattr(self, name, None), "stop_threads", None)
             if callable(stop):
                 stop()
 
