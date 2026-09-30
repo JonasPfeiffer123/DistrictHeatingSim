@@ -1470,11 +1470,14 @@ sizing unchanged (same 68 ISOPLUS types). **Done:**
   gain kept). Golden master unchanged (`test_simulation_golden_master.py` green without re-pinning).
 
 ### G2. Net time series: numba + parallel chunks (large, open)
-- **numba is not installed** in the dev venv and not declared in `pyproject.toml`, although the
-  `slow` marker text talks about a "numba cold-start". pandapipes silently falls back to pure
-  Python. Measured on Görlitz (after G1): 70 → 62 ms/step (~11 %), but the first pipeflow pays
-  **~5 s JIT compilation** — worth it for full-year runs (~70 s saved), not for short ones. Larger
-  nets gain more. Decide: declare it (optional extra) or drop the wording.
+- ~~numba is not installed / not declared~~ **Declared 2026-09-30 as optional extra `fast`**
+  (`pip install -e .[fast]`; installed in the dev venv). pandapipes picks it up automatically.
+  Measured on Görlitz (after G1): 70 → 62 ms/step (~11 %), but the first pipeflow pays **~5 s JIT
+  compilation** — worth it for full-year runs (~70 s saved), not for short ones; larger nets gain
+  more. **Side effect:** pandapower imports numba at import time when it is installed
+  (`pandapower.auxiliary`), so with the extra the warm startup import grows by ~0.2 s (2.2 → ~2.6 s);
+  without it nothing changes. **PyInstaller:** numba is bundled only if present in the build env —
+  untested in the frozen app so far (kernel falls back to Python if caching/compiling fails there).
 - Time steps are nearly independent (controllers reset per step) → the year can be split into
   blocks and solved in parallel processes (≈ linear in cores).
 
@@ -1505,9 +1508,20 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   types, stagnation, varying VLT + integer RLT + start content, partial year; `** 2` stays `** 2`
   because numpy and Python both evaluate it via `pow`, while `x*x` would differ in the last bit).
   examples/10 now ~13.5 s, of which the solar loop is still ~90 %.
-- **Open — numba:** the loop has an hour-to-hour recurrence (no vectorisation); plain CPython is at
-  its floor. A numba kernel would cut it further but makes numba a dependency (PyInstaller size,
-  JIT warm-up, cache dir in the frozen app) — decision pending, see G2.
+- **Done 2026-09-30 — optional numba kernel (decided: optional extra, not a hard dependency):** the
+  loop body is now the module-level `_solar_storage_steps`, one source for both paths: plain Python
+  on lists (default; **bit-identical** to the pre-G3 loop) or, if numba is installed, the same
+  function `njit`-compiled on float arrays. numba is imported lazily on first use (not at startup),
+  compiled with `cache=True` (falls back to no cache if the location is not writable, and to the
+  Python path for the session if compilation fails); `DISTRICTHEATINGSIM_DISABLE_NUMBA=1` forces
+  Python. numba does not bounds-check, so sequences shorter than the step count take the Python
+  path (which raises `IndexError` as before). Result difference of the numba build: **one ulp in
+  single steps** (LLVM evaluates `x ** 2` as `x * x`) — Wärmemenge and stagnation hours identical in
+  all 5 comparison scenarios. Speed: steady **47 → 4.8 ms per call** (incl. ~3 ms radiation; 158 ms
+  before G3), first call per process +0.3 s (loading the compiled kernel). **examples/10: 14.5 →
+  2.0 s** (`calculate_mix` 79 → 8 ms). Declared as extra `fast` in `pyproject.toml`. Pinned by
+  `tests/test_solar_thermal.py` (golden masters parametrised over both paths via the `kernel_path`
+  fixture; kernel selection, env switch, short-input safety).
 - **Not here:** the per-hour buffer loops in `chp.py` / `biomass_boiler.py` and the network storage
   spend ~70 % in `ThermalStorage1D.step` of the external `thermal-energy-storage-1d` package — like
   pyslpheat (G6), that optimisation belongs in that repo.
