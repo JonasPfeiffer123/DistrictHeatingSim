@@ -130,7 +130,12 @@ def main():
 
 
 if __name__ == "__main__":
+    import multiprocessing
     import traceback
+
+    # Worker processes of the parallel time series (spawn) re-run this entry point in a frozen
+    # exe; freeze_support lets them start as workers instead of opening another GUI (BACKLOG G2).
+    multiprocessing.freeze_support()
 
     # Check if stdin is available (console window exists)
     has_console = sys.stdin is not None and hasattr(sys.stdin, "fileno")

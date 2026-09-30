@@ -1447,3 +1447,82 @@ class TestNetJsonRoundTrip:
         recalculate_net(net)
         recalculate_net(loaded)
         np.testing.assert_allclose(loaded.res_junction.values, net.res_junction.values, rtol=1e-9, atol=1e-9)
+
+
+class TestSplitTimeRange:
+    """G2: the parallel time series splits the range into ordered blocks of a minimum length."""
+
+    def test_blocks_cover_the_range_in_order(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import split_time_range
+
+        blocks = split_time_range(0, 8760, 4, min_block=168)
+        assert blocks[0][0] == 0 and blocks[-1][1] == 8760
+        assert all(a[1] == b[0] for a, b in zip(blocks, blocks[1:], strict=False))
+        assert len(blocks) == 4
+
+    def test_short_ranges_stay_in_one_block(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import split_time_range
+
+        assert split_time_range(100, 300, 8, min_block=168) == [(100, 300)]  # < 2 weeks
+        assert split_time_range(0, 400, 8, min_block=168) == [(0, 200), (200, 400)]  # limited by length
+        assert split_time_range(0, 10, 1, min_block=1) == [(0, 10)]
+
+
+@pytest.mark.slow
+class TestParallelTimeSeries:
+    """G2: blocks simulated in worker processes and merged must give the sequential heat results;
+    only the pump pressures may differ where the bad-point controller restarts at a block."""
+
+    @staticmethod
+    def _nd(n):
+        from types import SimpleNamespace
+
+        import pandapipes as pp
+        from pandapipes.control.run_control import run_control
+
+        from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
+
+        net = pp.create_empty_network(fluid="water")
+        coords = [(0, 10), (0, 0), (10, 0), (60, 0), (85, 0), (85, 10), (60, 10), (10, 10)]
+        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K, geodata=c) for c in coords]
+        pp.create_circ_pump_const_pressure(
+            net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        for a, b, length in [(1, 2, 0.01), (2, 3, 0.05), (3, 4, 0.025), (5, 6, 0.25), (6, 7, 0.05), (7, 0, 0.01)]:
+            pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
+        pp.create_heat_consumer(net, j[4], j[5], qext_w=500000, treturn_k=55 + 273.15)
+        pp.create_heat_consumer(net, j[3], j[6], qext_w=200000, treturn_k=60 + 273.15)
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+        net = create_controllers(net, np.array([500000, 200000]), 85, None, np.array([55, 60]), None)
+        run_control(net, mode="bidirectional", iter=100)
+
+        load = np.linspace(0.3, 1.0, n)
+        return SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=np.array([500000.0 * load, 200000.0 * load[::-1]]),
+            start_time_step=0,
+            end_time_step=n,
+            secondary_producers=[],
+            min_supply_temperature_heat_consumer=None,
+            return_temperature_heat_consumer=np.array([55.0, 60.0]),
+            supply_temperature_heat_generator=85.0,
+        )
+
+    def test_parallel_blocks_match_sequential_heat_results(self, monkeypatch):
+        import copy
+
+        from districtheatingsim.net_simulation_pandapipes import pp_net_time_series_simulation as ts
+
+        monkeypatch.setattr(ts, "PARALLEL_MIN_BLOCK_STEPS", 3)
+        base = self._nd(8)
+        sequential = ts.thermohydraulic_time_series_net(copy.deepcopy(base))
+        parallel = ts.thermohydraulic_time_series_net(copy.deepcopy(base), workers=2)
+
+        a, b = sequential.net_results, parallel.net_results
+        assert set(a) == set(b)
+        for key in a:
+            assert b[key].shape == a[key].shape
+        for key in ("heat_consumer.qext_w", "res_heat_consumer.mdot_from_kg_per_s", "res_junction.t_k"):
+            np.testing.assert_allclose(b[key], a[key], rtol=1e-6)
+        # merged pump results come from the whole range
+        assert set(parallel.pump_results) == set(sequential.pump_results)
