@@ -44,6 +44,8 @@ from districtheatingsim.gui.ComparisonTab.comparison_data import (
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
 from districtheatingsim.utilities import array_store
 
+logger = logging.getLogger(__name__)
+
 # Re-exported so existing importers (`from ...comparison_tab import format_kpi_range`)
 # keep working; the canonical home is now comparison_data.py.
 __all__ = ["ComparisonDashboard", "ComparisonTab", "ProjectExplorer", "format_kpi_range"]
@@ -470,7 +472,7 @@ class ComparisonDashboard(QWidget):
                 text = format_kpi_range(self.variant_data, data_key, fmt, empty=empty)
                 self.kpi_widgets[widget_key].value_label.setText(text)
         except Exception as e:
-            logging.warning("KPI-Aktualisierung fehlgeschlagen: %s", e)
+            logger.warning("KPI-Aktualisierung fehlgeschlagen: %s", e)
             for widget in self.kpi_widgets.values():
                 widget.value_label.setText("--")
 
@@ -483,7 +485,7 @@ class ComparisonDashboard(QWidget):
             self.update_pe_chart()
             self.update_network_chart()
         except Exception as e:
-            logging.warning("Diagramm-Aktualisierung fehlgeschlagen: %s", e)
+            logger.warning("Diagramm-Aktualisierung fehlgeschlagen: %s", e)
 
     def update_cost_chart(self):
         """Update cost comparison chart."""

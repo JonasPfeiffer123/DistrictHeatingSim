@@ -14,6 +14,8 @@ import numpy as np
 
 from districtheatingsim.heat_generators.annuity import annuity
 
+logger = logging.getLogger(__name__)
+
 
 class BaseHeatGenerator:
     """
@@ -149,7 +151,7 @@ class BaseHeatGenerator:
         ]
 
         if not relevant_vars:
-            logging.debug("No relevant variables found for %s.", self.name)
+            logger.debug("No relevant variables found for %s.", self.name)
             return
 
         # Update parameters with optimized values
@@ -158,7 +160,7 @@ class BaseHeatGenerator:
             param_name = var.rsplit("_", 1)[0]
             if param_name in self.__dict__:
                 setattr(self, param_name, value)
-                logging.debug("Set %s for %s to %s", param_name, self.name, value)
+                logger.debug("Set %s for %s to %s", param_name, self.name, value)
 
     def get_plot_data(self) -> dict[str, list | np.ndarray]:
         """

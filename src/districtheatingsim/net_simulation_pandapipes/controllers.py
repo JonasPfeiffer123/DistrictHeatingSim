@@ -17,10 +17,14 @@ bad point pressure control, minimum temperature enforcement, and multi-producer 
 in district heating systems.
 """
 
+import logging
+
 import numpy as np
 from pandapower.control.basic_controller import BasicCtrl
 
 from districtheatingsim.constants import KELVIN_OFFSET
+
+logger = logging.getLogger(__name__)
 
 # Proportional gain of the bad-point pump controller (see BadPointPressureLiftController).
 # Nets saved before BACKLOG G1 carry the old default 0.2 and are upgraded on load
@@ -182,7 +186,7 @@ class BadPointPressureLiftController(BasicCtrl):
 
         # Handle standby mode - no heat demand
         if all(net.heat_consumer["qext_w"] == 0):
-            print("No heat flow detected. Switching to standby mode.")
+            logger.debug("No heat flow detected. Switching to standby mode.")
             net.circ_pump_pressure.loc[:, "plift_bar"] = self.min_plift
             net.circ_pump_pressure.loc[:, "p_flow_bar"] = self.min_pflow
             return super().control_step(net)
@@ -226,7 +230,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
     :type max_iterations: int
     :param temperature_adjustment_step: Temperature adjustment step [°C], defaults to 1.0
     :type temperature_adjustment_step: float
-    :param debug: Enable debug output, defaults to False
+    :param debug: Log every control decision (INFO level), defaults to False
     :type debug: bool
     :param \\**kwargs: Additional arguments for base controller
 
@@ -333,7 +337,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Handle standby mode - no heat demand
         if all(net.heat_consumer["qext_w"] == 0):
             if self.debug:
-                print("No heat flow detected. Switching to standby mode.")
+                logger.info("No heat flow detected. Switching to standby mode.")
             return super().control_step(net)
 
         # Get current inlet temperature
@@ -350,7 +354,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = new_T_out
 
             if self.debug:
-                print(
+                logger.info(
                     f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - KELVIN_OFFSET:.1f}°C."
                 )
 
@@ -391,7 +395,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Check minimum temperature requirement
         if current_T_in < self.min_supply_temperature:
             if self.debug:
-                print(
+                logger.info(
                     f"Supply temperature not met for heat_consumer_idx: {self.heat_consumer_idx}. "
                     f"current_temperature_in: {current_T_in:.1f}°C, "
                     f"current_temperature_out: {current_T_out:.1f}°C, "
@@ -402,7 +406,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Check temperature stability convergence
         if converged_T_in:
             if self.debug:
-                print(
+                logger.info(
                     f"Controller converged: heat_consumer_idx: {self.heat_consumer_idx}, "
                     f"current_temperature_in: {current_T_in:.1f}°C, "
                     f"current_temperature_out: {current_T_out:.1f}°C, "
@@ -413,7 +417,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Forced convergence after maximum iterations
         if self.iteration >= self.max_iterations:
             if self.debug:
-                print(f"Max iterations reached for heat_consumer_idx: {self.heat_consumer_idx}")
+                logger.info(f"Max iterations reached for heat_consumer_idx: {self.heat_consumer_idx}")
             return True
 
         return False

@@ -7,6 +7,7 @@ road alignment adjustment while maintaining connectivity.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 from collections import defaultdict
 
 import geopandas as gpd
@@ -17,6 +18,8 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from districtheatingsim.net_generation.nearest import nearest_position
+
+logger = logging.getLogger(__name__)
 
 
 def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -101,7 +104,7 @@ def adjust_segments_to_roads(
 
     # Main optimization loop
     while changes_made and iteration < max_iterations:
-        print(f"\n--- Road Alignment Iteration {iteration} ---")
+        logger.debug("Road alignment iteration %d", iteration)
         adjusted_lines = []
         changes_made = False
         changed_this_iter: set[int] = set()
@@ -109,7 +112,7 @@ def adjust_segments_to_roads(
         for idx, line in enumerate(mst_gdf.geometry):
             # Validate line geometry
             if not line.is_valid:
-                print(f"  [!] Invalid line geometry at index {idx}")
+                logger.warning("Invalid line geometry at index %d is dropped", idx)
                 continue
 
             seg_id = line_hash(line)
@@ -126,7 +129,7 @@ def adjust_segments_to_roads(
             if distance_to_street > threshold:
                 # Avoid adjustments where projection point equals line endpoints
                 if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
-                    print("    Skipping adjustment: projected point is endpoint")
+                    logger.debug("Skipping adjustment of segment %d: projected point is an endpoint", idx)
                     adjusted_lines.append(line)
                     continue
 
@@ -148,42 +151,37 @@ def adjust_segments_to_roads(
                         improvement = orig_distance - new_distance
 
                         if improvement < min_improvement:
-                            print(f"    Insufficient improvement ({improvement:.2f}m), blacklisting segment")
+                            logger.debug("Insufficient improvement (%.2f m), blacklisting segment", improvement)
                             blacklist.add(line_hash(new_line))
 
                         adjusted_lines.append(new_line)
                     else:
-                        print("    [!] Invalid new segment created")
+                        logger.debug("Invalid new segment created and dropped")
 
                 changes_made = True
                 changed_this_iter.add(seg_id)
                 segment_change_counter[seg_id] = segment_change_counter.get(seg_id, 0) + 1
-                print(f"    Adjusted segment {idx}, total adjustments: {segment_change_counter[seg_id]}")
+                logger.debug("Adjusted segment %d, total adjustments: %d", idx, segment_change_counter[seg_id])
             else:
                 adjusted_lines.append(line)
 
         # Progress reporting
-        print(f"  Adjusted {len(changed_this_iter)} segments this iteration")
-        if changed_this_iter:
-            most_changed = sorted(segment_change_counter.items(), key=lambda x: -x[1])[:3]
-            print(f"    Most frequently adjusted segments: {most_changed}")
+        logger.debug("Adjusted %d segments in iteration %d", len(changed_this_iter), iteration)
 
         if not changes_made:
-            print("No changes made, optimization converged")
+            logger.debug("Road alignment converged after %d iterations", iteration)
             break
 
         mst_gdf = gpd.GeoDataFrame(geometry=adjusted_lines)
         iteration += 1
 
     if iteration >= max_iterations:
-        print(f"Warning: Reached maximum iterations ({max_iterations})")
+        logger.warning("Road alignment reached the maximum number of iterations (%d)", max_iterations)
 
     # Post-processing: simplify and rebuild MST
-    print("\nPost-processing: simplifying network and rebuilding MST...")
     mst_gdf = simplify_network(mst_gdf)
     mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf)
 
-    print("Road alignment optimization completed")
     return mst_gdf
 
 

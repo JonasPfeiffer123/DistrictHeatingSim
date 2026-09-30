@@ -27,6 +27,7 @@ Architecture:
     supports Windows taskbar integration when available.
 """
 
+import logging
 import sys
 import warnings
 
@@ -45,18 +46,20 @@ from districtheatingsim.gui.MainTab.main_data_manager import (  # noqa: E402
 )
 from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter  # noqa: E402
 from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI  # noqa: E402
+from districtheatingsim.utilities.logging_setup import configure_logging  # noqa: E402
 from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time, handle_global_exception  # noqa: E402
+
+logger = logging.getLogger("districtheatingsim")
 
 
 def _configure_stdio_encoding():
     """Force UTF-8 on stdout/stderr.
 
-    Diagnostic ``print`` statements across the domain/simulation code emit
-    non-ASCII characters (``→``, ``≤``, German umlauts). On Windows the default
-    console codepage is cp1252, where those characters raise
+    Log messages emit non-ASCII characters (``°C``, ``Δh``, German umlauts). On
+    Windows the default console codepage is cp1252, where those characters raise
     ``UnicodeEncodeError`` — which previously crashed e.g. the diameter
-    optimization mid-run. Reconfiguring to UTF-8 with a replacing error handler
-    makes every print robust regardless of the console codepage.
+    optimization mid-run (when it still printed). Reconfiguring to UTF-8 with a
+    replacing error handler keeps console output robust regardless of the codepage.
     """
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -81,8 +84,12 @@ def main():
         Windows-specific taskbar integration is applied if available but
         fails gracefully on other platforms.
     """
-    # Make diagnostic prints robust against the Windows cp1252 console codepage
+    # Make console output robust against the Windows cp1252 console codepage
     _configure_stdio_encoding()
+
+    # Console (if any) + rotating log file in %LOCALAPPDATA%\DistrictHeatingSim\logs
+    log_file = configure_logging()
+    logger.info("DistrictHeatingSim started (log file: %s)", log_file)
 
     # Configure global exception handling for user-friendly error reporting
     sys.excepthook = handle_global_exception
@@ -132,7 +139,6 @@ def main():
 
 if __name__ == "__main__":
     import multiprocessing
-    import traceback
 
     # Worker processes of the parallel time series (spawn) re-run this entry point in a frozen
     # exe; freeze_support lets them start as workers instead of opening another GUI (BACKLOG G2).
@@ -146,16 +152,11 @@ if __name__ == "__main__":
             print("DistrictHeatingSim wird gestartet...")
             print("-" * 80)
         main()
-    except Exception as e:
+    except Exception:
+        # Goes to the console and the log file (the traceback is also printed by the logging
+        # "last resort" handler if the error happened before logging was configured).
+        logger.critical("FEHLER BEIM START DER ANWENDUNG", exc_info=True)
         if has_console:
-            print("\n" + "=" * 80)
-            print("FEHLER BEIM START DER ANWENDUNG")
-            print("=" * 80)
-            print(f"\nFehlermeldung: {e}\n")
-            print("Vollständiger Traceback:")
-            print("-" * 80)
-            traceback.print_exc()
-            print("-" * 80)
             print("\nDrücken Sie ENTER zum Beenden...")
             try:
                 input()

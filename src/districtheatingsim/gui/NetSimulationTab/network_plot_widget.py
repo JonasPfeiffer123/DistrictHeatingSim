@@ -20,12 +20,16 @@ try:
     WEBENGINE_AVAILABLE = True
 except ImportError:
     WEBENGINE_AVAILABLE = False
-    logging.warning("PyQt6.QtWebEngineWidgets not available. Interactive plot will use fallback label.")
+    logging.getLogger(__name__).warning(
+        "PyQt6.QtWebEngineWidgets not available. Interactive plot will use fallback label."
+    )
 
 from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
 from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import InteractiveNetworkPlot
+
+logger = logging.getLogger(__name__)
 
 
 class NetworkPlotWidget(QWidget):
@@ -208,7 +212,7 @@ class NetworkPlotWidget(QWidget):
                 )
 
         except Exception as e:
-            logging.error(f"Error creating interactive plot: {e}\n{traceback.format_exc()}")
+            logger.error(f"Error creating interactive plot: {e}\n{traceback.format_exc()}")
             if WEBENGINE_AVAILABLE:
                 self._canvas.setHtml(f"<html><body><h3>Error creating plot:</h3><p>{str(e)}</p></body></html>")
 
@@ -292,7 +296,7 @@ class NetworkPlotWidget(QWidget):
                             userData={"component": comp, "parameter": param},
                         )
         except Exception as e:
-            logging.error(f"Error populating network param dropdown: {e}")
+            logger.error(f"Error populating network param dropdown: {e}")
         finally:
             self._param_dropdown.blockSignals(False)
 
@@ -332,7 +336,7 @@ class NetworkPlotWidget(QWidget):
             fig.update_layout(autosize=True, height=None)  # fill the view (see refresh)
             fig_json = fig.to_json()
         except Exception as e:
-            logging.error(f"Error rebuilding plot for in-place update: {e}")
+            logger.error(f"Error rebuilding plot for in-place update: {e}")
             return False
 
         # fig_json is a JSON document → also a valid JS object literal; embed directly.
@@ -369,7 +373,7 @@ class NetworkPlotWidget(QWidget):
             try:
                 os.remove(self._plot_html_path)
             except Exception as e:
-                logging.warning(f"Could not remove old plot file: {e}")
+                logger.warning(f"Could not remove old plot file: {e}")
         self._plot_html_path = None
 
     # Make the plot fill the web view and never show its own scrollbars, so the mouse
@@ -388,7 +392,7 @@ class NetworkPlotWidget(QWidget):
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html)
         except Exception as e:
-            logging.error(f"Failed to inject click handler: {e}")
+            logger.error(f"Failed to inject click handler: {e}")
 
     def _poll_click(self):
         if not WEBENGINE_AVAILABLE:
@@ -399,7 +403,7 @@ class NetworkPlotWidget(QWidget):
                 self._on_click_result,
             )
         except Exception as e:
-            logging.debug(f"Error polling plot click: {e}")
+            logger.debug(f"Error polling plot click: {e}")
 
     def _on_click_result(self, pipe_idx):
         if pipe_idx is None or pipe_idx == self._last_selected_pipe:

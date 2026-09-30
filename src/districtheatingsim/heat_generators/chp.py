@@ -7,6 +7,8 @@ CHP system modeling with thermal/electrical efficiency, storage integration and 
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
+
 import numpy as np
 
 from districtheatingsim.constants import (
@@ -19,6 +21,8 @@ from districtheatingsim.constants import (
 )
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage
+
+logger = logging.getLogger(__name__)
 
 
 class CHP(BaseHeatGenerator):
@@ -458,7 +462,7 @@ class CHP(BaseHeatGenerator):
             if self.speicher_aktiv:
                 self.Speicher_Volumen_BHKW = variables[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
         except ValueError as e:
-            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
+            logger.error("Error setting parameters for %s: %s", self.name, e)
 
     def add_optimization_parameters(self, idx: int) -> tuple[list[float], list[str], list[tuple[float, float]]]:
         """

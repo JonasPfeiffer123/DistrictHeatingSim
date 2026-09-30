@@ -21,6 +21,8 @@ from districtheatingsim.constants import BEW_SUBSIDY_SHARE, CO2_FACTOR_SOLAR, PR
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 
+logger = logging.getLogger(__name__)
+
 
 def _same_day_as_previous(time_steps: np.ndarray) -> np.ndarray:
     """
@@ -304,7 +306,7 @@ def _run_solar_storage_steps(n_steps, same_day_L, inputs, outputs, scalars) -> l
             )
             return arrays
         except Exception as e:  # compilation/typing failure: fall back for the rest of the session
-            logging.warning("numba solar-thermal kernel unavailable (%s); using the Python loop", e)
+            logger.warning("numba solar-thermal kernel unavailable (%s); using the Python loop", e)
             _jit_kernel = False
     lists = [np.asarray(seq).tolist() for seq in outputs]
     _solar_storage_steps(
@@ -1082,9 +1084,14 @@ class SolarThermal(BaseHeatGenerator):
             self.init_calculation_constants()
 
         except (ValueError, IndexError) as e:
-            print(f"Error setting optimization parameters for {self.name}: {e}")
-            print(f"Available variables: {variables_order}")
-            print(f"Expected variables: bruttofläche_STA_{idx}, vs_{idx}")
+            logger.error(
+                "Error setting optimization parameters for %s: %s (expected bruttofläche_STA_%s, vs_%s; available: %s)",
+                self.name,
+                e,
+                idx,
+                idx,
+                variables_order,
+            )
 
     def add_optimization_parameters(self, idx: int) -> tuple[list[float], list[str], list[tuple[float, float]]]:
         """

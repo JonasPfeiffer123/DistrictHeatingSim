@@ -26,7 +26,7 @@ from districtheatingsim.heat_generators.json_encoder import CustomJSONEncoder
 from districtheatingsim.heat_generators.results import TechnologyResult
 from districtheatingsim.utilities.schema import add_meta, check_version
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class EnergySystem:
@@ -848,7 +848,7 @@ class EnergySystem:
             if tech_class is not None:
                 obj.technologies.append(tech_class.from_dict(tech_data))
             else:
-                logging.warning(
+                logger.warning(
                     "Could not restore technology '%s': unknown type '%s'",
                     tech_data.get("name"),
                     tech_data.get("tech_type"),
@@ -858,7 +858,7 @@ class EnergySystem:
         if data.get("storage"):
             obj.storage = ThermalStorageAdapter.from_dict(data["storage"])
             if obj.storage is None:
-                logging.warning(
+                logger.warning(
                     "Thermal storage could not be loaded (outdated format). Please re-configure the storage in the GUI."
                 )
 
@@ -1067,7 +1067,7 @@ class EnergySystemOptimizer:
             )
 
         for restart in range(self.num_restarts):
-            logging.info("Starting optimization run %d/%d", restart + 1, self.num_restarts)
+            logger.info("Starting optimization run %d/%d", restart + 1, self.num_restarts)
 
             # Create fresh copy for this optimization run
             self.energy_system_copy = self.initial_energy_system.copy()
@@ -1095,7 +1095,7 @@ class EnergySystemOptimizer:
             variables_order = list(variables_mapping.keys())
 
             if not initial_values:
-                logging.warning("No optimization parameters found. Skipping optimization.")
+                logger.warning("No optimization parameters found. Skipping optimization.")
                 return self.initial_energy_system
 
             # Generate random initial values within parameter bounds
@@ -1103,7 +1103,7 @@ class EnergySystemOptimizer:
                 self.rng.uniform(low=bound[0], high=bound[1]) if bound[1] > bound[0] else bound[0] for bound in bounds
             ]
 
-            logging.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
+            logger.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
 
             def objective_function(variables, variables_order=variables_order):
                 """
@@ -1145,7 +1145,7 @@ class EnergySystemOptimizer:
                     return weighted_sum
 
                 except Exception as e:
-                    logging.debug("Error in objective function evaluation: %s", e)
+                    logger.debug("Error in objective function evaluation: %s", e)
                     return float("inf")  # Return large value for infeasible solutions
 
             # Perform optimization with SLSQP algorithm.
@@ -1155,24 +1155,24 @@ class EnergySystemOptimizer:
             # values instead of competing with its "no demand covered" result (BACKLOG C41).
             result = self._run_slsqp(objective_function, random_initial_values, bounds, restart)
             if result is not None and self._covers_no_demand(result.x, variables_order):
-                logging.warning(
+                logger.warning(
                     "Restart %d covers no demand (flat objective); retrying from the configured values", restart + 1
                 )
                 configured_start = np.clip(initial_values, [b[0] for b in bounds], [b[1] for b in bounds]).tolist()
                 result = self._run_slsqp(objective_function, configured_start, bounds, restart)
                 if result is not None and self._covers_no_demand(result.x, variables_order):
-                    logging.warning("Restart %d covers no demand from the configured values either", restart + 1)
+                    logger.warning("Restart %d covers no demand from the configured values either", restart + 1)
                     result = None
 
             # Check if current solution is better than previous best
             if result is not None and self._is_usable(result) and result.fun < best_objective_value:
                 best_objective_value = result.fun
                 best_solution = result
-                logging.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
+                logger.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
 
         # Apply best solution if found
         if best_solution is not None:
-            logging.info("Optimization completed. Best objective value: %.4f", best_objective_value)
+            logger.info("Optimization completed. Best objective value: %.4f", best_objective_value)
 
             # Apply optimal parameters to energy system
             for tech in self.energy_system_copy.technologies:
@@ -1208,7 +1208,7 @@ class EnergySystemOptimizer:
                 options={"maxiter": 1000, "ftol": 1e-6},
             )
         except Exception as e:
-            logging.warning("Optimization failed in restart %d: %s", restart + 1, e)
+            logger.warning("Optimization failed in restart %d: %s", restart + 1, e)
             return None
 
     def _is_usable(self, result) -> bool:

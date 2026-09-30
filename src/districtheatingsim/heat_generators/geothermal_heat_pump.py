@@ -7,11 +7,14 @@ Geothermal heat pump modeling with borehole field design and drilling cost analy
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 from typing import Any
 
 import numpy as np
 
 from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
+
+logger = logging.getLogger(__name__)
 
 
 class Geothermal(HeatPump):
@@ -331,7 +334,7 @@ class Geothermal(HeatPump):
             self.Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * self.Anzahl_Sonden
 
         except ValueError as e:
-            print(f"Error setting parameters for {self.name}: {e}")
+            logger.error("Error setting parameters for %s: %s", self.name, e)
 
     def add_optimization_parameters(self, idx: int) -> tuple[list, list, list]:
         """
