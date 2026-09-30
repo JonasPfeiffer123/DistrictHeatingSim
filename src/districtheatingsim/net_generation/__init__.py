@@ -50,20 +50,6 @@ minimal_spanning_tree : Minimal spanning tree generation
 steiner_tree : Direct Steiner tree generation
 """
 
-from .osmnx_steiner_network import (
-    build_network_from_split_edges,
-    connect_terminals_with_edge_splitting,
-    create_connection_lines,
-    create_generator_connection,
-    create_hast_connections,
-    create_return_network,
-    create_steiner_tree,
-    download_street_graph,
-    generate_and_export_osmnx_layers,
-    generate_osmnx_network,
-    remove_dead_ends,
-)
-
 __all__ = [
     # Main generation functions
     "generate_osmnx_network",
@@ -79,3 +65,19 @@ __all__ = [
     "create_hast_connections",
     "create_generator_connection",
 ]
+
+
+def __getattr__(name):
+    """
+    Resolve the osmnx re-exports on first access (PEP 562).
+
+    They live in ``osmnx_steiner_network``, which imports osmnx (~0.7 s incl. scikit-learn and
+    rasterio). Importing any submodule — e.g. the GeoJSON schema the GUI needs at startup —
+    runs this ``__init__`` first, so an eager re-export put osmnx on the startup path
+    (BACKLOG G8).
+    """
+    if name in __all__:
+        from . import osmnx_steiner_network
+
+        return getattr(osmnx_steiner_network, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

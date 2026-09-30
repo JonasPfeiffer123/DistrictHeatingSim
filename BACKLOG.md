@@ -1122,6 +1122,14 @@ the lookup has no value for that vertex (also for 3-D points). Pinned by
 `tests/test_elevation_integration.py::TestAssignElevationToGeoDataFrame` (+2, fail on the old code);
 the real generation runs through again.
 
+### C40. AqvaHeat heat pump cannot be calculated (open, 2026-09-30)
+Found while moving its CoolProp import (G8). `AqvaHeat.__init__` does not call `super().__init__()`,
+so `calculate` fails at the end with `AttributeError: 'AqvaHeat' object has no attribute
+'primärenergiefaktor'` — before and after G8 (the CoolProp part runs fine). The technology is
+selectable in the GUI dialogs; it also reports placeholder values (`WGK = -1`, `spec_co2_total = -1`)
+and has no optimization parameters, i.e. it looks unfinished. Decide: finish it (factors, costs,
+tests) or hide it from the GUI.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1532,12 +1540,24 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   (cf. C11 migration) and a security risk when opening someone else's project (unpickling executes
   code). `pp.to_json` / `pp.from_json` is the robust alternative.
 
-### G8. Startup: eager imports + eager tabs (medium, open)
-- Importing `main_view` takes **4.5 s warm / 15 s on the first run**: all tabs are imported eagerly
-  and with them CoolProp 0.9 s (only for the Aqvaheat heat pump), osmnx 0.7 s, seaborn 0.7 s (only
-  the comparison tab), pandapipes/pandapower ~1.5 s.
-- `initTabs` constructs all six tabs incl. two `QWebEngineView`s (Chromium process) while only the
-  welcome screen is visible → lazy imports + build tabs on first project open.
+### G8. Startup: eager imports + eager tabs (lazy imports done 2026-09-30; lazy tabs open)
+- Importing `main_view` took **4.5 s warm / 15 s on the first run** (re-measured 3.97 s warm before
+  the fix): all tabs are imported eagerly and with them CoolProp 0.85 s (only for the Aqvaheat heat
+  pump), osmnx 0.66 s (+ scikit-learn, rasterio), pandapipes/pandapower ~0.8 s.
+- **Done:** CoolProp is imported inside `AqvaHeat.calculate` (the only user); the osmnx re-exports
+  of `net_generation/__init__.py` resolve lazily via PEP 562 `__getattr__` (importing *any*
+  `net_generation` submodule — e.g. the GeoJSON schema — ran that `__init__`); `NetGenerationThread`
+  imports `osmnx_steiner_network` only in its OSMnx branch. **Warm import 3.97 → ~2.2 s.** Pinned
+  by `tests/test_startup_imports.py` (subprocess: `main_view` must not load CoolProp/osmnx — fails
+  on the old code; the lazy re-export still resolves).
+- **Not done — seaborn:** it looked avoidable (the comparison tab only calls
+  `sns.set_style("whitegrid")`), but **pandapower imports seaborn itself**
+  (`pandapower.create` → `plotting` → `get_colors`), so it stays on the path as long as pandapower
+  does. The comparison-tab change was reverted.
+- **Open (medium/large):** pandapipes/pandapower (~0.8 s) are needed by the net-simulation tab at
+  construction; `initTabs` builds all six tabs incl. two `QWebEngineView`s (Chromium process) while
+  only the welcome screen is visible. Building tabs on first project open would remove both, but
+  `main_view` reaches into the tabs directly (save/load/close) — needs a careful refactor.
 
 ### G9. Leaflet map: unused/unpinned CDN libraries (quick wins done 2026-09-29; medium open)
 - **Done:** three.js r170 was loaded on every map start but used nowhere (no `THREE` reference in
@@ -1584,7 +1604,7 @@ release mechanics themselves (section F). See the **Release plan** below.
 2. Quick wins: ~~G1 (pump gain + damping with fallback)~~ **done 2026-09-29**, ~~G3 quick wins (vectorised
    day-of-year + IAM lookup, precomputed day index)~~ **done 2026-09-29** (+ C37), ~~G5 MST via scipy~~ **done 2026-09-29** (+ C39), ~~G9 (drop three.js, pin
    Geoman)~~ **done 2026-09-29**.
-3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), G8 (lazy imports/tabs), G9
+3. Medium: ~~G6 heat demand worker thread~~ **done 2026-09-30** (`pyslpheat` caching open, other repo), ~~G8 lazy imports~~ **done 2026-09-30** (lazy tabs open), G9
    vendoring, G5 spatial index, G4 optimizer overhead.
 4. Large: numba for the per-hour loops (G3/G4), parallel yearly net simulation (G2), Parquet
    instead of JSON + JSON instead of pickle (G7), optimizer method (G4), G10 hygiene.

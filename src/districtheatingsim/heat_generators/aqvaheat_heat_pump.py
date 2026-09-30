@@ -7,7 +7,6 @@ Vacuum ice slurry generator with heat pump.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import CoolProp.CoolProp as CP
 import numpy as np
 
 from districtheatingsim.constants import KELVIN_OFFSET
@@ -48,6 +47,10 @@ class AqvaHeat(HeatPump):
         :return: Performance metrics and results
         :rtype: dict
         """
+        # Imported here: CoolProp costs ~0.9 s at import and is only needed for this
+        # technology, while heat_generators is imported at application start (BACKLOG G8).
+        import CoolProp.CoolProp as CP
+
         VLT_L = kwargs.get("VLT_L")
         COP_data = kwargs.get("COP_data")
 
