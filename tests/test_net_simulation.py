@@ -788,6 +788,73 @@ class TestMigrateLoadedNet:
         # inner_diameter_mm derived from the legacy diameter_m [m] -> mm.
         assert net.pipe.iloc[0]["inner_diameter_mm"] == pytest.approx(37.0)
 
+    @staticmethod
+    def _net_with_pump_controller(gain):
+        from types import SimpleNamespace
+
+        import pandas as pd
+
+        from districtheatingsim.net_simulation_pandapipes.controllers import BadPointPressureLiftController
+
+        # Skip __init__ (it needs pipeflow results) — only the pickled attribute matters here.
+        ctrl = BadPointPressureLiftController.__new__(BadPointPressureLiftController)
+        ctrl.proportional_gain = gain
+        return SimpleNamespace(controller=pd.DataFrame({"object": [ctrl]})), ctrl
+
+    def test_legacy_pump_controller_gain_raised(self):
+        # G1: nets saved before the gain change carry 0.2 and would keep the slow control loop.
+        from districtheatingsim.net_simulation_pandapipes.controllers import DEFAULT_PUMP_CONTROLLER_GAIN
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
+        net, ctrl = self._net_with_pump_controller(0.2)
+        migrate_loaded_net(net)
+        assert ctrl.proportional_gain == DEFAULT_PUMP_CONTROLLER_GAIN
+
+    def test_non_legacy_pump_controller_gain_kept(self):
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
+        net, ctrl = self._net_with_pump_controller(0.35)
+        migrate_loaded_net(net)
+        assert ctrl.proportional_gain == 0.35
+
+
+class TestPipeflowDampingFallback:
+    """G1: the time series solves undamped (alpha=1) and retries damped (alpha=0.5) only when
+    that does not converge — same robustness as the old always-damped run, ~half the cost."""
+
+    @staticmethod
+    def _fake_pipeflow(monkeypatch, fail_alphas):
+        from pandapipes.pipeflow import PipeflowNotConverged
+
+        from districtheatingsim.net_simulation_pandapipes import pp_net_time_series_simulation as ts
+
+        calls = []
+
+        def fake(net, **kwargs):
+            calls.append(kwargs)
+            if kwargs["alpha"] in fail_alphas:
+                raise PipeflowNotConverged("diverged")
+
+        monkeypatch.setattr(ts, "pipeflow", fake)
+        return ts.pipeflow_with_damping_fallback, calls, PipeflowNotConverged
+
+    def test_undamped_only_when_it_converges(self, monkeypatch):
+        run, calls, _ = self._fake_pipeflow(monkeypatch, fail_alphas=())
+        run(None, mode="bidirectional", iter=100)
+        assert [c["alpha"] for c in calls] == [1.0]
+        assert calls[0]["mode"] == "bidirectional" and calls[0]["iter"] == 100
+
+    def test_damped_retry_after_divergence(self, monkeypatch):
+        run, calls, _ = self._fake_pipeflow(monkeypatch, fail_alphas=(1.0,))
+        run(None, mode="bidirectional", iter=100)
+        assert [c["alpha"] for c in calls] == [1.0, 0.5]
+
+    def test_raises_when_damped_retry_fails_too(self, monkeypatch):
+        run, calls, not_converged = self._fake_pipeflow(monkeypatch, fail_alphas=(1.0, 0.5))
+        with pytest.raises(not_converged):
+            run(None, mode="bidirectional", iter=100)
+        assert [c["alpha"] for c in calls] == [1.0, 0.5]
+
 
 @pytest.mark.slow
 class TestNetworkInitialization:
