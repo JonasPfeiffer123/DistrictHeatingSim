@@ -14,6 +14,7 @@ import pandas as pd
 from shapely.geometry import LineString, Point
 
 from districtheatingsim.net_generation.minimal_spanning_tree import adjust_segments_to_roads, generate_mst
+from districtheatingsim.net_generation.nearest import nearest_position
 
 
 def create_offset_points(point: Point, distance: float, angle_degrees: float) -> Point:
@@ -146,18 +147,11 @@ def find_nearest_line(point: Point, line_layer: gpd.GeoDataFrame) -> LineString 
     :rtype: Optional[LineString]
 
     .. note::
-        O(n) complexity. Uses Euclidean distance. Returns None on empty layer.
+        Uses Euclidean distance via the layer's spatial index; the first line wins on ties.
+        Returns None on empty layer.
     """
-    min_distance = float("inf")
-    nearest_line = None
-
-    for line in line_layer.geometry:
-        distance = point.distance(line)
-        if distance < min_distance:
-            min_distance = distance
-            nearest_line = line
-
-    return nearest_line
+    position = nearest_position(line_layer, point)
+    return None if position is None else line_layer.geometry.iloc[position]
 
 
 def create_perpendicular_line(point: Point, line: LineString) -> LineString:

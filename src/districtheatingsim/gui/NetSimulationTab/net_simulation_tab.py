@@ -18,7 +18,6 @@ import traceback
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandapipes as pp
 import pandas as pd
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
@@ -44,6 +43,7 @@ from districtheatingsim.gui.NetSimulationTab.pipe_config_table import PipeConfig
 from districtheatingsim.gui.NetSimulationTab.time_series_widget import TimeSeriesWidget
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
 from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
+from districtheatingsim.net_simulation_pandapipes.net_io import load_net, save_net
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
     NetworkGenerationData,
@@ -54,6 +54,8 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
     save_results_csv,
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+
+logger = logging.getLogger(__name__)
 
 
 class NetSimulationTab(QWidget):
@@ -88,6 +90,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData = None
         self._init_thread = None
         self._calc_thread = None
+        self._time_series_workers = 1  # parallel processes for the detailed time series (G2)
         self._recalc_thread = None
 
         self._init_ui()
@@ -240,7 +243,7 @@ class NetSimulationTab(QWidget):
             dialog = NetGenerationDialog(self.generateNetworkCallback, self.base_path, self)
             dialog.exec()
         except Exception as e:
-            logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
+            logger.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
             QMessageBox.critical(self, "Fehler", f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
 
     def generateNetworkCallback(self, network_data):
@@ -262,6 +265,7 @@ class NetSimulationTab(QWidget):
             self.NetworkGenerationData.end_time_step = inputs["end"]
             self.NetworkGenerationData.results_csv_filename = inputs["results_filename"]
             self.NetworkGenerationData.simplified_calculation = inputs["simplified"]
+            self._time_series_workers = inputs["workers"]
             self._time_series_simulation()
 
     # ------------------------------------------------------------------
@@ -302,7 +306,9 @@ class NetSimulationTab(QWidget):
 
         try:
             simplified = getattr(self.NetworkGenerationData, "simplified_calculation", False)
-            self._calc_thread = NetCalculationThread(self.NetworkGenerationData, simplified=simplified)
+            self._calc_thread = NetCalculationThread(
+                self.NetworkGenerationData, simplified=simplified, workers=self._time_series_workers
+            )
             self._calc_thread.calculation_done.connect(self._on_time_series_done)
             self._calc_thread.calculation_error.connect(self._on_simulation_error)
             self._calc_thread.start()
@@ -432,7 +438,7 @@ class NetSimulationTab(QWidget):
 
     def saveNet(self, show_dialog=True):
         """
-        Save network data to pickle, CSV, and JSON files.
+        Save network data (pandapipes JSON), demand CSV and configuration JSON.
 
         :param show_dialog: Show success/error dialogs.
         """
@@ -442,7 +448,7 @@ class NetSimulationTab(QWidget):
             return
 
         try:
-            pickle_path = os.path.join(self.base_path, self.config_manager.get_relative_path("pp_pickle_file_path"))
+            net_path = os.path.join(self.base_path, self.config_manager.get_relative_path("pp_net_file_path"))
             csv_path = os.path.join(self.base_path, self.config_manager.get_relative_path("csv_net_init_file_path"))
             json_path = os.path.join(self.base_path, self.config_manager.get_relative_path("json_net_init_file_path"))
 
@@ -455,7 +461,7 @@ class NetSimulationTab(QWidget):
             if nd.TRY_filename and os.path.isabs(nd.TRY_filename):
                 nd.TRY_filename = os.path.relpath(nd.TRY_filename, self.base_path)
 
-            pp.to_pickle(nd.net, pickle_path)
+            save_net(nd.net, net_path)
 
             waerme_data = np.column_stack([nd.waerme_hast_ges_W[i] for i in range(nd.waerme_hast_ges_W.shape[0])])
             waerme_df = pd.DataFrame(
@@ -500,10 +506,10 @@ class NetSimulationTab(QWidget):
                     "Speichern erfolgreich",
                     f"✓ Pandapipes Netz erfolgreich gespeichert!\n\n"
                     f"Dateien:\n"
-                    f"  • {os.path.basename(pickle_path)}\n"
+                    f"  • {os.path.basename(net_path)}\n"
                     f"  • {os.path.basename(csv_path)}\n"
                     f"  • {os.path.basename(json_path)}\n\n"
-                    f"Pfad: {os.path.dirname(pickle_path)}",
+                    f"Pfad: {os.path.dirname(net_path)}",
                 )
         except Exception as e:
             if show_dialog:
@@ -516,11 +522,13 @@ class NetSimulationTab(QWidget):
         :param show_dialog: Show success/error dialogs.
         """
         try:
+            net_path = os.path.join(self.base_path, self.config_manager.get_relative_path("pp_net_file_path"))
             pickle_path = os.path.join(self.base_path, self.config_manager.get_relative_path("pp_pickle_file_path"))
             csv_path = os.path.join(self.base_path, self.config_manager.get_relative_path("csv_net_init_file_path"))
             json_path = os.path.join(self.base_path, self.config_manager.get_relative_path("json_net_init_file_path"))
 
-            net = pp.from_pickle(pickle_path)
+            # JSON since BACKLOG G7; projects saved earlier still load from their pickle.
+            net, net_source = load_net(net_path, legacy_pickle_path=pickle_path)
             # Migrate nets saved on pandapipes 0.13 (KMR std-types / diameter_m) to
             # the current 0.14 schema so old projects open and recalculate (C11).
             net = migrate_loaded_net(net)
@@ -569,10 +577,10 @@ class NetSimulationTab(QWidget):
                     "Laden erfolgreich",
                     f"✓ Netz erfolgreich geladen!\n\n"
                     f"Dateien:\n"
-                    f"  • {os.path.basename(pickle_path)}\n"
+                    f"  • {os.path.basename(net_source)}\n"
                     f"  • {os.path.basename(csv_path)}\n"
                     f"  • {os.path.basename(json_path)}\n\n"
-                    f"Pfad: {os.path.dirname(pickle_path)}",
+                    f"Pfad: {os.path.dirname(net_source)}",
                 )
 
         except Exception as e:
@@ -580,7 +588,7 @@ class NetSimulationTab(QWidget):
             if show_dialog:
                 QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten:\n\n{str(e)}")
             else:
-                logging.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
+                logger.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
 
     def load_net_results(self, show_dialog=True):
         """
@@ -651,7 +659,7 @@ class NetSimulationTab(QWidget):
                     self, "Export fehlgeschlagen", f"Fehler beim Exportieren des Wärmenetzes:\n\n{str(e)}"
                 )
             else:
-                logging.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
+                logger.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
 
     # ------------------------------------------------------------------
     # Helper kept for compatibility (used by data_added consumers)

@@ -29,6 +29,7 @@ import pandas as pd
 from pandapipes.control.run_control import run_control
 
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
+from districtheatingsim.heat_requirement.building_profiles_io import read_building_profiles
 from districtheatingsim.net_generation.network_connectivity import check_geojson_connectivity
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
@@ -42,6 +43,8 @@ from districtheatingsim.net_simulation_pandapipes.utilities import (
     create_controllers,
     init_diameter_types,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def initialize_geojson(NetworkGenerationData) -> Any:
@@ -90,19 +93,24 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         "heat_producer": network_gdf[network_gdf["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR].copy(),
     }
 
-    print(f"Loaded unified network GeoJSON with {len(network_gdf)} features")
-    print(f"  Flow lines: {len(gdf_dict['flow_line'])}")
-    print(f"  Return lines: {len(gdf_dict['return_line'])}")
-    print(f"  Heat consumers: {len(gdf_dict['heat_consumer'])}")
-    print(f"  Heat producers: {len(gdf_dict['heat_producer'])}")
-
-    print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
+    logger.info(
+        "Loaded network GeoJSON with %d features (%d flow lines, %d return lines, %d heat consumers, "
+        "%d heat producers)",
+        len(network_gdf),
+        len(gdf_dict["flow_line"]),
+        len(gdf_dict["return_line"]),
+        len(gdf_dict["heat_consumer"]),
+        len(gdf_dict["heat_producer"]),
+    )
+    logger.debug(
+        "Max supply temperature heat generator: %s °C", NetworkGenerationData.max_supply_temperature_heat_generator
+    )
 
     # Load and process heat demand data
-    with open(NetworkGenerationData.heat_demand_json_path, encoding="utf-8") as f:
-        loaded_data = json.load(f)
-        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
-        heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient="index")
+    # Parquet array store or legacy JSON (BACKLOG G7)
+    loaded_data = read_building_profiles(NetworkGenerationData.heat_demand_json_path)
+    results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and "wärme" in v}
+    heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient="index")
 
     # Extract building temperature data
     supply_temperature_buildings = heat_demand_df["VLT_max"].values.astype(float)
@@ -119,17 +127,16 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
     maximum_building_heat_load_W = np.array(results["0"]["max_last"]) * 1000
 
-    print(f"Max heat demand buildings (W): {maximum_building_heat_load_W}")
+    logger.debug("Max heat demand buildings (W): %s", maximum_building_heat_load_W)
 
     # Calculate return temperature for heat consumers
     if NetworkGenerationData.fixed_return_temperature_heat_consumer is None:
         return_temperature_heat_consumer = return_temperature_buildings + NetworkGenerationData.dT_RL
-        print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
     else:
         return_temperature_heat_consumer = np.full_like(
             return_temperature_buildings, NetworkGenerationData.fixed_return_temperature_heat_consumer
         )
-        print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
+    logger.debug("Return temperature heat consumers: %s °C", return_temperature_heat_consumer)
 
     # Validate temperature constraints
     if np.any(return_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
@@ -142,13 +149,12 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         min_supply_temperature_heat_consumer = np.zeros_like(
             supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building
         )
-        print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
     else:
         min_supply_temperature_heat_consumer = np.full_like(
             supply_temperature_buildings,
             NetworkGenerationData.min_supply_temperature_building + NetworkGenerationData.dT_RL,
         )
-        print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
+    logger.debug("Minimum supply temperature heat consumers: %s °C", min_supply_temperature_heat_consumer)
 
     # Validate minimum supply temperature constraints
     if np.any(min_supply_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
@@ -167,7 +173,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         # Cold network: Calculate heat pump performance
         COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=";")
         COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
-        print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
+        logger.debug("COP of the decentral building heat pumps: %s", COP)
 
         # Calculate heat pump electricity consumption and network heat demand
         for waerme_gebaeude, leistung_gebaeude, cop in zip(
@@ -212,14 +218,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     # Calculate mass flows for secondary producers
     if NetworkGenerationData.secondary_producers:
         cp = CP_WATER_KJ_KGK  # kJ/kgK - specific heat capacity of water
-        print(f"Specific heat capacity of water: {cp} kJ/kgK")
-        print(f"maximum_building_heat_load_W: {maximum_building_heat_load_W}")
         sum_maximum_building_heat_load_W = np.sum(maximum_building_heat_load_W)
-        print(f"sum_maximum_building_heat_load_W: {sum_maximum_building_heat_load_W}")
-        print(
-            f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C"
-        )
-        print(f"Return temperature heat consumer: {np.average(return_temperature_heat_consumer)} °C")
         mass_flow = (sum_maximum_building_heat_load_W / 1000) / (
             cp
             * (
@@ -228,11 +227,22 @@ def initialize_geojson(NetworkGenerationData) -> Any:
             )
         )
 
-        print(f"Mass flow of main producer: {mass_flow} kg/s")
+        logger.debug(
+            "Design mass flow of main producer: %.3f kg/s (sum of max building loads %.0f W, "
+            "supply %s °C, mean return %.1f °C)",
+            mass_flow,
+            sum_maximum_building_heat_load_W,
+            NetworkGenerationData.max_supply_temperature_heat_generator,
+            np.average(return_temperature_heat_consumer),
+        )
 
         for secondary_producer in NetworkGenerationData.secondary_producers:
             secondary_producer.mass_flow = secondary_producer.load_percentage / 100 * mass_flow
-            print(f"Mass flow of secondary producer {secondary_producer.index}: {secondary_producer.mass_flow} kg/s")
+            logger.debug(
+                "Design mass flow of secondary producer %s: %.3f kg/s",
+                secondary_producer.index,
+                secondary_producer.mass_flow,
+            )
 
     producer_dict = {
         "supply_temperature": NetworkGenerationData.max_supply_temperature_heat_generator,
@@ -324,7 +334,7 @@ def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> tuple[list[list[tuple]
             all_line_coords.append(coords)
             all_line_lengths.append(length)
         else:
-            print(f"Geometrie ist kein LineString: {line.geom_type}")
+            logger.warning("Geometry is not a LineString and is skipped: %s", line.geom_type)
 
     return all_line_coords, all_line_lengths
 
@@ -563,7 +573,7 @@ def create_network(
             return jd_rl[coords[0]], jd_vl[coords[1]]  # return=RL end, flow=VL end
         else:
             # Fallback – merged dict, original (possibly wrong) order
-            logging.warning(
+            logger.warning(
                 "Could not determine VL/RL side for generator connection; "
                 "using original coord order (may cause pump-direction warning)"
             )
@@ -643,7 +653,7 @@ def create_network(
     if elevation_lookup:
         z_vals = list(elevation_lookup.values())
         dh = max(z_vals) - min(z_vals)
-        logging.info(
+        logger.info(
             "Elevation data found: min=%.1f m, max=%.1f m, Δh=%.1f m → hydrostatic pressure offset ≈ %.2f bar",
             min(z_vals),
             max(z_vals),
@@ -651,13 +661,13 @@ def create_network(
             1000 * 9.81 * dh / 1e5,
         )
         if dh > 0.5 * lift_pressure_pump * 1e5 / (1000 * 9.81):
-            logging.warning(
+            logger.warning(
                 "Hydrostatic head (%.1f m) exceeds 50%% of pump lift (%.2f bar). Verify pressure zone design.",
                 dh,
                 lift_pressure_pump,
             )
     else:
-        logging.info("No elevation data in GeoJSON — all junctions set to height_m=0.")
+        logger.info("No elevation data in GeoJSON — all junctions set to height_m=0.")
 
     # Create network topology
     flow_line_2d_coords = get_line_coords_and_lengths(gdf_flow_line)[0]
@@ -722,7 +732,7 @@ def create_network(
                 elevation_lookup,
             )
 
-    print(f"secondary_producers: {secondary_producers}")
+    logger.debug("Secondary producers: %s", secondary_producers)
 
     # Initial flow simulation – catch the pump-direction UserWarning so that
     # correct_flow_directions() below can fix the topology.
@@ -731,7 +741,7 @@ def create_network(
         try:
             pp.pipeflow(net, mode="bidirectional", iter=100)
         except UserWarning as e:
-            logging.warning(f"Initial pipeflow UserWarning (will be corrected): {e}")
+            logger.warning(f"Initial pipeflow UserWarning (will be corrected): {e}")
 
     # Network optimization
     net = create_controllers(
@@ -746,7 +756,7 @@ def create_network(
     try:
         run_control(net, mode="bidirectional", iter=100)
     except UserWarning as e:
-        logging.warning(f"run_control UserWarning (will be corrected by correct_flow_directions): {e}")
+        logger.warning(f"run_control UserWarning (will be corrected by correct_flow_directions): {e}")
 
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)

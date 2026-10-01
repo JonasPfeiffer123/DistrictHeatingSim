@@ -109,7 +109,7 @@ class NetCalculationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, NetworkGenerationData, simplified=False):
+    def __init__(self, NetworkGenerationData, simplified=False, workers=1):
         """
         Initialize calculation thread.
 
@@ -117,10 +117,13 @@ class NetCalculationThread(QThread):
         :type NetworkGenerationData: object
         :param simplified: Use simplified fast calculation instead of detailed simulation.
         :type simplified: bool
+        :param workers: Worker processes for the detailed time series (1 = sequential).
+        :type workers: int
         """
         super().__init__()
         self.NetworkGenerationData = NetworkGenerationData
         self.simplified = simplified
+        self.workers = workers
 
     def run(self):
         """
@@ -134,7 +137,9 @@ class NetCalculationThread(QThread):
                 self.NetworkGenerationData = simplified_time_series_net(self.NetworkGenerationData)
             else:
                 # Use detailed hydraulic simulation
-                self.NetworkGenerationData = thermohydraulic_time_series_net(self.NetworkGenerationData)
+                self.NetworkGenerationData = thermohydraulic_time_series_net(
+                    self.NetworkGenerationData, workers=self.workers
+                )
 
             # Compute KPIs here (off the UI thread) so the info panel just renders them.
             self.NetworkGenerationData.calculate_results()

@@ -6,12 +6,15 @@ global exception handling, and theme management.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 import os
 import sys
 import time
 import traceback
 
 from PyQt6.QtWidgets import QMessageBox
+
+logger = logging.getLogger(__name__)
 
 
 def get_resource_path(relative_path):
@@ -94,7 +97,7 @@ def handle_global_exception(exc_type, exc_value, exc_traceback):
 
     # Erstelle die Fehlermeldung
     error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    print(error_message)  # Optional: Logge die Fehlermeldung in die Konsole
+    logger.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
 
     # Zeige die Fehlermeldung in einem Dialogfenster
     msg_box = QMessageBox()

@@ -33,6 +33,8 @@ from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
     resolve_pipe_u_w_per_m2k,
 )
 
+logger = logging.getLogger(__name__)
+
 # Background tint for a pipe row whose values were edited since the last calculation.
 _CHANGED_ROW_COLOR = "#fff3cd"
 
@@ -137,7 +139,7 @@ class PipeConfigTable(QWidget):
                         except ValueError:
                             # std-type carries no heat-loss value (e.g. an uninsulated
                             # type); keep the pipe's existing u_w_per_m2k.
-                            logging.warning(
+                            logger.warning(
                                 "No heat-loss value for std-type '%s'; keeping existing u for pipe %d",
                                 std_type,
                                 pipe_idx,
@@ -157,7 +159,7 @@ class PipeConfigTable(QWidget):
                 except ValueError:
                     pass
 
-        logging.info("Applied all pipe table changes to network")
+        logger.info("Applied all pipe table changes to network")
 
     def restore_defaults(self):
         """
@@ -180,7 +182,7 @@ class PipeConfigTable(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self._net_data.net.pipe = self._original_pipe_df.copy()
             self._fill_table()
-            logging.info("Restored original pipe parameters")
+            logger.info("Restored original pipe parameters")
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -409,9 +411,9 @@ class PipeConfigTable(QWidget):
             self._table.blockSignals(False)
 
             self._update_row_highlight(row)
-            logging.info(f"Pipe {pipe_idx}: std_type changed to {new_std_type}")
+            logger.info(f"Pipe {pipe_idx}: std_type changed to {new_std_type}")
         except Exception as e:
-            logging.error(f"Failed to update pipe {pipe_idx} std_type: {e}")
+            logger.error(f"Failed to update pipe {pipe_idx} std_type: {e}")
 
     def _on_item_changed(self, item: QTableWidgetItem):
         if self._net_data is None:

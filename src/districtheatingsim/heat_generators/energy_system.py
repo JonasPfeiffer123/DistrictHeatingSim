@@ -26,7 +26,7 @@ from districtheatingsim.heat_generators.json_encoder import CustomJSONEncoder
 from districtheatingsim.heat_generators.results import TechnologyResult
 from districtheatingsim.utilities.schema import add_meta, check_version
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class EnergySystem:
@@ -848,7 +848,7 @@ class EnergySystem:
             if tech_class is not None:
                 obj.technologies.append(tech_class.from_dict(tech_data))
             else:
-                logging.warning(
+                logger.warning(
                     "Could not restore technology '%s': unknown type '%s'",
                     tech_data.get("name"),
                     tech_data.get("tech_type"),
@@ -858,7 +858,7 @@ class EnergySystem:
         if data.get("storage"):
             obj.storage = ThermalStorageAdapter.from_dict(data["storage"])
             if obj.storage is None:
-                logging.warning(
+                logger.warning(
                     "Thermal storage could not be loaded (outdated format). Please re-configure the storage in the GUI."
                 )
 
@@ -943,6 +943,40 @@ class EnergySystem:
             return cls.from_dict(data_loaded)
         except Exception as e:
             raise ValueError(f"Error loading JSON file: {e}") from e
+
+    def save_to_file(self, file_path: str) -> None:
+        """
+        Save the EnergySystem as a Parquet array store (``.json`` path: legacy JSON).
+
+        Same content as :meth:`save_to_json`, ~10× smaller (BACKLOG G7).
+
+        :param file_path: Target file
+        :type file_path: str
+        """
+        if file_path.lower().endswith(".json"):
+            self.save_to_json(file_path)
+            return
+        from districtheatingsim.utilities import array_store
+
+        array_store.dump(self.to_dict(), file_path, json_encoder=CustomJSONEncoder)
+
+    @classmethod
+    def load_from_file(cls, file_path: str):
+        """
+        Load an EnergySystem saved by :meth:`save_to_file` or :meth:`save_to_json` (format detected).
+
+        :param file_path: File to load
+        :type file_path: str
+        :return: Loaded EnergySystem
+        :rtype: EnergySystem
+        :raises ValueError: If the file cannot be loaded
+        """
+        from districtheatingsim.utilities import array_store
+
+        try:
+            return cls.from_dict(array_store.load_json_compatible(file_path))
+        except Exception as e:
+            raise ValueError(f"Error loading energy system file: {e}") from e
 
 
 class EnergySystemOptimizer:
@@ -1033,7 +1067,7 @@ class EnergySystemOptimizer:
             )
 
         for restart in range(self.num_restarts):
-            logging.info("Starting optimization run %d/%d", restart + 1, self.num_restarts)
+            logger.info("Starting optimization run %d/%d", restart + 1, self.num_restarts)
 
             # Create fresh copy for this optimization run
             self.energy_system_copy = self.initial_energy_system.copy()
@@ -1061,7 +1095,7 @@ class EnergySystemOptimizer:
             variables_order = list(variables_mapping.keys())
 
             if not initial_values:
-                logging.warning("No optimization parameters found. Skipping optimization.")
+                logger.warning("No optimization parameters found. Skipping optimization.")
                 return self.initial_energy_system
 
             # Generate random initial values within parameter bounds
@@ -1069,7 +1103,7 @@ class EnergySystemOptimizer:
                 self.rng.uniform(low=bound[0], high=bound[1]) if bound[1] > bound[0] else bound[0] for bound in bounds
             ]
 
-            logging.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
+            logger.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
 
             def objective_function(variables, variables_order=variables_order):
                 """
@@ -1111,32 +1145,34 @@ class EnergySystemOptimizer:
                     return weighted_sum
 
                 except Exception as e:
-                    logging.debug("Error in objective function evaluation: %s", e)
+                    logger.debug("Error in objective function evaluation: %s", e)
                     return float("inf")  # Return large value for infeasible solutions
 
-            # Perform optimization with SLSQP algorithm
-            try:
-                result = scipy_minimize(
-                    objective_function,
-                    random_initial_values,
-                    method="SLSQP",
-                    bounds=bounds,
-                    options={"maxiter": 1000, "ftol": 1e-6},
+            # Perform optimization with SLSQP algorithm.
+            # Where no generator runs (e.g. a capacity whose minimum part load exceeds the whole
+            # load), the objective is flat: SLSQP stops after one iteration and reports success
+            # although nothing is covered. Such a restart is retried once from the configured
+            # values instead of competing with its "no demand covered" result (BACKLOG C41).
+            result = self._run_slsqp(objective_function, random_initial_values, bounds, restart)
+            if result is not None and self._covers_no_demand(result.x, variables_order):
+                logger.warning(
+                    "Restart %d covers no demand (flat objective); retrying from the configured values", restart + 1
                 )
+                configured_start = np.clip(initial_values, [b[0] for b in bounds], [b[1] for b in bounds]).tolist()
+                result = self._run_slsqp(objective_function, configured_start, bounds, restart)
+                if result is not None and self._covers_no_demand(result.x, variables_order):
+                    logger.warning("Restart %d covers no demand from the configured values either", restart + 1)
+                    result = None
 
-                # Check if current solution is better than previous best
-                if result.success and result.fun < best_objective_value:
-                    best_objective_value = result.fun
-                    best_solution = result
-                    logging.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
-
-            except Exception as e:
-                logging.warning("Optimization failed in restart %d: %s", restart + 1, e)
-                continue
+            # Check if current solution is better than previous best
+            if result is not None and self._is_usable(result) and result.fun < best_objective_value:
+                best_objective_value = result.fun
+                best_solution = result
+                logger.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
 
         # Apply best solution if found
         if best_solution is not None:
-            logging.info("Optimization completed. Best objective value: %.4f", best_objective_value)
+            logger.info("Optimization completed. Best objective value: %.4f", best_objective_value)
 
             # Apply optimal parameters to energy system
             for tech in self.energy_system_copy.technologies:
@@ -1150,9 +1186,48 @@ class EnergySystemOptimizer:
             return self.energy_system_copy
         else:
             raise RuntimeError(
-                "Optimization failed to find valid solution in all restart attempts. "
+                "Optimization failed to find valid solution in all restart attempts "
+                "(or no configuration within the bounds covers any demand). "
                 "Consider adjusting parameter bounds, weights, or increasing restart attempts."
             )
+
+    # SLSQP exit modes that still return a valid, evaluated point: 8 = positive directional
+    # derivative in the line search, 9 = iteration limit. On the non-smooth dispatch objective the
+    # good runs typically end here, and discarding them left only the flat "success" runs.
+    _USABLE_SLSQP_STATUS = frozenset({8, 9})
+
+    @staticmethod
+    def _run_slsqp(objective_function, start, bounds, restart):
+        """Run SLSQP from ``start``; return the result, or ``None`` if it raised."""
+        try:
+            return scipy_minimize(
+                objective_function,
+                start,
+                method="SLSQP",
+                bounds=bounds,
+                options={"maxiter": 1000, "ftol": 1e-6},
+            )
+        except Exception as e:
+            logger.warning("Optimization failed in restart %d: %s", restart + 1, e)
+            return None
+
+    def _is_usable(self, result) -> bool:
+        """Converged, or stopped by the line search / iteration limit at a finite objective value."""
+        return bool(np.isfinite(result.fun)) and (result.success or result.status in self._USABLE_SLSQP_STATUS)
+
+    def _covers_no_demand(self, variables, variables_order) -> bool:
+        """
+        Whether the system with these parameters covers none of the heat demand.
+
+        That is the flat part of the objective (only the unmet-demand penalty remains), where
+        SLSQP cannot move. An evaluation error is not treated as such — the objective already
+        maps it to ``inf``.
+        """
+        try:
+            results = self.energy_system_copy.copy().calculate_mix(variables, variables_order)
+        except Exception:
+            return False
+        return results["Restwärmebedarf"] >= results["Jahreswärmebedarf"] * (1 - 1e-9)
 
     def get_optimization_summary(self) -> dict[str, float | int | bool]:
         """

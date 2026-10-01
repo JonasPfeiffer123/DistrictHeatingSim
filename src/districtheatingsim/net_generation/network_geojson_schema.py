@@ -347,7 +347,7 @@ class NetworkGeoJSONSchema:
             "features": features,
         }
 
-        print(f"Erstelltes GeoJSON mit {len(features)} Features.")
+        logger.debug("Created network GeoJSON with %d features", len(features))
 
         return geojson
 
@@ -363,7 +363,7 @@ class NetworkGeoJSONSchema:
         """
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(geojson, f, indent=2, ensure_ascii=False)
-        print(f"✓ Exported unified network GeoJSON: {filepath}")
+        logger.info("Exported network GeoJSON: %s", filepath)
 
     @staticmethod
     def validate_version(geojson: dict[str, Any], *, filepath: str = "") -> str | None:

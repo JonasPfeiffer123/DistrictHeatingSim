@@ -7,6 +7,7 @@ tested without a QApplication.
 """
 
 import json
+import os
 
 from districtheatingsim.gui.ProjectTab.project_progress import (
     check_csv_status,
@@ -171,6 +172,40 @@ class TestEvaluateProcessSteps:
         evaluate_process_steps(str(tmp_path), steps)
         assert steps[0]["completed"] is True
         assert steps[0]["missing_files"] == []
+
+
+class TestAlternativeRequiredFiles:
+    """G7: a required file may be a list of alternatives (current format first, legacy after),
+    so projects saved before a format change still count as complete."""
+
+    @staticmethod
+    def _step():
+        return [
+            {"name": "Schritt 1", "required_files": ["Quartier/Quartier IST.csv"]},
+            {"name": "Netz", "required_files": [["Wärmenetz/netz.json", "Wärmenetz/netz.p"], "Wärmenetz/netz.csv"]},
+        ]
+
+    def test_legacy_alternative_satisfies_the_entry(self, tmp_path):
+        (tmp_path / "Wärmenetz").mkdir()
+        (tmp_path / "Wärmenetz" / "netz.p").write_bytes(b"")
+        (tmp_path / "Wärmenetz" / "netz.csv").write_text("", encoding="utf-8")
+        steps = self._step()
+        evaluate_process_steps(str(tmp_path), steps)
+        assert steps[1]["completed"] and steps[1]["missing_files"] == []
+
+    def test_missing_entry_reports_the_current_format(self, tmp_path):
+        steps = self._step()
+        evaluate_process_steps(str(tmp_path), steps)
+        assert not steps[1]["completed"]
+        assert steps[1]["missing_files"] == [
+            os.path.join(str(tmp_path), "Wärmenetz/netz.json"),
+            os.path.join(str(tmp_path), "Wärmenetz/netz.csv"),
+        ]
+
+    def test_no_base_path_lists_the_current_format(self):
+        steps = self._step()
+        evaluate_process_steps(None, steps)
+        assert steps[1]["missing_files"] == ["Wärmenetz/netz.json", "Wärmenetz/netz.csv"]
 
 
 def test_empty_step_list_does_not_divide_by_zero():

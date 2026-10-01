@@ -8,6 +8,7 @@ from WGS84 to UTM Zone 33N (ETRS89).
 """
 
 import csv
+import logging
 import os
 import shutil
 import tempfile
@@ -15,6 +16,8 @@ import tempfile
 from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
+
+logger = logging.getLogger(__name__)
 
 # Shared geolocator instance (Nominatim usage policy: max 1 req/sec, identify your app)
 _geolocator = Nominatim(user_agent="DistrictHeatingSim/1.0")
@@ -45,10 +48,10 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
             utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
             return (utm_x, utm_y)
         else:
-            print(f"Could not geocode the address {address}.")
+            logger.warning("Could not geocode the address %s", address)
             return (None, None)
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.warning("Geocoding of %s failed: %s", address, e)
         return (None, None)
 
 

@@ -25,6 +25,8 @@ from PyQt6.QtWidgets import (
 )
 from shapely import Point
 
+from districtheatingsim.heat_requirement.building_profiles_io import preferred_profiles_path
+
 
 class NetworkDataTab(QWidget):
     """
@@ -70,11 +72,7 @@ class NetworkDataTab(QWidget):
         jsonImportLayout = QHBoxLayout()
         jsonLabel = QLabel("JSON mit Daten:")
         jsonImportLayout.addWidget(jsonLabel)
-        self.jsonLineEdit = QLineEdit(
-            os.path.join(
-                self.base_path, self.parent.parent.config_manager.get_relative_path("building_load_profile_path")
-            )
-        )
+        self.jsonLineEdit = QLineEdit(self._default_profiles_path())
         jsonImportLayout.addWidget(self.jsonLineEdit)
         jsonBrowseButton = QPushButton("Datei auswählen")
         jsonBrowseButton.clicked.connect(self.browseJsonFile)
@@ -156,17 +154,23 @@ class NetworkDataTab(QWidget):
         layout.addWidget(button)
         return layout
 
+    def _default_profiles_path(self):
+        """The project's building profiles file: Parquet, or the legacy JSON if that is newer."""
+        config = self.parent.parent.config_manager
+        return preferred_profiles_path(
+            os.path.join(self.base_path, config.get_relative_path("building_load_profile_path")),
+            os.path.join(self.base_path, config.get_relative_path("building_load_profile_legacy_path")),
+        )
+
     def browseJsonFile(self):
         """
-        Open file dialog for JSON file selection.
+        Open file dialog for the building profiles file (Parquet or legacy JSON).
         """
         fname, _ = QFileDialog.getOpenFileName(
             self,
-            "Select JSON File",
-            os.path.join(
-                self.base_path, self.parent.parent.config_manager.get_relative_path("building_load_profile_path")
-            ),
-            "JSON Files (*.json);;All Files (*)",
+            "Gebäudelastgänge auswählen",
+            self._default_profiles_path(),
+            "Gebäudelastgänge (*.parquet *.json);;Alle Dateien (*)",
         )
         if fname:
             self.jsonLineEdit.setText(fname)

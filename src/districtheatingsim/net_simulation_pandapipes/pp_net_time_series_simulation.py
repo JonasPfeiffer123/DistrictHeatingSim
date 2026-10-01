@@ -5,10 +5,17 @@ temperature control, and result processing.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import contextlib
+import copy
+import logging
+import multiprocessing
+import os
+from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from pandapipes.pipeflow import PipeflowNotConverged, pipeflow
 from pandapipes.timeseries import run_time_series
 from pandapower.control.controller.const_control import ConstControl
 from pandapower.timeseries import DFData, OutputWriter
@@ -19,8 +26,10 @@ from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
     validate_simulation_results,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
+from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, secondary_producer_element_indices
 from districtheatingsim.utilities.test_reference_year import import_TRY
+
+logger = logging.getLogger(__name__)
 
 
 def update_heat_consumer_qext_controller(
@@ -157,9 +166,11 @@ def update_secondary_producer_controller(
     :type end: int
 
     .. note::
-       Updates both circ_pump_mass and flow_control controllers for each producer.
+       Updates both circ_pump_mass and flow_control controllers for each producer. Each
+       controller is matched by its ``profile_name`` and pointed at the k-th producer's pump /
+       flow control, which also repairs nets saved before BACKLOG C35 (all at index 0).
     """
-    for producer in secondary_producers:
+    for k, producer in enumerate(secondary_producers):
         producer_index = producer.index if hasattr(producer, "index") else 0
         mass_flow_data = producer.mass_flow if hasattr(producer, "mass_flow") else np.zeros(len(time_steps))
 
@@ -171,31 +182,32 @@ def update_secondary_producer_controller(
         else:
             mass_flow_slice = np.full(len(time_steps), mass_flow_data)
 
-        print(f"Mass flow for secondary producer {producer_index}: {mass_flow_slice}")
+        pump_idx, flow_control_idx = secondary_producer_element_indices(net, k)
+        mdot_column = f"mdot_flow_kg_per_s_{producer_index}"
+        flow_control_column = f"controlled_mdot_kg_per_s_{producer_index}"
 
-        df_secondary_producer = pd.DataFrame(
-            index=time_steps, data={f"mdot_flow_kg_per_s_{producer_index}": mass_flow_slice}
+        data_source_secondary_producer = DFData(pd.DataFrame(index=time_steps, data={mdot_column: mass_flow_slice}))
+        data_source_secondary_producer_flow_control = DFData(
+            pd.DataFrame(index=time_steps, data={flow_control_column: mass_flow_slice})
         )
-        data_source_secondary_producer = DFData(df_secondary_producer)
-
-        df_secondary_producer_flow_control = pd.DataFrame(
-            index=time_steps, data={f"controlled_mdot_kg_per_s_{producer_index}": mass_flow_slice}
-        )
-        data_source_secondary_producer_flow_control = DFData(df_secondary_producer_flow_control)
 
         for ctrl in net.controller.object.values:
+            if not isinstance(ctrl, ConstControl):
+                continue
             if (
-                isinstance(ctrl, ConstControl)
-                and ctrl.element == "circ_pump_mass"
+                ctrl.element == "circ_pump_mass"
                 and ctrl.variable == "mdot_flow_kg_per_s"
+                and ctrl.profile_name == mdot_column
             ):
                 ctrl.data_source = data_source_secondary_producer
+                ctrl.element_index = pump_idx
             elif (
-                isinstance(ctrl, ConstControl)
-                and ctrl.element == "flow_control"
+                ctrl.element == "flow_control"
                 and ctrl.variable == "controlled_mdot_kg_per_s"
+                and ctrl.profile_name == flow_control_column
             ):
                 ctrl.data_source = data_source_secondary_producer_flow_control
+                ctrl.element_index = flow_control_idx
 
 
 def update_heat_generator_supply_temperature_controller(
@@ -216,22 +228,29 @@ def update_heat_generator_supply_temperature_controller(
     :type end: int
 
     .. note::
-       Converts °C to K, updates both circ_pump_pressure and circ_pump_mass controllers.
+       Converts °C to K, updates both circ_pump_pressure and circ_pump_mass controllers. The
+       circ_pump_mass controllers are created one per secondary producer, in order, so the k-th
+       one is pointed at the k-th pump (repairs nets saved before BACKLOG C35, all at index 0).
     """
     if np.isscalar(supply_temperature):
-        # If a single value is provided, repeat it for all time steps
-        supply_temperature = np.full(len(time_steps), supply_temperature)
+        # A single value (static control) is repeated for all time steps — it is not a profile,
+        # so it must not be sliced by [start:end] (BACKLOG C36).
+        values = np.full(len(time_steps), supply_temperature)
+    else:
+        values = supply_temperature[start:end]
 
     # Create the DataFrame for the supply temperature
-    df_supply_temp = pd.DataFrame(
-        index=time_steps, data={"supply_temperature": supply_temperature[start:end] + KELVIN_OFFSET}
-    )
+    df_supply_temp = pd.DataFrame(index=time_steps, data={"supply_temperature": values + KELVIN_OFFSET})
     data_source_supply_temp = DFData(df_supply_temp)
+    mass_pump_k = 0
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, ConstControl) and ctrl.element == "circ_pump_pressure" and ctrl.variable == "t_flow_k":
             ctrl.data_source = data_source_supply_temp
         elif isinstance(ctrl, ConstControl) and ctrl.element == "circ_pump_mass" and ctrl.variable == "t_flow_k":
             ctrl.data_source = data_source_supply_temp
+            if mass_pump_k < len(net.circ_pump_mass):
+                ctrl.element_index = int(net.circ_pump_mass.index[mass_pump_k])
+            mass_pump_k += 1
 
 
 def create_log_variables(net) -> list[tuple[str, str]]:
@@ -288,13 +307,18 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
        Implements static/sliding temperature control, COP calculations for cold networks,
        applies 2% minimum load, calculates secondary producer mass flows. Converts W to kW.
     """
-    print(f"Maximale Vorlauftemperatur Netz: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
-    print(f"Mindestvorlauftemperatur HAST: {NetworkGenerationData.min_supply_temperature_heat_consumer} °C")
-    print(f"Rücklauftemperatur HAST: {NetworkGenerationData.return_temperature_heat_consumer} °C")
-    print(f"Vorlauftemperatur Gebäude: {NetworkGenerationData.supply_temperature_buildings} °C")
-    print(f"Rücklauftemperatur Gebäude: {NetworkGenerationData.return_temperature_buildings} °C")
-    print(f"building_temperature_checked: {NetworkGenerationData.building_temperature_checked}")
-    print(f"Netconfiguration: {NetworkGenerationData.netconfiguration}")
+    logger.debug(
+        "Time series preprocessing: max supply temperature net %s °C, min supply temperature HAST %s °C, "
+        "return temperature HAST %s °C, building supply/return temperatures %s / %s °C, "
+        "building_temperature_checked %s, net configuration %s",
+        NetworkGenerationData.max_supply_temperature_heat_generator,
+        NetworkGenerationData.min_supply_temperature_heat_consumer,
+        NetworkGenerationData.return_temperature_heat_consumer,
+        NetworkGenerationData.supply_temperature_buildings,
+        NetworkGenerationData.return_temperature_buildings,
+        NetworkGenerationData.building_temperature_checked,
+        NetworkGenerationData.netconfiguration,
+    )
 
     # The COP characteristic field is only needed for a cold network (heat-pump house stations).
     # A normal network has no heat pumps, so COP_filename may be None — don't load it then.
@@ -333,7 +357,7 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
                 + slope * (air_temperature_data - NetworkGenerationData.min_air_temperature_heat_generator),
             ),
         )
-    print(f"Vorlauftemperatur Netz: {NetworkGenerationData.supply_temperature_heat_generator} °C")
+    logger.debug("Supply temperature net: %s °C", NetworkGenerationData.supply_temperature_heat_generator)
 
     # Temperature processing based on network configuration
     ### if building_temperature_checked is True, the time dependent building temperatures are used
@@ -420,30 +444,156 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
             cp * (NetworkGenerationData.supply_temperature_heat_generator - avg_return_temperature)
         )  # kW / (kJ/kgK * K) = kg/s
 
-        print(f"Mass flow of main producer: {mass_flow} kg/s")
+        logger.debug("Mass flow of main producer: max %.3f kg/s", np.max(mass_flow))
 
         # Update each secondary producer's dictionary with calculated mass flow
         for secondary_producer in NetworkGenerationData.secondary_producers:
             secondary_producer.mass_flow = secondary_producer.load_percentage / 100 * mass_flow
-            print(f"Mass flow of secondary producer {secondary_producer.index}: {secondary_producer.mass_flow} kg/s")
+            logger.debug(
+                "Mass flow of secondary producer %s: max %.3f kg/s",
+                secondary_producer.index,
+                np.max(secondary_producer.mass_flow),
+            )
 
     return NetworkGenerationData
 
 
-def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
+def pipeflow_with_damping_fallback(net, **kwargs) -> None:
+    """
+    Pipeflow with an undamped Newton step first; damped only if that does not converge.
+
+    The time series used to run every pipeflow with ``alpha=0.5``, which roughly doubles the
+    Newton iterations. Undamped (``alpha=1``) reaches the same result in about half the time;
+    the damped retry keeps the old robustness for hard time steps (BACKLOG G1). Passed to
+    ``run_timeseries`` as its ``run`` function, so it is called for every control iteration.
+
+    :param net: Pandapipes network
+    :type net: pandapipes.pandapipesNet
+    :param kwargs: Pipeflow options (``mode``, ``iter``, …); any ``alpha`` is overridden
+    :raises PipeflowNotConverged: If the damped retry does not converge either
+    """
+    try:
+        pipeflow(net, **{**kwargs, "alpha": 1.0})
+    except PipeflowNotConverged:
+        logger.debug("Undamped pipeflow did not converge, retrying with alpha=0.5")
+        pipeflow(net, **{**kwargs, "alpha": 0.5})
+
+
+# A parallel block is at least one week: every worker process pays a few seconds to start
+# (importing pandapipes, numba JIT when installed) and the pump controller restarts at each block.
+PARALLEL_MIN_BLOCK_STEPS = 168
+
+
+def split_time_range(start: int, end: int, workers: int, min_block: int = PARALLEL_MIN_BLOCK_STEPS) -> list:
+    """
+    Split ``[start, end)`` into up to ``workers`` contiguous blocks of at least ``min_block`` steps.
+
+    :param start: First time step (inclusive)
+    :type start: int
+    :param end: Last time step (exclusive)
+    :type end: int
+    :param workers: Maximum number of blocks
+    :type workers: int
+    :param min_block: Minimum block length [time steps]
+    :type min_block: int
+    :return: ``[(block_start, block_end), …]`` covering the range in order (one block if too short)
+    :rtype: list[tuple[int, int]]
+    """
+    n_blocks = max(1, min(workers, (end - start) // max(min_block, 1)))
+    bounds = np.linspace(start, end, n_blocks + 1).round().astype(int)
+    return [(int(a), int(b)) for a, b in zip(bounds[:-1], bounds[1:], strict=True) if b > a]
+
+
+_BLAS_THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
+
+
+@contextlib.contextmanager
+def _single_threaded_blas_in_children():
+    """
+    Let worker processes started inside this block use one BLAS thread each.
+
+    With several workers, multi-threaded BLAS in every process oversubscribes the cores (one
+    Görlitz run, 8 weeks, 4 workers: 59 → 50 s; timings on the dev laptop vary strongly). A
+    sequential run does profit from BLAS threads, so only the children are limited. Spawned children copy the environment at start; the parent's
+    BLAS is already initialised and unaffected.
+    """
+    saved = {name: os.environ.get(name) for name in _BLAS_THREAD_VARS}
+    os.environ.update(dict.fromkeys(_BLAS_THREAD_VARS, "1"))
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def _time_series_block(NetworkGenerationData):
+    """Worker-process entry: simulate one block sequentially, return its net and logged results."""
+    result = thermohydraulic_time_series_net(NetworkGenerationData)
+    return result.net, result.net_results
+
+
+def _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks: list) -> Any:
+    """
+    Simulate the time blocks in parallel processes and merge them in time order (BACKLOG G2).
+
+    Every block starts from the network as initialised — in particular the pump pressures of
+    the bad-point controller, which a sequential run carries over from the previous hour. Block
+    results therefore differ from a sequential run within the controller tolerance. The merged
+    object ends in the state of the last block's final hour, like a sequential run.
+    """
+    jobs = []
+    for block_start, block_end in blocks:
+        job = copy.copy(NetworkGenerationData)  # the net is pickled into each worker separately
+        job.start_time_step, job.end_time_step = block_start, block_end
+        jobs.append(job)
+
+    # "spawn" everywhere: forking a process that runs Qt threads is unsafe.
+    context = multiprocessing.get_context("spawn")
+    with _single_threaded_blas_in_children(), ProcessPoolExecutor(max_workers=len(jobs), mp_context=context) as pool:
+        outcomes = list(pool.map(_time_series_block, jobs))
+
+    NetworkGenerationData.net = outcomes[-1][0]
+    NetworkGenerationData.net_results = {
+        key: np.concatenate([results[key] for _, results in outcomes], axis=0) for key in outcomes[0][1]
+    }
+    validate_simulation_results(NetworkGenerationData.net_results, context="thermohydraulic time series (parallel)")
+    NetworkGenerationData.pump_results = calculate_results(NetworkGenerationData.net, NetworkGenerationData.net_results)
+    return NetworkGenerationData
+
+
+def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> Any:
     """
     Run thermohydraulic time series simulation with controller updates.
 
     :param NetworkGenerationData: Network data with preprocessed model and parameters
     :type NetworkGenerationData: object
+    :param workers: Worker processes for the time series, defaults to 1 (sequential). With more,
+        the range is split into blocks of at least ``PARALLEL_MIN_BLOCK_STEPS`` hours simulated in
+        parallel (results differ within the pump-controller tolerance, see
+        ``_parallel_thermohydraulic_time_series``).
+    :type workers: int
     :return: Updated NetworkGenerationData with simulation results and pump operations
     :rtype: Any
 
     .. note::
-       Runs bidirectional simulation with iter=100, alpha=0.5. Updates all controllers
+       Runs bidirectional simulation with iter=100, undamped with a damped (alpha=0.5) retry per
+       pipeflow (``pipeflow_with_damping_fallback``). Updates all controllers
        (heat demand, temperatures, secondary producers). Logs junction, heat consumer,
        and pump data.
     """
+    if workers > 1:
+        blocks = split_time_range(
+            NetworkGenerationData.start_time_step,
+            NetworkGenerationData.end_time_step,
+            workers,
+            min_block=PARALLEL_MIN_BLOCK_STEPS,
+        )
+        if len(blocks) > 1:
+            return _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks)
+
     # Update the ConstControl
     time_steps = range(
         0,
@@ -478,7 +628,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
         and np.any(np.array(NetworkGenerationData.min_supply_temperature_heat_consumer) != 0)
         and isinstance(NetworkGenerationData.min_supply_temperature_heat_consumer, np.ndarray)
     ):
-        print("Update TemperatureController")
+        logger.debug("Updating minimum supply temperature controllers")
         update_heat_consumer_temperature_controller(
             NetworkGenerationData.net,
             NetworkGenerationData.min_supply_temperature_heat_consumer,
@@ -490,7 +640,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     if NetworkGenerationData.return_temperature_heat_consumer is not None and isinstance(
         NetworkGenerationData.return_temperature_heat_consumer, np.ndarray
     ):
-        print("Update Return Temperature Const Control")
+        logger.debug("Updating return temperature controllers")
         update_heat_consumer_return_temperature_controller(
             NetworkGenerationData.net,
             NetworkGenerationData.return_temperature_heat_consumer,
@@ -515,7 +665,13 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
 
     try:
-        run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100, alpha=0.5)
+        run_time_series.run_timeseries(
+            NetworkGenerationData.net,
+            time_steps,
+            mode="bidirectional",
+            iter=100,
+            run=pipeflow_with_damping_fallback,
+        )
     except Exception as e:
         raise RuntimeError(f"Thermohydraulic time-series simulation failed (bidirectional, iter=100): {e}") from e
 
@@ -543,7 +699,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
        Much faster than thermohydraulic_time_series_net.
     """
 
-    print("Starte vereinfachte Zeitreihenberechnung (basierend auf Auslegung)...")
+    logger.info("Starting simplified time series (scaled from the design state)")
 
     # Get time steps for selected simulation range
     time_steps = range(
@@ -560,7 +716,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     max_load_idx = np.argmax(NetworkGenerationData.waerme_ges_kW)
     total_building_demand_design = NetworkGenerationData.waerme_ges_kW[max_load_idx]
 
-    print(f"Nutze Auslegungszustand bei max. Last: {total_building_demand_design:.1f} kW")
+    logger.debug("Design state at maximum load: %.1f kW", total_building_demand_design)
 
     # Extract design state results from already calculated network
     # (these were calculated during initialization)
@@ -582,8 +738,10 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "flow_temp_design": res["t_to_k"] - KELVIN_OFFSET,
                 "qext_kW_design": res["mdot_from_kg_per_s"] * CP_WATER_KJ_KGK * (res["t_to_k"] - res["t_from_k"]),
             }
-            print(
-                f"  Haupteinspeisung {idx}: {design_results['Heizentrale Haupteinspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung"
+            logger.debug(
+                "Main producer %s: %.1f kW design output",
+                idx,
+                design_results["Heizentrale Haupteinspeisung"][idx]["qext_kW_design"],
             )
 
     # Get design state from mass pumps (secondary producers)
@@ -602,8 +760,10 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "flow_temp_design": res["t_to_k"] - KELVIN_OFFSET,
                 "qext_kW_design": res["mdot_from_kg_per_s"] * CP_WATER_KJ_KGK * (res["t_to_k"] - res["t_from_k"]),
             }
-            print(
-                f"  Weitere Einspeisung {idx}: {design_results['weitere Einspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung"
+            logger.debug(
+                "Secondary producer %s: %.1f kW design output",
+                idx,
+                design_results["weitere Einspeisung"][idx]["qext_kW_design"],
             )
 
     # Fail loudly if the design state is NaN/inf (init pipeflow did not converge)
@@ -617,7 +777,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     design_losses_kW = total_generation_design - total_building_demand_design
     design_loss_factor = design_losses_kW / total_building_demand_design if total_building_demand_design > 0 else 0
 
-    print(f"Auslegungsverluste: {design_losses_kW:.1f} kW ({design_loss_factor * 100:.2f}%)")
+    logger.debug("Design losses: %.1f kW (%.2f %%)", design_losses_kW, design_loss_factor * 100)
 
     # Create time series by scaling with building demand
     NetworkGenerationData.pump_results = {"Heizentrale Haupteinspeisung": {}, "weitere Einspeisung": {}}
@@ -633,11 +793,13 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
         supply_temp_series = NetworkGenerationData.supply_temperature_heat_generator[
             NetworkGenerationData.start_time_step : NetworkGenerationData.end_time_step
         ]
-        print("Verwende gleitende Vorlauftemperatur")
+        logger.debug("Using the sliding supply temperature")
     else:
         # Statische Vorlauftemperatur
         supply_temp_series = np.full(n_steps, NetworkGenerationData.supply_temperature_heat_generator)
-        print(f"Verwende statische Vorlauftemperatur: {NetworkGenerationData.supply_temperature_heat_generator:.1f} °C")
+        logger.debug(
+            "Using the static supply temperature: %.1f °C", NetworkGenerationData.supply_temperature_heat_generator
+        )
 
     # Scale results for each time step
     for pump_type, pumps in design_results.items():
@@ -675,7 +837,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "qext_kW": qext_series,
             }
 
-    print(f"Vereinfachte Berechnung erfolgreich abgeschlossen ({n_steps} Zeitschritte).")
+    logger.info("Simplified time series completed (%d time steps)", n_steps)
 
     return NetworkGenerationData
 
@@ -860,6 +1022,6 @@ def import_results_csv(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarra
                 # Add parameter data to corresponding pump
                 pump_results[pump_type][idx][value] = data[column].values.astype("float64")
             else:
-                print(f"Warning: Column name '{column}' has an unexpected format and is ignored.")
+                logger.warning("Column name %r has an unexpected format and is ignored", column)
 
     return time_steps, total_heat_KW, strom_wp_kW, pump_results

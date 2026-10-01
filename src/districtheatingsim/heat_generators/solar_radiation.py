@@ -8,12 +8,37 @@ Solar radiation calculations for tilted collectors using Test Reference Year dat
 """
 
 # Import libraries
-from datetime import UTC, datetime
+from numbers import Real
 
 import numpy as np
 
 # Constant for degree-to-radian conversion
 DEG_TO_RAD = np.pi / 180
+
+
+def _iam_lookup(iam_data: dict[float, float], angles: np.ndarray) -> np.ndarray:
+    """
+    Vectorised ``iam_data.get(angle, 0.0)`` for an array of angles.
+
+    Same exact-key semantics as the dict lookup it replaces (a missing angle, or a non-numeric
+    key, yields 0.0), but always returns floats: ``np.vectorize`` derived the dtype from the
+    first element, so a leading integer IAM value (e.g. ``1``) would have truncated the whole
+    array to integers.
+
+    :param iam_data: IAM lookup table {angle: factor}
+    :type iam_data: Dict[float, float]
+    :param angles: Angles to look up [degrees]
+    :type angles: numpy.ndarray
+    :return: IAM factors, 0.0 where the angle is not a key
+    :rtype: numpy.ndarray
+    """
+    numeric = sorted((float(k), float(v)) for k, v in iam_data.items() if isinstance(k, Real))
+    if not numeric:
+        return np.zeros(np.shape(angles), dtype=float)
+    keys = np.array([k for k, _ in numeric])
+    values = np.array([v for _, v in numeric])
+    pos = np.minimum(np.searchsorted(keys, angles), len(keys) - 1)
+    return np.where(keys[pos] == angles, values[pos], 0.0)
 
 
 def calculate_solar_radiation(
@@ -66,13 +91,9 @@ def calculate_solar_radiation(
     time_of_day = (time_steps_dt - time_steps_dt.astype("datetime64[D]")).astype("timedelta64[h]").astype(float)
     hour_L = time_of_day
 
-    # Calculate day of year for each time step
-    day_of_year = np.array(
-        [
-            datetime.fromtimestamp(t.astype("datetime64[s]").astype(np.int64), tz=UTC).timetuple().tm_yday
-            for t in time_steps_dt
-        ]
-    )
+    # Calculate day of year for each time step (1 = 1 January)
+    days = time_steps_dt.astype("datetime64[D]")
+    day_of_year = (days - days.astype("datetime64[Y]")).astype(int) + 1
 
     # Calculate the day of the year as an angle for solar calculations
     B = (day_of_year - 1) * 360 / 365  # degrees
@@ -219,11 +240,11 @@ def calculate_solar_radiation(
             # Find lower bound incidence angles (rounded down to nearest 10°)
             sverweis_1 = np.abs(Incidence_angle) - np.abs(Incidence_angle) % 10
             # Get IAM values for lower bounds (default to 0.0 if key not found)
-            sverweis_2 = np.vectorize(lambda x: iam_data.get(x, 0.0))(sverweis_1)
+            sverweis_2 = _iam_lookup(iam_data, sverweis_1)
             # Find upper bound incidence angles (rounded up to nearest 10°)
             sverweis_3 = (np.abs(Incidence_angle) + 10) - (np.abs(Incidence_angle) + 10) % 10
             # Get IAM values for upper bounds (default to 0.0 if key not found)
-            sverweis_4 = np.vectorize(lambda x: iam_data.get(x, 0.0))(sverweis_3)
+            sverweis_4 = _iam_lookup(iam_data, sverweis_3)
 
             # Perform linear interpolation between bounds
             # Handle division by zero for same angle bounds

@@ -7,7 +7,6 @@ visualization of economic and technical metrics.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import json
 import logging
 import os
 
@@ -43,6 +42,9 @@ from districtheatingsim.gui.ComparisonTab.comparison_data import (
     variant_has_results,
 )
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
+from districtheatingsim.utilities import array_store
+
+logger = logging.getLogger(__name__)
 
 # Re-exported so existing importers (`from ...comparison_tab import format_kpi_range`)
 # keep working; the canonical home is now comparison_data.py.
@@ -470,7 +472,7 @@ class ComparisonDashboard(QWidget):
                 text = format_kpi_range(self.variant_data, data_key, fmt, empty=empty)
                 self.kpi_widgets[widget_key].value_label.setText(text)
         except Exception as e:
-            logging.warning("KPI-Aktualisierung fehlgeschlagen: %s", e)
+            logger.warning("KPI-Aktualisierung fehlgeschlagen: %s", e)
             for widget in self.kpi_widgets.values():
                 widget.value_label.setText("--")
 
@@ -483,7 +485,7 @@ class ComparisonDashboard(QWidget):
             self.update_pe_chart()
             self.update_network_chart()
         except Exception as e:
-            logging.warning("Diagramm-Aktualisierung fehlgeschlagen: %s", e)
+            logger.warning("Diagramm-Aktualisierung fehlgeschlagen: %s", e)
 
     def update_cost_chart(self):
         """Update cost comparison chart."""
@@ -976,8 +978,7 @@ class ComparisonTab(QWidget):
                 display_name = item["display_name"]
 
                 results_path = os.path.join(variant_path, "Ergebnisse", config_file)
-                with open(results_path, encoding="utf-8") as f:
-                    data = json.load(f)
+                data = array_store.load_json_compatible(results_path)  # Parquet or legacy JSON (G7)
 
                 results = data.get("results", {})
                 processed_data = process_variant_results(results)

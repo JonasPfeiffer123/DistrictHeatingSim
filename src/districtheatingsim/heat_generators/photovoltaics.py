@@ -7,11 +7,15 @@ Photovoltaic power generation modeling based on EU PVGIS methodology.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
 
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 from districtheatingsim.utilities.test_reference_year import import_TRY
+
+logger = logging.getLogger(__name__)
 
 # Constant for degree-radian conversion
 DEG_TO_RAD = np.pi / 180
@@ -179,8 +183,7 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
     df = pd.DataFrame()
     df["Annual Hours"] = Annual_hours
 
-    print("Calculating PV yield for buildings...")
-    print(f"Processing {len(gdata)} building systems...")
+    logger.info("Calculating the PV yield of %d building systems", len(gdata))
 
     # Process each building in the input data
     for _idx, (building, area, direction) in enumerate(gdata):
@@ -190,7 +193,7 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
             area = float(area)
             direction = str(direction)
 
-            print(f"Processing {building}: {area:.1f} m² {direction}-facing")
+            logger.debug("Processing %s: %.1f m² %s-facing", building, area, direction)
 
             # Get azimuth angle for the specified direction
             current_azimuth = azimuth_angle(direction)
@@ -200,7 +203,7 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
                 # Split area equally between East and West orientations
                 area_split = area / 2
                 directions = ["O", "W"]  # East and West in German notation
-                print(f"  → East-West configuration: {area_split:.1f} m² each direction")
+                logger.debug("East-west configuration: %.1f m² each direction", area_split)
             else:
                 # Single orientation configuration
                 directions = [direction]
@@ -228,36 +231,41 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
                     # Generate appropriate column suffix for EW systems
                     suffix = f" {orientation}" if direction.upper() == "OW" else ""
 
-                    # Display calculation results
-                    print(f"  → PV yield {building}{suffix}: {yield_kWh / 1000:.1f} MWh")
-                    print(f"  → Maximum power {building}{suffix}: {max_power:.1f} kW")
+                    logger.debug(
+                        "PV %s%s: yield %.1f MWh, maximum power %.1f kW",
+                        building,
+                        suffix,
+                        yield_kWh / 1000,
+                        max_power,
+                    )
 
                     # Add results to DataFrame with descriptive column name
                     column_name = f"{building}{suffix} {system_area:.1f} m² [kW]"
                     df[column_name] = P_L
                 else:
-                    print(f"  → Warning: Invalid orientation '{orientation}' for {building}")
+                    logger.warning("Invalid orientation %r for %s", orientation, building)
 
-        except Exception as e:
-            print(f"  → Error processing {building}: {e}")
+        except Exception:
+            logger.exception("Error processing PV system %s", building)
             continue
 
     # Save comprehensive results to CSV file
     try:
         df.to_csv(output_filename, index=False, sep=";", encoding="utf-8-sig")
-        print(f"\nResults successfully saved to: {output_filename}")
 
-        # Calculate and display summary statistics
+        # Summary statistics
         pv_columns = [col for col in df.columns if "[kW]" in col]
         total_systems = len(pv_columns)
         total_capacity = df[pv_columns].max().sum()
         annual_yield = df[pv_columns].sum().sum() / 1000  # Convert to MWh
 
-        print("Summary:")
-        print(f"  → Total systems processed: {total_systems}")
-        print(f"  → Total PV capacity: {total_capacity:.1f} kW")
-        print(f"  → Annual district yield: {annual_yield:.1f} MWh")
-        print(f"  → Average capacity factor: {annual_yield * 1000 / (total_capacity * 8760):.2f}")
+        logger.info(
+            "PV results saved to %s: %d systems, %.1f kW total capacity, %.1f MWh annual yield",
+            output_filename,
+            total_systems,
+            total_capacity,
+            annual_yield,
+        )
 
     except Exception as e:
         raise OSError(f"Error saving results to {output_filename}: {e}") from e

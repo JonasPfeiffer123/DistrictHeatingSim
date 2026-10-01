@@ -571,6 +571,127 @@ class TestSecondaryProducerRoundTrip:
         assert rebuilt == [SecondaryProducer(index=3, load_percentage=10.0)]
 
 
+_T_FLOW_K = 85 + 273.15
+
+
+def _net_with_two_secondary_producers():
+    """Two secondary producers as create_network builds them: one circ_pump_mass + one
+    flow_control each, in producer order. No pipes / pipeflow — controller wiring only."""
+    import pandapipes as pp
+
+    net = pp.create_empty_network(fluid="water")
+    for _ in range(2):
+        ret, mid, flo = (pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(3))
+        pp.create_circ_pump_const_mass_flow(
+            net, ret, mid, p_flow_bar=4, mdot_flow_kg_per_s=1.0, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        pp.create_flow_control(net, mid, flo, controlled_mdot_kg_per_s=1.0)
+    return net
+
+
+def _two_secondary_producers():
+    from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import SecondaryProducer
+
+    return [
+        SecondaryProducer(index=1, load_percentage=20.0, mass_flow=np.array([1.0, 1.2, 1.4])),
+        SecondaryProducer(index=2, load_percentage=10.0, mass_flow=np.array([0.3, 0.4, 0.5])),
+    ]
+
+
+class TestSecondaryProducerControllers:
+    """C35: with two secondary producers each time-series controller must drive *its own*
+    circ_pump_mass / flow_control row. Before the fix every controller was created at
+    element_index=0 and the update handed all of them the last producer's data (KeyError on the
+    first time step). Driven through ConstControl.time_step, which writes into the net."""
+
+    @staticmethod
+    def _add_pre_c35_controllers(net, producers):
+        """The controller layout saved nets carry from before the fix: all at element_index=0."""
+        import pandas as pd
+        from pandapower.control.controller.const_control import ConstControl
+        from pandapower.timeseries import DFData
+
+        for p in producers:
+            for element, variable, profile in (
+                ("circ_pump_mass", "mdot_flow_kg_per_s", f"mdot_flow_kg_per_s_{p.index}"),
+                ("flow_control", "controlled_mdot_kg_per_s", f"controlled_mdot_kg_per_s_{p.index}"),
+                ("circ_pump_mass", "t_flow_k", "supply_temperature"),
+            ):
+                ConstControl(
+                    net,
+                    element=element,
+                    variable=variable,
+                    element_index=0,
+                    data_source=DFData(pd.DataFrame({profile: [0.0]})),
+                    profile_name=profile,
+                )
+
+    @staticmethod
+    def _run_time_step(net, t, variables):
+        # Only the controllers under test: the others still hold their 1-row placeholder data.
+        for ctrl in net.controller.object:
+            if ctrl.variable in variables:
+                ctrl.time_step(net, t)
+
+    def test_each_pump_gets_its_own_mass_flow_profile(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            update_secondary_producer_controller,
+        )
+
+        net = _net_with_two_secondary_producers()
+        producers = _two_secondary_producers()
+        self._add_pre_c35_controllers(net, producers)
+
+        update_secondary_producer_controller(net, producers, range(3), 0, 3)
+
+        for t in range(3):
+            self._run_time_step(net, t, ("mdot_flow_kg_per_s", "controlled_mdot_kg_per_s"))
+            expected = [producers[0].mass_flow[t], producers[1].mass_flow[t]]
+            assert net.circ_pump_mass["mdot_flow_kg_per_s"].tolist() == pytest.approx(expected)
+            assert net.flow_control["controlled_mdot_kg_per_s"].tolist() == pytest.approx(expected)
+
+    def test_supply_temperature_reaches_every_secondary_pump(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            update_heat_generator_supply_temperature_controller,
+        )
+
+        net = _net_with_two_secondary_producers()
+        self._add_pre_c35_controllers(net, _two_secondary_producers())
+
+        update_heat_generator_supply_temperature_controller(net, np.array([80.0, 75.0, 70.0]), range(3), 0, 3)
+
+        t_flow_ctrls = [c for c in net.controller.object if c.element == "circ_pump_mass" and c.variable == "t_flow_k"]
+        assert [c.element_index for c in t_flow_ctrls] == [0, 1]
+        self._run_time_step(net, 1, ("t_flow_k",))
+        assert net.circ_pump_mass["t_flow_k"].tolist() == pytest.approx([75.0 + 273.15] * 2)
+
+
+class TestStaticSupplyTemperatureController:
+    """C36: a static (scalar) supply temperature is not a profile, so it must not be sliced by
+    [start:end] — a run starting at time step > 0 used to build an empty/short DataFrame and
+    crash ("Length of values (0) does not match length of index")."""
+
+    def test_scalar_supply_temperature_with_offset_start(self):
+        import pandapipes as pp
+        from pandapower.control.controller.const_control import ConstControl
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            update_heat_generator_supply_temperature_controller,
+        )
+
+        net = pp.create_empty_network(fluid="water")
+        j0, j1 = (pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(2))
+        pp.create_circ_pump_const_pressure(net, j0, j1, p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K)
+        ctrl = ConstControl(
+            net, element="circ_pump_pressure", variable="t_flow_k", element_index=0, profile_name="supply_temperature"
+        )
+
+        update_heat_generator_supply_temperature_controller(net, 70.0, range(8), 100, 108)
+
+        ctrl.time_step(net, 7)
+        assert net.circ_pump_pressure.at[0, "t_flow_k"] == pytest.approx(70.0 + 273.15)
+
+
 class TestKmrToIsoplus:
     """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
 
@@ -667,6 +788,73 @@ class TestMigrateLoadedNet:
         # inner_diameter_mm derived from the legacy diameter_m [m] -> mm.
         assert net.pipe.iloc[0]["inner_diameter_mm"] == pytest.approx(37.0)
 
+    @staticmethod
+    def _net_with_pump_controller(gain):
+        from types import SimpleNamespace
+
+        import pandas as pd
+
+        from districtheatingsim.net_simulation_pandapipes.controllers import BadPointPressureLiftController
+
+        # Skip __init__ (it needs pipeflow results) — only the pickled attribute matters here.
+        ctrl = BadPointPressureLiftController.__new__(BadPointPressureLiftController)
+        ctrl.proportional_gain = gain
+        return SimpleNamespace(controller=pd.DataFrame({"object": [ctrl]})), ctrl
+
+    def test_legacy_pump_controller_gain_raised(self):
+        # G1: nets saved before the gain change carry 0.2 and would keep the slow control loop.
+        from districtheatingsim.net_simulation_pandapipes.controllers import DEFAULT_PUMP_CONTROLLER_GAIN
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
+        net, ctrl = self._net_with_pump_controller(0.2)
+        migrate_loaded_net(net)
+        assert ctrl.proportional_gain == DEFAULT_PUMP_CONTROLLER_GAIN
+
+    def test_non_legacy_pump_controller_gain_kept(self):
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
+        net, ctrl = self._net_with_pump_controller(0.35)
+        migrate_loaded_net(net)
+        assert ctrl.proportional_gain == 0.35
+
+
+class TestPipeflowDampingFallback:
+    """G1: the time series solves undamped (alpha=1) and retries damped (alpha=0.5) only when
+    that does not converge — same robustness as the old always-damped run, ~half the cost."""
+
+    @staticmethod
+    def _fake_pipeflow(monkeypatch, fail_alphas):
+        from pandapipes.pipeflow import PipeflowNotConverged
+
+        from districtheatingsim.net_simulation_pandapipes import pp_net_time_series_simulation as ts
+
+        calls = []
+
+        def fake(net, **kwargs):
+            calls.append(kwargs)
+            if kwargs["alpha"] in fail_alphas:
+                raise PipeflowNotConverged("diverged")
+
+        monkeypatch.setattr(ts, "pipeflow", fake)
+        return ts.pipeflow_with_damping_fallback, calls, PipeflowNotConverged
+
+    def test_undamped_only_when_it_converges(self, monkeypatch):
+        run, calls, _ = self._fake_pipeflow(monkeypatch, fail_alphas=())
+        run(None, mode="bidirectional", iter=100)
+        assert [c["alpha"] for c in calls] == [1.0]
+        assert calls[0]["mode"] == "bidirectional" and calls[0]["iter"] == 100
+
+    def test_damped_retry_after_divergence(self, monkeypatch):
+        run, calls, _ = self._fake_pipeflow(monkeypatch, fail_alphas=(1.0,))
+        run(None, mode="bidirectional", iter=100)
+        assert [c["alpha"] for c in calls] == [1.0, 0.5]
+
+    def test_raises_when_damped_retry_fails_too(self, monkeypatch):
+        run, calls, not_converged = self._fake_pipeflow(monkeypatch, fail_alphas=(1.0, 0.5))
+        with pytest.raises(not_converged):
+            run(None, mode="bidirectional", iter=100)
+        assert [c["alpha"] for c in calls] == [1.0, 0.5]
+
 
 @pytest.mark.slow
 class TestNetworkInitialization:
@@ -761,6 +949,64 @@ class TestNetworkInitialization:
         assert kpis["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] == pytest.approx(0.22)
         assert kpis["Pumpenstrom [MWh]"] is None  # no pump_results yet
         assert nd.kpi_results is kpis  # cached on the object
+
+
+@pytest.mark.slow
+class TestSecondaryProducerTimeSeries:
+    """C35 end-to-end: the thermohydraulic time series on a tiny net with two secondary
+    producers must run (it crashed with a KeyError on the first step) and each mass-flow pump
+    must follow its own producer's profile."""
+
+    def test_two_secondary_producers_follow_their_profiles(self):
+        from types import SimpleNamespace
+
+        import pandapipes as pp
+        from pandapipes.control.run_control import run_control
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            thermohydraulic_time_series_net,
+        )
+        from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
+
+        net = pp.create_empty_network(fluid="water")
+        coords = [(0, 10), (0, 0), (10, 0), (60, 0), (85, 0), (85, 10), (60, 10), (10, 10)]
+        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K, geodata=c) for c in coords]
+        pp.create_circ_pump_const_pressure(
+            net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        for a, b, length in [(1, 2, 0.01), (2, 3, 0.05), (3, 4, 0.025), (5, 6, 0.25), (6, 7, 0.05), (7, 0, 0.01)]:
+            pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
+        pp.create_heat_consumer(net, j[4], j[5], qext_w=500000, treturn_k=55 + 273.15)
+        pp.create_heat_consumer(net, j[3], j[6], qext_w=200000, treturn_k=60 + 273.15)
+        # Two secondary producers feeding from the return into the flow line (create_network layout).
+        for ret, flo in [(7, 2), (6, 3)]:
+            mid = pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K)
+            pp.create_circ_pump_const_mass_flow(
+                net, j[ret], mid, p_flow_bar=4, mdot_flow_kg_per_s=0.5, t_flow_k=_T_FLOW_K, type="auto"
+            )
+            pp.create_flow_control(net, mid, j[flo], controlled_mdot_kg_per_s=0.5)
+
+        producers = _two_secondary_producers()
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+        net = create_controllers(net, np.array([500000, 200000]), 85, None, np.array([55, 60]), producers)
+        run_control(net, mode="bidirectional", iter=100)
+
+        n = 3
+        nd = SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=np.array([[500000.0] * n, [200000.0] * n]),
+            start_time_step=0,
+            end_time_step=n,
+            secondary_producers=producers,
+            min_supply_temperature_heat_consumer=None,
+            return_temperature_heat_consumer=np.array([55.0, 60.0]),
+            supply_temperature_heat_generator=85.0,
+        )
+        nd = thermohydraulic_time_series_net(nd)
+
+        logged = nd.net_results["res_circ_pump_mass.mdot_from_kg_per_s"]
+        assert logged[:, 0] == pytest.approx(producers[0].mass_flow)
+        assert logged[:, 1] == pytest.approx(producers[1].mass_flow)
 
 
 class TestAvailablePlotParameters:
@@ -1133,3 +1379,150 @@ class TestRecalculateNet:
         # with run context instead (BACKLOG B2/C2).
         with pytest.raises(RuntimeError, match="recalculation failed"):
             recalculate_net(pp.create_empty_network(fluid="water"))
+
+
+class TestNetIo:
+    """G7: the network is saved as pandapipes JSON (not pickle); old pickles still load, and when
+    both exist the newer file wins (an older app version may have re-saved the pickle)."""
+
+    @staticmethod
+    def _save_both(tmp_path, json_newer):
+        import os
+
+        import pandapipes as pp
+
+        json_path, pickle_path = str(tmp_path / "net.json"), str(tmp_path / "net.p")
+        json_net, pickle_net = pp.create_empty_network(fluid="water"), pp.create_empty_network(fluid="water")
+        pp.create_junction(json_net, pn_bar=1.0, tfluid_k=300.0, name="from json")
+        pp.create_junction(pickle_net, pn_bar=1.0, tfluid_k=300.0, name="from pickle")
+        pp.to_json(json_net, json_path)
+        pp.to_pickle(pickle_net, pickle_path)
+        older, newer = (pickle_path, json_path) if json_newer else (json_path, pickle_path)
+        os.utime(older, (1_000_000_000, 1_000_000_000))
+        os.utime(newer, (1_100_000_000, 1_100_000_000))
+        return json_path, pickle_path
+
+    def test_newer_json_wins(self, tmp_path):
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net
+
+        json_path, pickle_path = self._save_both(tmp_path, json_newer=True)
+        net, source = load_net(json_path, pickle_path)
+        assert source == json_path and net.junction.name.iloc[0] == "from json"
+
+    def test_newer_pickle_wins(self, tmp_path):
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net
+
+        json_path, pickle_path = self._save_both(tmp_path, json_newer=False)
+        net, source = load_net(json_path, pickle_path)
+        assert source == pickle_path and net.junction.name.iloc[0] == "from pickle"
+
+    def test_legacy_pickle_only_and_missing(self, tmp_path):
+        import pandapipes as pp
+
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net
+
+        pickle_path = str(tmp_path / "old.p")
+        pp.to_pickle(pp.create_empty_network(fluid="water"), pickle_path)
+        _, source = load_net(str(tmp_path / "new.json"), pickle_path)
+        assert source == pickle_path
+        with pytest.raises(FileNotFoundError):
+            load_net(str(tmp_path / "none.json"), str(tmp_path / "none.p"))
+
+
+@pytest.mark.slow
+class TestNetJsonRoundTrip:
+    def test_controllers_survive_and_net_recalculates(self, tmp_path):
+        # The project's own controllers (BadPointPressureLiftController, ConstControls with DFData)
+        # must survive the JSON round trip and the reloaded net must solve to the same state.
+        from districtheatingsim.net_simulation_pandapipes.net_io import load_net, save_net
+        from districtheatingsim.net_simulation_pandapipes.utilities import recalculate_net
+
+        net = TestNetworkInitialization._build_and_init()
+        path = str(tmp_path / "net.json")
+        save_net(net, path)
+        loaded, _ = load_net(path)
+
+        assert [type(c).__name__ for c in loaded.controller.object] == [type(c).__name__ for c in net.controller.object]
+        assert list(loaded.pipe.std_type) == list(net.pipe.std_type)
+        recalculate_net(net)
+        recalculate_net(loaded)
+        np.testing.assert_allclose(loaded.res_junction.values, net.res_junction.values, rtol=1e-9, atol=1e-9)
+
+
+class TestSplitTimeRange:
+    """G2: the parallel time series splits the range into ordered blocks of a minimum length."""
+
+    def test_blocks_cover_the_range_in_order(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import split_time_range
+
+        blocks = split_time_range(0, 8760, 4, min_block=168)
+        assert blocks[0][0] == 0 and blocks[-1][1] == 8760
+        assert all(a[1] == b[0] for a, b in zip(blocks, blocks[1:], strict=False))
+        assert len(blocks) == 4
+
+    def test_short_ranges_stay_in_one_block(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import split_time_range
+
+        assert split_time_range(100, 300, 8, min_block=168) == [(100, 300)]  # < 2 weeks
+        assert split_time_range(0, 400, 8, min_block=168) == [(0, 200), (200, 400)]  # limited by length
+        assert split_time_range(0, 10, 1, min_block=1) == [(0, 10)]
+
+
+@pytest.mark.slow
+class TestParallelTimeSeries:
+    """G2: blocks simulated in worker processes and merged must give the sequential heat results;
+    only the pump pressures may differ where the bad-point controller restarts at a block."""
+
+    @staticmethod
+    def _nd(n):
+        from types import SimpleNamespace
+
+        import pandapipes as pp
+        from pandapipes.control.run_control import run_control
+
+        from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
+
+        net = pp.create_empty_network(fluid="water")
+        coords = [(0, 10), (0, 0), (10, 0), (60, 0), (85, 0), (85, 10), (60, 10), (10, 10)]
+        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K, geodata=c) for c in coords]
+        pp.create_circ_pump_const_pressure(
+            net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        for a, b, length in [(1, 2, 0.01), (2, 3, 0.05), (3, 4, 0.025), (5, 6, 0.25), (6, 7, 0.05), (7, 0, 0.01)]:
+            pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
+        pp.create_heat_consumer(net, j[4], j[5], qext_w=500000, treturn_k=55 + 273.15)
+        pp.create_heat_consumer(net, j[3], j[6], qext_w=200000, treturn_k=60 + 273.15)
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+        net = create_controllers(net, np.array([500000, 200000]), 85, None, np.array([55, 60]), None)
+        run_control(net, mode="bidirectional", iter=100)
+
+        load = np.linspace(0.3, 1.0, n)
+        return SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=np.array([500000.0 * load, 200000.0 * load[::-1]]),
+            start_time_step=0,
+            end_time_step=n,
+            secondary_producers=[],
+            min_supply_temperature_heat_consumer=None,
+            return_temperature_heat_consumer=np.array([55.0, 60.0]),
+            supply_temperature_heat_generator=85.0,
+        )
+
+    def test_parallel_blocks_match_sequential_heat_results(self, monkeypatch):
+        import copy
+
+        from districtheatingsim.net_simulation_pandapipes import pp_net_time_series_simulation as ts
+
+        monkeypatch.setattr(ts, "PARALLEL_MIN_BLOCK_STEPS", 3)
+        base = self._nd(8)
+        sequential = ts.thermohydraulic_time_series_net(copy.deepcopy(base))
+        parallel = ts.thermohydraulic_time_series_net(copy.deepcopy(base), workers=2)
+
+        a, b = sequential.net_results, parallel.net_results
+        assert set(a) == set(b)
+        for key in a:
+            assert b[key].shape == a[key].shape
+        for key in ("heat_consumer.qext_w", "res_heat_consumer.mdot_from_kg_per_s", "res_junction.t_k"):
+            np.testing.assert_allclose(b[key], a[key], rtol=1e-6)
+        # merged pump results come from the whole range
+        assert set(parallel.pump_results) == set(sequential.pump_results)

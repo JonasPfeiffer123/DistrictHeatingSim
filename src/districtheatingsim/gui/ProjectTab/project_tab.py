@@ -43,6 +43,8 @@ from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
+logger = logging.getLogger(__name__)
+
 
 class ProjectModel:
     """
@@ -167,7 +169,8 @@ class ProjectPresenter:
             {
                 "name": "Schritt 2: Gebäude-Lastgang generieren",
                 "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
-                "required_files": ["Lastgang/Gebäude Lastgang.json"],
+                # Current Parquet file, or the JSON of projects saved before BACKLOG G7
+                "required_files": [["Lastgang/Gebäude Lastgang.parquet", "Lastgang/Gebäude Lastgang.json"]],
             },
             {
                 "name": "Schritt 3: Straßendaten herunterladen",
@@ -183,7 +186,8 @@ class ProjectPresenter:
                 "name": "Schritt 4: Thermohydraulische Berechnung",
                 "description": "Führen Sie die Thermohydraulische Berechnung mit den generierten Netzdaten durch.",
                 "required_files": [
-                    "Wärmenetz/Ergebnisse Netzinitialisierung.p",
+                    # Current JSON, or the pickle of projects saved before BACKLOG G7
+                    ["Wärmenetz/Ergebnisse Netzinitialisierung.json", "Wärmenetz/Ergebnisse Netzinitialisierung.p"],
                     "Wärmenetz/Ergebnisse Netzinitialisierung.csv",
                     "Wärmenetz/Konfiguration Netzinitialisierung.json",
                     "Lastgang/Lastgang.csv",
@@ -193,7 +197,10 @@ class ProjectPresenter:
             {
                 "name": "Schritt 5: Erzeugermix auslegen und berechnen",
                 "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
-                "required_files": ["Ergebnisse/calculated_heat_generation.csv", "Ergebnisse/Ergebnisse.json"],
+                "required_files": [
+                    "Ergebnisse/calculated_heat_generation.csv",
+                    ["Ergebnisse/Ergebnisse.parquet", "Ergebnisse/Ergebnisse.json"],
+                ],
             },
         ]
 
@@ -289,7 +296,7 @@ class ProjectPresenter:
             self.folder_manager.set_project_crs(suggested)
             self.view.set_crs(suggested)
         except Exception as e:
-            logging.warning("CRS-Vorschlag aus den Koordinaten fehlgeschlagen: %s", e)
+            logger.warning("CRS-Vorschlag aus den Koordinaten fehlgeschlagen: %s", e)
 
     def import_csv(self):
         """
@@ -326,7 +333,7 @@ class ProjectPresenter:
                 return
         except Exception as e:
             # Best-effort fast path; fall through to the mapping dialog on any error.
-            logging.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
+            logger.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
 
         # Show column-mapping dialog
         dialog = CsvImportDialog(fname, parent=self.view)
@@ -487,7 +494,7 @@ class ProjectPresenter:
                             sample_coords = centroid
             except Exception as e:
                 # Best-effort; continue without sample coordinates.
-                logging.debug("Konnte Beispielkoordinaten nicht extrahieren: %s", e)
+                logger.debug("Konnte Beispielkoordinaten nicht extrahieren: %s", e)
 
             dialog = OSMImportDialog(
                 self.view, sample_utm_coords=sample_coords, project_crs=self.folder_manager.project_crs

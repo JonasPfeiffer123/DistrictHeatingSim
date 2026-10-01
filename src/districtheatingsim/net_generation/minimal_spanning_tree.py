@@ -7,13 +7,19 @@ road alignment adjustment while maintaining connectivity.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 from collections import defaultdict
 
 import geopandas as gpd
-import networkx as nx
 import numpy as np
+from scipy.sparse.csgraph import minimum_spanning_tree
+from scipy.spatial.distance import pdist, squareform
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
+
+from districtheatingsim.net_generation.nearest import nearest_position
+
+logger = logging.getLogger(__name__)
 
 
 def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -26,21 +32,31 @@ def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     :rtype: gpd.GeoDataFrame
 
     .. note::
-        Tree topology (n-1 edges for n points). Uses Kruskal's algorithm with Euclidean distances.
+        Tree topology (n-1 edges for n points) over the complete graph with 2-D Euclidean
+        distances (like shapely's ``distance``). The distance matrix and the tree are computed
+        vectorised with scipy — the former pairwise ``iterrows`` loop took 3.9 s for 300 points
+        vs ~16 ms (BACKLOG G5). Where several trees have exactly the same length, which one is
+        returned is unspecified.
     """
-    # Build complete graph with distance weights
-    g = nx.Graph()
-    for i, point1 in points.iterrows():
-        for j, point2 in points.iterrows():
-            if i != j:
-                distance = point1.geometry.distance(point2.geometry)
-                g.add_edge(i, j, weight=distance)
+    geometries = list(points.geometry)
+    if len(geometries) < 2:
+        return gpd.GeoDataFrame(geometry=[])
 
-    # Generate minimum spanning tree
-    mst = nx.minimum_spanning_tree(g)
+    xy = np.array([(geom.x, geom.y) for geom in geometries])
+    # scipy reads (near-)zero distances as "no edge", so coincident points are merged first: the
+    # tree spans the distinct locations, and every duplicate is joined to its representative by
+    # a zero-length edge (as the complete-graph MST would do).
+    _, representative, group = np.unique(xy, axis=0, return_index=True, return_inverse=True)
+    group = group.reshape(-1)
 
-    # Convert MST edges to LineString geometries
-    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+    edges = []
+    if len(representative) > 1:
+        tree = minimum_spanning_tree(squareform(pdist(xy[representative]))).tocoo()
+        edges += [(representative[a], representative[b]) for a, b in zip(tree.row, tree.col, strict=True)]
+    edges += [(representative[group[k]], k) for k in range(len(geometries)) if representative[group[k]] != k]
+
+    # Convert MST edges to LineString geometries (original geometries, so Z is kept)
+    lines = [LineString([geometries[i], geometries[j]]) for i, j in edges]
 
     return gpd.GeoDataFrame(geometry=lines)
 
@@ -88,7 +104,7 @@ def adjust_segments_to_roads(
 
     # Main optimization loop
     while changes_made and iteration < max_iterations:
-        print(f"\n--- Road Alignment Iteration {iteration} ---")
+        logger.debug("Road alignment iteration %d", iteration)
         adjusted_lines = []
         changes_made = False
         changed_this_iter: set[int] = set()
@@ -96,7 +112,7 @@ def adjust_segments_to_roads(
         for idx, line in enumerate(mst_gdf.geometry):
             # Validate line geometry
             if not line.is_valid:
-                print(f"  [!] Invalid line geometry at index {idx}")
+                logger.warning("Invalid line geometry at index %d is dropped", idx)
                 continue
 
             seg_id = line_hash(line)
@@ -106,15 +122,14 @@ def adjust_segments_to_roads(
 
             # Check if segment needs adjustment
             midpoint = line.interpolate(0.5, normalized=True)
-            nearest_line_idx = street_layer.distance(midpoint).idxmin()
-            nearest_street = street_layer.iloc[nearest_line_idx].geometry
+            nearest_street = street_layer.geometry.iloc[nearest_position(street_layer, midpoint)]
             point_on_street = nearest_points(midpoint, nearest_street)[1]
             distance_to_street = midpoint.distance(point_on_street)
 
             if distance_to_street > threshold:
                 # Avoid adjustments where projection point equals line endpoints
                 if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
-                    print("    Skipping adjustment: projected point is endpoint")
+                    logger.debug("Skipping adjustment of segment %d: projected point is an endpoint", idx)
                     adjusted_lines.append(line)
                     continue
 
@@ -130,49 +145,43 @@ def adjust_segments_to_roads(
                     if new_line.is_valid and not new_line.is_empty:
                         # Check improvement quality
                         new_midpoint = new_line.interpolate(0.5, normalized=True)
-                        nearest_line_new_idx = street_layer.distance(new_midpoint).idxmin()
-                        nearest_street_new = street_layer.iloc[nearest_line_new_idx].geometry
+                        nearest_street_new = street_layer.geometry.iloc[nearest_position(street_layer, new_midpoint)]
                         point_on_street_new = nearest_points(new_midpoint, nearest_street_new)[1]
                         new_distance = new_midpoint.distance(point_on_street_new)
                         improvement = orig_distance - new_distance
 
                         if improvement < min_improvement:
-                            print(f"    Insufficient improvement ({improvement:.2f}m), blacklisting segment")
+                            logger.debug("Insufficient improvement (%.2f m), blacklisting segment", improvement)
                             blacklist.add(line_hash(new_line))
 
                         adjusted_lines.append(new_line)
                     else:
-                        print("    [!] Invalid new segment created")
+                        logger.debug("Invalid new segment created and dropped")
 
                 changes_made = True
                 changed_this_iter.add(seg_id)
                 segment_change_counter[seg_id] = segment_change_counter.get(seg_id, 0) + 1
-                print(f"    Adjusted segment {idx}, total adjustments: {segment_change_counter[seg_id]}")
+                logger.debug("Adjusted segment %d, total adjustments: %d", idx, segment_change_counter[seg_id])
             else:
                 adjusted_lines.append(line)
 
         # Progress reporting
-        print(f"  Adjusted {len(changed_this_iter)} segments this iteration")
-        if changed_this_iter:
-            most_changed = sorted(segment_change_counter.items(), key=lambda x: -x[1])[:3]
-            print(f"    Most frequently adjusted segments: {most_changed}")
+        logger.debug("Adjusted %d segments in iteration %d", len(changed_this_iter), iteration)
 
         if not changes_made:
-            print("No changes made, optimization converged")
+            logger.debug("Road alignment converged after %d iterations", iteration)
             break
 
         mst_gdf = gpd.GeoDataFrame(geometry=adjusted_lines)
         iteration += 1
 
     if iteration >= max_iterations:
-        print(f"Warning: Reached maximum iterations ({max_iterations})")
+        logger.warning("Road alignment reached the maximum number of iterations (%d)", max_iterations)
 
     # Post-processing: simplify and rebuild MST
-    print("\nPost-processing: simplifying network and rebuilding MST...")
     mst_gdf = simplify_network(mst_gdf)
     mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf)
 
-    print("Road alignment optimization completed")
     return mst_gdf
 
 
