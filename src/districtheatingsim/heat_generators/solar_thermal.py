@@ -230,17 +230,14 @@ def _solar_storage_steps(
             available = Kollektorfeldertrag[i] + Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1]
             Waermeleistung[i] = min(available, Last[i]) if available > 0 else 0
 
-            # Storage energy balance
-            Stagnationsverluste = max(
-                0,
-                Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + Kollektorfeldertrag[i] - Waermeleistung[i] - QSmax,
+            # Storage energy balance; above QSmax the excess is lost (stagnation) and the storage is
+            # exactly full. The content is computed once: subtracting the excess and re-adding left
+            # it at QSmax ± 1 ulp, so whether an overflowing hour counted as full (stagnation check
+            # below) depended on the rounding — and differed between Windows and Linux.
+            Speicherinhalt_neu = (
+                Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + Kollektorfeldertrag[i] - Waermeleistung[i]
             )
-            PSin = Kollektorfeldertrag[i] - Stagnationsverluste
-
-            if Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + PSin - Waermeleistung[i] > QSmax:
-                Speicherinhalt[i] = QSmax
-            else:
-                Speicherinhalt[i] = Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1] + PSin - Waermeleistung[i]
+            Speicherinhalt[i] = QSmax if Speicherinhalt_neu >= QSmax else Speicherinhalt_neu
 
             # Storage temperature and heat loss calculation
             Speicherfuellstand[i] = Speicherinhalt[i] / QSmax
