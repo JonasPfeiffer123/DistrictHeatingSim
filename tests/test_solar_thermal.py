@@ -6,7 +6,10 @@ hourly simulation behind ``SolarThermal.calculate`` (what the optimizer calls) a
 per-step ``SolarThermal.generate`` path (used with a network storage), on the real TRY data
 set of the examples. Added before the BACKLOG G3 performance work (vectorised day-of-year and
 IAM lookup, precomputed same-day flags), so that work is provably behaviour-preserving. The
-expected numbers were captured from the implementation before G3.
+expected numbers were captured from the implementation before G3; the standalone-simulation
+values were deliberately re-pinned for the C38 storage balance (2026-10-01: heat is delivered
+only after the losses, a cooled storage's loss temperature follows its deficit; +0.06 to +0.11 %
+Wärmemenge).
 """
 
 from pathlib import Path
@@ -175,8 +178,8 @@ class TestSolarThermalCalculate:
     @pytest.mark.parametrize(
         "typ, waermemenge, wgk, betriebsstunden, starts, speicher_sum",
         [
-            ("Vakuumröhrenkollektor", 93.40645700946575, 141.61729619353673, 1983.0, 259, -309238.30316791707),
-            ("Flachkollektor", 68.04944766491543, 147.61766313310721, 1283.0, 275, -620451.1836507195),
+            ("Vakuumröhrenkollektor", 93.465548945164, 141.52776116961752, 1985.0, 260, -280968.48263637),
+            ("Flachkollektor", 68.12238410323721, 147.45961366487373, 1283.0, 275, -534297.9001488248),
         ],
     )
     def test_golden_master(self, try_data, time_steps, typ, waermemenge, wgk, betriebsstunden, starts, speicher_sum):
@@ -192,8 +195,26 @@ class TestSolarThermalCalculate:
         # Small storage + small load: the stagnation protection (same-day check) kicks in.
         st = _make(vs=2)
         r = _calculate(st, try_data, time_steps, np.full(8760, 5.0))
-        assert int(np.sum(st.Stagnation_L)) == 710
-        assert r["Wärmemenge"] == pytest.approx(25.251349143881527, rel=REL)
+        assert int(np.sum(st.Stagnation_L)) == 712
+        assert r["Wärmemenge"] == pytest.approx(25.23306046193264, rel=REL)
+
+    @pytest.mark.parametrize(("vs", "load"), [(20, np.linspace(50.0, 400.0, 8760)), (2, np.full(8760, 5.0))])
+    def test_storage_energy_balance(self, try_data, time_steps, vs, load):
+        # C38: `Speicherinhalt` is the usable energy above the lower storage level; below zero the
+        # storage has cooled below it. Heat is only delivered from what is left after the previous
+        # step's losses, and every step closes the balance (capped at QSmax = stagnation).
+        st = _make(vs=vs)
+        _calculate(st, try_data, time_steps, load)
+        content = np.asarray(st.Speicherinhalt)
+        loss = np.asarray(st.Verlustwärmestrom_Speicher_L)
+        yield_ = np.asarray(st.Kollektorfeldertrag_L)
+        heat = np.asarray(st.Wärmeleistung_kW)
+
+        available = yield_[1:] + content[:-1] - loss[:-1]
+        assert np.all(heat[1:] <= np.maximum(available, 0.0) + 1e-9)
+        np.testing.assert_allclose(content[1:], np.minimum(st.QSmax, available - heat[1:]), rtol=0, atol=1e-9)
+        assert content.min() < 0  # the storage does cool below its usable level in these cases
+        assert np.all(loss[content < 0] >= 0)  # a cooled storage never gains heat from the air
 
 
 class TestKernelSelection:

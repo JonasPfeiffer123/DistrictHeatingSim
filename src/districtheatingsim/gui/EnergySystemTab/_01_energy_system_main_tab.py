@@ -176,7 +176,7 @@ class EnergySystemTab(QWidget):
             "Biomassekessel",
             "Gaskessel",
             "Power-to-Heat",
-        ]  # AqvaHeat could be added here
+        ]  # AqvaHeat is not offered until its model is finished (BACKLOG C40)
         for generator in heatGenerators:
             action = QAction(generator, self)
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
