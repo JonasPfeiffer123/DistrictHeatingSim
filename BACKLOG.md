@@ -1596,7 +1596,7 @@ sizing unchanged (same 68 ISOPLUS types). **Done:**
   `tests/test_net_simulation.py::TestSplitTimeRange` + `TestParallelTimeSeries` (slow, real worker
   processes, heat results equal to sequential). *Not verified in the frozen exe yet.*
 
-### G3. Solar thermal dominates the energy-system optimizer (quick wins done 2026-09-29; large open)
+### G3. Solar thermal dominates the energy-system optimizer (done 2026-09-29/30; storage step via TES 1.1.0 2026-10-01)
 `examples/10` (optimizer, ~160 `calculate_mix` calls) ran **28.2 s** standalone (57 s in the smoke
 test, which runs it as a subprocess next to the other examples); **26.8 s** of it were
 `SolarThermal.calculate_solar_thermal_with_storage` (173 ms per call).
@@ -1707,7 +1707,7 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   `tests/test_heat_demand_thread.py` (7: job + JSON + untouched input, failed write, thread
   done/error signals, presenter applies results, project change discards them, double start refused).
 
-### G7. Data storage: JSON bloat + pickled net (large, open)
+### G7. Data storage: JSON bloat + pickled net (done 2026-09-30)
 - `Gebäude Lastgang.json` was **15.8 MB for 9 buildings** (written with `indent=4`; `zeitschritte` and
   `außentemperatur` repeated per building); extrapolated ~900 MB at 500 buildings. **Done
   2026-09-30:** new generic format `utilities/array_store.py` — every long, type-homogeneous list /
