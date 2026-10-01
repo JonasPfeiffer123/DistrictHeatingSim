@@ -222,12 +222,13 @@ def _solar_storage_steps(
             else:
                 Kollektorfeldertrag[i] = 0
 
-            # Heat output and storage balance
-            Waermeleistung[i] = (
-                min(Kollektorfeldertrag[i] + Speicherinhalt[i - 1], Last[i])
-                if Kollektorfeldertrag[i] + Speicherinhalt[i - 1] > 0
-                else 0
-            )
+            # Heat output and storage balance. Speicherinhalt is the usable energy above the lower
+            # storage level; below zero the storage has cooled below it and the collector reheats it
+            # first. Heat is delivered only from what is left after the previous step's losses —
+            # before, the losses were taken after the delivery and the content went negative even
+            # with collector yield (BACKLOG C38).
+            available = Kollektorfeldertrag[i] + Speicherinhalt[i - 1] - Verlustwaermestrom[i - 1]
+            Waermeleistung[i] = min(available, Last[i]) if available > 0 else 0
 
             # Storage energy balance
             Stagnationsverluste = max(
@@ -256,6 +257,10 @@ def _solar_storage_steps(
 
             gewichtete_untere_temperatur = (1 - Speicherfuellstand[i]) * TS_unten[i]
             Tms = Speicherfuellstand[i] * berechnete_temperatur + gewichtete_untere_temperatur
+            if Speicherinhalt[i] < 0:
+                # Cooled below the usable level: the mean temperature drops by deficit / heat
+                # capacity (1.16 kWh/m³K · vs), never below the air (BACKLOG C38).
+                Tms = max(Luft[i], TS_unten[i] + Speicherinhalt[i] / (1.16 * vs))
 
             Verlustwaermestrom[i] = 0.75 * (vs * 1000) ** 0.5 * 0.16 * (Tms - Luft[i]) / 1000
 
