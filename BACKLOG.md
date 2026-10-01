@@ -1102,7 +1102,7 @@ trip. Affects every energy system with solar thermal that was saved and reloaded
 **Fixed:** `SolarThermal.from_dict` converts numeric-string IAM keys back to floats
 (`_numeric_keys`). Pinned by `tests/test_solar_thermal.py::TestJsonRoundTrip` (fails on the old code).
 
-### C38. Solar thermal standalone model: storage content goes negative (analysed 2026-10-01, decision pending)
+### C38. Solar thermal standalone model: storage content goes negative (fixed 2026-10-01, variant B)
 Observation from the G3 characterization tests, not investigated further. In
 `calculate_solar_thermal_with_storage` the storage balance subtracts losses and output without a
 lower bound, so `Speicherinhalt` goes negative (e.g. min −59 kWh with a 2 m³ storage; the summed
@@ -1130,6 +1130,15 @@ The storage is "below empty" 3 900–8 760 h a year today. The series are not sh
 results unchanged, makes today's behaviour consistent), or is it kept at least at that level, e.g.
 by the network return (A — optimistic, +2–6 % solar heat)? Recommendation: B. Either way, re-pin the
 golden masters in `tests/test_solar_thermal.py` deliberately.
+**Decision 2026-10-01: B — implemented** in `_solar_storage_steps` (shared by the Python and numba
+paths): heat is delivered only from `Kollektorfeldertrag + Speicherinhalt[i−1] − Verlust[i−1]`, and
+while the content is below zero the loss temperature is `max(air, TS_unten + deficit / (1.16·vs))`.
+A negative `Speicherinhalt` now means one thing only: the storage has cooled below its usable level
+by that much. Golden masters re-pinned deliberately (identical on both paths): VRK 93.406 → 93.466
+MWh (+0.06 %), WGK 141.62 → 141.53; FK 68.049 → 68.122 MWh (+0.11 %); 2 m³ stagnation case 25.251
+→ 25.233 MWh, 710 → 712 stagnation hours. New `test_storage_energy_balance` (fails on the old
+kernel): no delivery beyond what is left after the losses, every step closes the balance (capped
+at QSmax), a cooled storage never gains heat from the air.
 
 ### C39. Network generation crashed whenever elevation data was available (fixed 2026-09-29)
 Found while verifying G5 on `examples/data`. `generate_and_export_layers` (the GUI's net generation
@@ -1865,7 +1874,9 @@ release mechanics themselves (section F). See the **Release plan** below.
    ~~optimizer (G4)~~ **hardened, C41 fixed**, ~~G10 hygiene (logging, click events)~~ **done**.
    ~~`thermal-energy-storage-1d` step loop (G3/G4, other repo)~~ **1.1.0 integrated + verified
    2026-10-01**; ~~C42~~, ~~C44~~, ~~C45~~ fixed and C40 hidden (2026-09-30); ~~C43~~ **fixed via
-   pyslpheat 0.4.2 (2026-10-01)**. Still open: C38 (solar storage model) — decision pending.
+   pyslpheat 0.4.2 (2026-10-01)**, ~~C38~~ **fixed (variant B, 2026-10-01)**. The 2026-09-29
+   audit list is done; left: tag pyslpheat 0.4.2 / thermal-energy-storage-1d 1.1.0 and pin them,
+   the small leap-year limitations under C43.
 
 ## Release plan (2026-06-15 audit)
 
