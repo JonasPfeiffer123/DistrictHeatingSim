@@ -25,7 +25,7 @@ dependencies = [
     "matplotlib",
     "pandapipes==0.14.0",
     "pyslpheat @ git+https://github.com/JonasPfeiffer123/pyslpheat.git@v0.4.2",
-    "thermal-energy-storage-1d @ git+https://github.com/JonasPfeiffer123/thermal-energy-storage-1d.git",
+    "thermal-energy-storage-1d @ git+https://github.com/JonasPfeiffer123/thermal-energy-storage-1d.git@v1.1.0",
     "geopandas",
     "folium",
     "scipy",
