@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Work branches too, so a branch is checked on Linux before it is merged (merges happen
+    # locally, without a pull request).
+    branches: [main, "fix/**", "feature/**", "perf/**", "refactor/**"]
   pull_request:
 
 # Cancel superseded runs on the same ref to save runner minutes.
@@ -46,6 +48,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
+          # Reports every failing test as a workflow annotation (file, line, message) — readable
+          # through the public API, unlike the job log, which needs admin rights.
+          pip install pytest-github-actions-annotate-failures==0.4.2
 
       - name: Run tests
         run: pytest

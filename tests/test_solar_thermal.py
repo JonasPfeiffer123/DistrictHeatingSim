@@ -9,7 +9,8 @@ IAM lookup, precomputed same-day flags), so that work is provably behaviour-pres
 expected numbers were captured from the implementation before G3; the standalone-simulation
 values were deliberately re-pinned for the C38 storage balance (2026-10-01: heat is delivered
 only after the losses, a cooled storage's loss temperature follows its deficit; +0.06 to +0.11 %
-Wärmemenge).
+Wärmemenge) and for the overflow fix (an overflowing storage is exactly full, so the stagnation
+count no longer depends on the platform's rounding: 2 m³ case 712 → 736 h).
 """
 
 from pathlib import Path
@@ -195,8 +196,9 @@ class TestSolarThermalCalculate:
         # Small storage + small load: the stagnation protection (same-day check) kicks in.
         st = _make(vs=2)
         r = _calculate(st, try_data, time_steps, np.full(8760, 5.0))
-        assert int(np.sum(st.Stagnation_L)) == 712
-        assert r["Wärmemenge"] == pytest.approx(25.23306046193264, rel=REL)
+        # 736 (was 710/712 depending on the platform): every overflowing hour now counts as full.
+        assert int(np.sum(st.Stagnation_L)) == 736
+        assert r["Wärmemenge"] == pytest.approx(25.24302754643216, rel=REL)
 
     @pytest.mark.parametrize(("vs", "load"), [(20, np.linspace(50.0, 400.0, 8760)), (2, np.full(8760, 5.0))])
     def test_storage_energy_balance(self, try_data, time_steps, vs, load):
@@ -215,6 +217,9 @@ class TestSolarThermalCalculate:
         np.testing.assert_allclose(content[1:], np.minimum(st.QSmax, available - heat[1:]), rtol=0, atol=1e-9)
         assert content.min() < 0  # the storage does cool below its usable level in these cases
         assert np.all(loss[content < 0] >= 0)  # a cooled storage never gains heat from the air
+        # An overflowing storage is exactly full — never 1 ulp below, where the stagnation check
+        # (content >= QSmax) used to depend on the platform's rounding.
+        assert not np.any((content < st.QSmax) & (content > st.QSmax * (1 - 1e-12)))
 
 
 class TestKernelSelection:
