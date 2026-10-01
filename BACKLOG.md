@@ -1102,13 +1102,34 @@ trip. Affects every energy system with solar thermal that was saved and reloaded
 **Fixed:** `SolarThermal.from_dict` converts numeric-string IAM keys back to floats
 (`_numeric_keys`). Pinned by `tests/test_solar_thermal.py::TestJsonRoundTrip` (fails on the old code).
 
-### C38. Solar thermal standalone model: storage content goes negative (open, 2026-09-29)
+### C38. Solar thermal standalone model: storage content goes negative (analysed 2026-10-01, decision pending)
 Observation from the G3 characterization tests, not investigated further. In
 `calculate_solar_thermal_with_storage` the storage balance subtracts losses and output without a
 lower bound, so `Speicherinhalt` goes negative (e.g. min −59 kWh with a 2 m³ storage; the summed
 series is negative for the default 20 m³ case). Physically the content should be clamped at 0 and
 the output limited accordingly. Needs a modelling decision (it changes WGK/Wärmemenge) → pin the
 new values deliberately in `tests/test_solar_thermal.py` when fixing.
+**Analysis 2026-10-01 — the "should be clamped" above was too quick.** Scope: the standalone path
+(`SolarThermal.calculate`), i.e. every energy system with solar thermal and *without* a network
+storage (with one, `generate()` uses the external storage). `Speicherinhalt` is the usable energy
+above the lower storage level (`QSmax = 1.16·vs·(Tsmax − Tm_rl)`); an empty storage keeps losing
+heat, so the content goes below zero = the storage cools below the usable level and the collector
+must reheat it before it delivers again (−254 kWh for 20 m³ ≈ 11 K, −594 kWh for 100 m³ ≈ 5 K —
+physically plausible). Two real inconsistencies: heat is delivered from the content *before* the
+previous step's losses are taken (`min(K + S[i−1], Last)`), and the loss temperature of a cooled
+storage barely follows the deficit. Compared on four cases (200 m² VRK 20 m³ golden master, 200 m²
+20 m³ and 1000 m² 100 m³ with a seasonal 1/3 GWh load, 2 m³ stagnation case):
+| variant | Wärmemenge | WGK |
+|---|---|---|
+| today | — | — |
+| **B** keep the deficit, deliver only after losses, loss temperature follows the deficit | −0.1…+0.1 % | −0.1…+0.1 % |
+| **A** clamp at 0 (an empty storage never cools below the usable level; its losses are not charged to the solar plant) | +2.3…+5.8 % | −2.2…−5.5 % |
+The storage is "below empty" 3 900–8 760 h a year today. The series are not shown in the GUI
+(only in the results dict: `Speicherladung_L`, `Speicherfüllstand_L`).
+**Decision needed:** may an empty solar storage cool below its usable level (B — conservative,
+results unchanged, makes today's behaviour consistent), or is it kept at least at that level, e.g.
+by the network return (A — optimistic, +2–6 % solar heat)? Recommendation: B. Either way, re-pin the
+golden masters in `tests/test_solar_thermal.py` deliberately.
 
 ### C39. Network generation crashed whenever elevation data was available (fixed 2026-09-29)
 Found while verifying G5 on `examples/data`. `generate_and_export_layers` (the GUI's net generation
@@ -1177,7 +1198,7 @@ Verified first: a VDI-only portfolio returned 35 040 quarter-hour values while t
 Tests: `tests/test_heat_requirement_csv.py` (hourly VDI incl. annual energy, BDEW portfolio with
 HEF/HMF, mixing rejected, method resolution).
 
-### C43. Leap-year calculation year crashes the heat demand (open, 2026-09-30)
+### C43. Leap-year calculation year crashes the heat demand (fixed 2026-10-01 via pyslpheat 0.4.2)
 The project tab lets the user pick the calculation year; for a leap year (2024, 2028, …) with the
 standard 8 760-h TRY both BDEW and VDI 4655 fail in pyslpheat (`shapes (365,) (366,)`), also in
 0.4.1. Fix either in pyslpheat (map the 8 760-h weather year onto 366 days, e.g. repeat 28 Feb) or
@@ -1185,6 +1206,15 @@ restrict the year in the app → decision pending.
 **Decision 2026-09-30: fix in pyslpheat** (prompt for the pyslpheat agent written); then verify
 here with a leap-year test in `tests/test_heat_requirement_csv.py` (8 784 hourly steps, annual
 energy kept, VDI via the new hourly aggregation).
+**Verified 2026-10-01 with pyslpheat 0.4.2:** 2023 profiles bit-identical to 0.4.1; 2024/2028 give
+8 784 hourly steps for BDEW and VDI (29 Feb repeats the weather of 28 Feb, annual energy kept) —
+pinned by `test_leap_year_profiles_cover_366_days`. The Görlitz project with year 2024 runs
+heat demand → net initialisation (8 784 steps) → time series at 1 Jan, across 29 Feb and up to
+step 8 760 → results. **Remaining limitations (small, not crashes):** the time-series dialog caps
+at step 8 760, so 31 Dec of a leap year is not simulated; the energy system indexes the 8 760-h TRY
+directly, so from 29 Feb on its weather (solar, air-source COP) is one day behind the load. Fix
+when needed: apply the same 29-Feb mapping to the TRY in the energy system and lift the cap to the
+profile length.
 
 ### C44. Failed net generation is reported as success (fixed 2026-09-30)
 `generate_and_export_layers` (`net_generation/import_and_create_layers.py`) catches every error
@@ -1598,11 +1628,16 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   fixture; kernel selection, env switch, short-input safety).
 - **Not here:** the per-hour buffer loops in `chp.py` / `biomass_boiler.py` and the network storage
   spend ~70 % in `ThermalStorage1D.step` of the external `thermal-energy-storage-1d` package — like
-  pyslpheat (G6), that optimisation belongs in that repo.
+  pyslpheat (G6), that optimisation belongs in that repo. **Done there 2026-10-01
+  (`thermal-energy-storage-1d` 1.1.0), verified here:** 38 of 38 result arrays bit-identical to
+  1.0.0 (storage temperatures, losses, SoC, net flow, heat amounts, WGK; 5/20/50 nodes, cylinder +
+  truncated cone, constant + ground loss); a yearly `calculate_mix` with storage 2.1 → 0.6 s
+  (5 nodes), 3.2 → 1.4 s (20), 5.0 → 1.8 s (50).
 
-### G4. Energy system with network storage + optimizer (overhead: measured, not worth it; rest open)
+### G4. Energy system with network storage + optimizer (overhead: measured, not worth it; storage step 2–3× faster since TES 1.1.0)
 - `calculate_mix` without storage: **2 ms** (vectorised). With the 1D `ThermalStorageAdapter`:
-  **0.92 s** (8760 Python steps in `thermal-energy-storage-1d`, ~¼ of it adapter overhead). The
+  **0.92 s** (8760 Python steps in `thermal-energy-storage-1d`, ~¼ of it adapter overhead; 2.3–3.4×
+  faster with `thermal-energy-storage-1d` 1.1.0, bit-identical — see G3). The
   optimizer called `calculate_mix` 156× in a 1-variable test → extrapolated **~2.4 min** with storage,
   growing with every optimization variable (finite differences) and restart.
 - Every objective evaluation deep-copies the whole system (`EnergySystemOptimizer.optimize` →
@@ -1828,9 +1863,9 @@ release mechanics themselves (section F). See the **Release plan** below.
    hardened not replaced): ~~numba for the solar loop (G3)~~ **done**, ~~parallel yearly net
    simulation (G2)~~ **done**, ~~Parquet instead of JSON + JSON instead of pickle (G7)~~ **done**,
    ~~optimizer (G4)~~ **hardened, C41 fixed**, ~~G10 hygiene (logging, click events)~~ **done**.
-   Still open: `thermal-energy-storage-1d` step loop (G3/G4, other repo — integrate + verify when
-   pushed); ~~C42~~, ~~C44~~, ~~C45~~ fixed and C40 hidden (2026-09-30); C43 waits for pyslpheat;
-   C38 (solar storage model) needs a modelling decision.
+   ~~`thermal-energy-storage-1d` step loop (G3/G4, other repo)~~ **1.1.0 integrated + verified
+   2026-10-01**; ~~C42~~, ~~C44~~, ~~C45~~ fixed and C40 hidden (2026-09-30); ~~C43~~ **fixed via
+   pyslpheat 0.4.2 (2026-10-01)**. Still open: C38 (solar storage model) — decision pending.
 
 ## Release plan (2026-06-15 audit)
 
