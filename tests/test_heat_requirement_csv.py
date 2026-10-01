@@ -114,3 +114,34 @@ class TestResolveCalculationMethod:
         # They silently fell back to VDI 4655 and failed later inside pyslpheat.
         with pytest.raises(ValueError, match="Unknown building types: XYZ, nan"):
             resolve_calculation_method(["HMF", "XYZ", float("nan")], "Datensatz")
+
+
+# --- C43: leap years (pyslpheat >= 0.4.2 maps the 8 760-h TRY onto 366 days) --------------------
+
+
+@pytest.mark.parametrize(
+    ("types", "subtypes"),
+    [(["HEF", "HMF", "GKO"], ["03", "03", "01"]), (["EFH", "MFH"], ["05", "05"])],
+    ids=["BDEW", "VDI4655"],
+)
+def test_leap_year_profiles_cover_366_days(types, subtypes):
+    demands = [20000.0, 60000.0, 45000.0][: len(types)]
+    df = _buildings(types, subtypes, demands)
+    time_steps, total_heat_W, heating_W, dhw_W, _max, supply, _ret, air = generate_profiles_from_csv(
+        df, _TRY, "Datensatz", year=2024
+    )
+
+    stamps = pd.to_datetime(time_steps)
+    assert (
+        len(stamps) == 8784
+        and stamps[0] == pd.Timestamp("2024-01-01")
+        and stamps[-1] == pd.Timestamp("2024-12-31 23:00")
+    )
+    feb28 = (stamps.month == 2) & (stamps.day == 28)
+    feb29 = (stamps.month == 2) & (stamps.day == 29)
+    assert feb29.sum() == 24
+    np.testing.assert_array_equal(air[feb29], air[feb28])  # 29 Feb repeats the weather of 28 Feb
+    assert total_heat_W.shape == supply.shape == (len(types), 8784)
+    # Annual energy kept (the app clips pyslpheat's few tiny negative BDEW values: +0.2 kWh for HEF)
+    np.testing.assert_allclose(total_heat_W.sum(axis=1) / 1000, demands, rtol=1e-4)
+    np.testing.assert_allclose(total_heat_W, heating_W + dhw_W)
