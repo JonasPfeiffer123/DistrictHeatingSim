@@ -157,7 +157,6 @@ _DEFAULTS = {
             "Temperatur_FW_WP": 10.0,
         },
     ),
-    "AqvaHeat": ("AqvaHeatDialog", {}),
     "Thermischer Netzspeicher": (
         "ThermalStorage1DDialog",
         {
@@ -208,6 +207,11 @@ class TestDispatch:
     def test_unknown_type_raises(self):
         with pytest.raises(ValueError):
             TechInputDialog("Kernfusion")
+
+    def test_aqvaheat_is_not_offered(self):
+        # C40: the AqvaHeat model is unfinished (cannot be calculated) — hidden from the GUI.
+        with pytest.raises(ValueError):
+            TechInputDialog("AqvaHeat_1")
 
 
 class TestGetInputsDefaults:

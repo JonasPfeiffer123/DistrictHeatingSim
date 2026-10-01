@@ -17,6 +17,63 @@ from districtheatingsim.utilities.csv_schemas import validate_csv_columns
 
 logger = logging.getLogger(__name__)
 
+# Building type codes per calculation method. BDEW has residential profiles of its own
+# (HEF single-family, HMF multi-family), so a project never needs to mix the two methods.
+VDI4655_BUILDING_TYPES = frozenset({"EFH", "MFH"})
+BDEW_BUILDING_TYPES = frozenset(
+    {"HEF", "HMF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"}
+)
+
+
+def resolve_calculation_method(building_types, calc_method: str) -> str:
+    """
+    Return the one calculation method used for all buildings of a portfolio.
+
+    In ``'Datensatz'`` mode the method follows from the building types: VDI 4655 if all
+    buildings are EFH/MFH, BDEW if all are BDEW types. The two methods are never mixed —
+    their profiles differ in resolution and methodology (BACKLOG C42); residential buildings
+    in a BDEW project use HEF/HMF.
+
+    :param building_types: ``Gebäudetyp`` of every building
+    :type building_types: Iterable[str]
+    :param calc_method: ``'Datensatz'``, ``'VDI4655'`` or ``'BDEW'``
+    :type calc_method: str
+    :return: ``'VDI4655'`` or ``'BDEW'`` (an explicit method is returned unchanged)
+    :rtype: str
+    :raises ValueError: If ``'Datensatz'`` finds unknown types or both VDI 4655 and BDEW types
+    """
+    if calc_method != "Datensatz":
+        return calc_method
+
+    types = {str(t).strip() for t in building_types}
+    unknown = sorted(types - VDI4655_BUILDING_TYPES - BDEW_BUILDING_TYPES)
+    if unknown:
+        raise ValueError(
+            f"Unknown building types: {', '.join(unknown)}. Use VDI 4655 types "
+            f"({', '.join(sorted(VDI4655_BUILDING_TYPES))}) or BDEW types ({', '.join(sorted(BDEW_BUILDING_TYPES))})."
+        )
+    vdi = sorted(types & VDI4655_BUILDING_TYPES)
+    bdew = sorted(types & BDEW_BUILDING_TYPES)
+    if vdi and bdew:
+        raise ValueError(
+            f"The building data mixes VDI 4655 types ({', '.join(vdi)}) with BDEW types ({', '.join(bdew)}). "
+            "All buildings of a project must use the same method: for residential buildings in a BDEW "
+            "project use HEF (single-family) or HMF (multi-family) instead of EFH/MFH."
+        )
+    return "VDI4655" if vdi else "BDEW"
+
+
+def _quarter_hours_to_hourly(values_kWh: np.ndarray) -> np.ndarray:
+    """
+    Sum quarter-hourly energies [kWh per 15 min] to hourly energies [kWh per h = mean kW].
+
+    :param values_kWh: Quarter-hourly values; the length must be a multiple of 4
+    :type values_kWh: np.ndarray
+    :return: Hourly values, a quarter of the length; the total energy is preserved
+    :rtype: np.ndarray
+    """
+    return np.asarray(values_kWh, dtype=float).reshape(-1, 4).sum(axis=1)
+
 
 def _easter_sunday(year: int) -> pd.Timestamp:
     """
@@ -92,8 +149,11 @@ def generate_profiles_from_csv(
     :raises FileNotFoundError: If TRY file not found
 
     .. note::
-        'Datensatz' mode auto-selects VDI4655 for residential (EFH/MFH), BDEW for commercial
-        buildings.  Optional BDEW columns (Heizgrenztemperatur, Heizexponent, P_max) are read
+        'Datensatz' mode selects one method for all buildings from their types (see
+        :func:`resolve_calculation_method`): VDI 4655 if all are EFH/MFH, BDEW otherwise;
+        mixing both raises ``ValueError``. VDI 4655 profiles (quarter-hourly in pyslpheat) are
+        summed to hourly values like BDEW, so every profile has one value per hour.
+        Optional BDEW columns (Heizgrenztemperatur, Heizexponent, P_max) are read
         per building if present; missing values fall back to pyslpheat defaults.
     """
     # Fail up front with one clear message naming every missing required column,
@@ -124,29 +184,12 @@ def generate_profiles_from_csv(
     max_heat_requirement_W = []
     yearly_time_steps = None
 
-    # Mapping of building types to calculation methods
-    building_type_to_method = {
-        "EFH": "VDI4655",  # Single family house
-        "MFH": "VDI4655",  # Multi-family house
-        "HEF": "BDEW",  # Commercial single family
-        "HMF": "BDEW",  # Commercial multi-family
-        "GKO": "BDEW",  # Office building
-        "GHA": "BDEW",  # Retail building
-        "GMK": "BDEW",  # School building
-        "GBD": "BDEW",  # Hotel building
-        "GBH": "BDEW",  # Restaurant building
-        "GWA": "BDEW",  # Hospital building
-        "GGA": "BDEW",  # Sports facility
-        "GBA": "BDEW",  # Cultural building
-        "GGB": "BDEW",  # Public building
-        "GPD": "BDEW",  # Production building
-        "GMF": "BDEW",  # Mixed-use building
-        "GHD": "BDEW",  # Service building
-    }
+    # One method for the whole portfolio — VDI 4655 and BDEW are never mixed (BACKLOG C42)
+    current_calc_method = resolve_calculation_method(data["Gebäudetyp"].values, calc_method)
 
     # Process each building in the dataset
     for idx, YEU in enumerate(YEU_total_heat_kWh):
-        current_building_type = str(data.at[idx, "Gebäudetyp"])
+        current_building_type = str(data.at[idx, "Gebäudetyp"]).strip()
         current_subtype = str(data.at[idx, "Subtyp"])
         current_ww_demand = float(data.at[idx, "WW_Anteil"])
 
@@ -154,16 +197,6 @@ def generate_profiles_from_csv(
         # pyslpheat rejects annual_heat_kWh <= 0, so we still call it with a 1 kWh placeholder to
         # obtain the correctly-shaped time steps + temperatures, then zero the demand arrays below.
         zero_demand = not (float(YEU) > 0)
-
-        # Determine calculation method
-        if calc_method == "Datensatz":
-            try:
-                current_calc_method = building_type_to_method.get(current_building_type, "VDI4655")
-            except KeyError:
-                logger.warning("Building type %r not found in mapping, using VDI4655", current_building_type)
-                current_calc_method = "VDI4655"
-        else:
-            current_calc_method = calc_method
 
         # Execute appropriate calculation method
         if current_calc_method == "VDI4655":
@@ -186,11 +219,13 @@ def generate_profiles_from_csv(
                 TRY=TRY,
                 holidays=holidays,
             )
-            yearly_time_steps = df_vdi.index.values
-            # kWh per 15 min → kW (×4)
-            hourly_heat_demand_total_kW = df_vdi["Q_total_kWh"].values * 4
-            hourly_heat_demand_heating_kW = df_vdi["Q_heat_kWh"].values * 4
-            hourly_heat_demand_warmwater_kW = df_vdi["Q_dhw_kWh"].values * 4
+            # pyslpheat's VDI 4655 profiles are quarter-hourly; the rest of the app is hourly.
+            # Sum each hour's four quarter-hours: kWh per hour = mean kW (energy preserving).
+            # They used to be passed on as 35 040 "hours" (4× the energy, only Jan–Mar simulated).
+            yearly_time_steps = df_vdi.index.values[::4]
+            hourly_heat_demand_total_kW = _quarter_hours_to_hourly(df_vdi["Q_total_kWh"].values)
+            hourly_heat_demand_heating_kW = _quarter_hours_to_hourly(df_vdi["Q_heat_kWh"].values)
+            hourly_heat_demand_warmwater_kW = _quarter_hours_to_hourly(df_vdi["Q_dhw_kWh"].values)
             # temperature is hourly in TRY; VDI DataFrame repeats each value 4 times
             hourly_air_temperatures = df_vdi["temperature_C"].values[::4]
 
