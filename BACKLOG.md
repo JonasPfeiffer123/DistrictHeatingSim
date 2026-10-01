@@ -1409,9 +1409,8 @@ PyPI rejects any distribution whose metadata carries a direct (`git+`) URL, so
 works (and silently requires `git`). **Decision (Jonas, 2026-06-16): GitHub-source /
 PyInstaller-exe only — no PyPI for now** (the two deps stay unpublished). The `git+` deps stay
 as-is (fine for `pip install git+…` / `pip install .` / editable). **Pinned to release tags
-2026-10-01:** `pyslpheat@v0.4.2` (leap years, C43); `thermal-energy-storage-1d@v1.1.0` follows once
-that tag is pushed (it exists only in the local clone so far) — both tags point at the commits
-verified here (bit-identical results, G3/C43). Consequences: keep the install
+2026-10-01:** `pyslpheat@v0.4.2` (leap years, C43) and `thermal-energy-storage-1d@v1.1.0` (faster
+storage step) — both tags point at the commits verified here (bit-identical results, G3/C43). Consequences: keep the install
 docs on the GitHub/git-URL path and drop any bare `pip install districtheatingsim` PyPI hint
 (F5: `index.rst:91`). Revisit only if PyPI distribution is wanted later (then publish both deps).
 ### F2. No console/GUI entry point (fixed 2026-06-16)
