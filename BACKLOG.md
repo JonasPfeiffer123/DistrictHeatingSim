@@ -1139,6 +1139,14 @@ MWh (+0.06 %), WGK 141.62 → 141.53; FK 68.049 → 68.122 MWh (+0.11 %); 2 m³ 
 → 25.233 MWh, 710 → 712 stagnation hours. New `test_storage_energy_balance` (fails on the old
 kernel): no delivery beyond what is left after the losses, every step closes the balance (capped
 at QSmax), a cooled storage never gains heat from the air.
+**Follow-up 2026-10-01 — overflow was platform-dependent (made the merged `main` CI red):** on
+overflow the code subtracted the excess and re-added the balance, which lands at QSmax ± 1 ulp; the
+stagnation check (`content >= QSmax`) then depended on the rounding of each overflowing hour —
+Linux CI counted 710 stagnation hours in the 2 m³ case, Windows 712, and many overflowing hours
+were not detected at all. The content is now computed once and set to exactly QSmax on overflow:
+every overflowing hour counts as full (2 m³ case 712 → 736 h, Wärmemenge +0.04 %; 1000 m² / 20 m³
+seasonal 453 → 493 h, −0.04 %; cases without overflow bit-identical). Pinned: no content within
+1e-12 below QSmax (fails on the old kernel).
 
 ### C39. Network generation crashed whenever elevation data was available (fixed 2026-09-29)
 Found while verifying G5 on `examples/data`. `generate_and_export_layers` (the GUI's net generation
