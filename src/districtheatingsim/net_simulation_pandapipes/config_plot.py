@@ -17,6 +17,7 @@ to public presentations. It integrates seamlessly with matplotlib and geographic
 libraries for enhanced spatial context.
 """
 
+import logging
 from typing import Any
 
 import contextily as cx
@@ -27,6 +28,8 @@ import pandapipes.plotting as pp_plot
 from shapely.geometry import Point
 
 from districtheatingsim.constants import KELVIN_OFFSET
+
+logger = logging.getLogger(__name__)
 
 
 def config_plot(
@@ -241,11 +244,11 @@ def config_plot(
             if map_type in basemap_sources:
                 cx.add_basemap(ax, source=basemap_sources[map_type], crs=gdf.crs)
             else:
-                print(f"Warning: Unknown map type '{map_type}'. Using OSM as default.")
+                logger.warning("Unknown map type %r, using OSM", map_type)
                 cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik, crs=gdf.crs)
 
         except Exception as e:
-            print(f"Warning: Could not add basemap. Error: {e}")
+            logger.warning("Could not add basemap: %s", e)
 
     # Render the network using pandapipes plotting
     pp_plot.simple_plot(

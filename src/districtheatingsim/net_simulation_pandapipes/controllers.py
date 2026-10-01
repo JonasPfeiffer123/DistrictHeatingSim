@@ -17,10 +17,20 @@ bad point pressure control, minimum temperature enforcement, and multi-producer 
 in district heating systems.
 """
 
+import logging
+
 import numpy as np
 from pandapower.control.basic_controller import BasicCtrl
 
 from districtheatingsim.constants import KELVIN_OFFSET
+
+logger = logging.getLogger(__name__)
+
+# Proportional gain of the bad-point pump controller (see BadPointPressureLiftController).
+# Nets saved before BACKLOG G1 carry the old default 0.2 and are upgraded on load
+# (net_migration.migrate_loaded_net).
+DEFAULT_PUMP_CONTROLLER_GAIN = 0.6
+LEGACY_PUMP_CONTROLLER_GAIN = 0.2
 
 
 class BadPointPressureLiftController(BasicCtrl):
@@ -35,7 +45,7 @@ class BadPointPressureLiftController(BasicCtrl):
     :type target_dp_min_bar: float
     :param tolerance: Pressure difference tolerance [bar], defaults to 0.2
     :type tolerance: float
-    :param proportional_gain: Proportional gain factor, defaults to 0.2
+    :param proportional_gain: Proportional gain factor, defaults to 0.6
     :type proportional_gain: float
     :param min_plift: Minimum pump lift during standby [bar], defaults to 1.5
     :type min_plift: float
@@ -54,6 +64,11 @@ class BadPointPressureLiftController(BasicCtrl):
        German "Differenzdruckregelung im Schlechtpunkt". Identifies worst point (lowest Δp)
        among active consumers, applies proportional control to pump pressures. Standby mode
        with minimal circulation when all demands zero. Updates bad point dynamically each step.
+
+       Every control iteration is a full pipeflow. The bad-point Δp follows the pump lift
+       almost 1:1, so the gain sets how much of the error is removed per iteration: 0.2 needed
+       ~3.9 pipeflows per time step, 0.6 needs ~1.9 with the same results (BACKLOG G1). Gain
+       1.0 lands at the edge of the tolerance band.
     """
 
     def __init__(
@@ -62,7 +77,7 @@ class BadPointPressureLiftController(BasicCtrl):
         circ_pump_pressure_idx: int = 0,
         target_dp_min_bar: float = 1.0,
         tolerance: float = 0.2,
-        proportional_gain: float = 0.2,
+        proportional_gain: float = DEFAULT_PUMP_CONTROLLER_GAIN,
         min_plift: float = 1.5,
         min_pflow: float = 3.5,
         **kwargs,
@@ -171,7 +186,7 @@ class BadPointPressureLiftController(BasicCtrl):
 
         # Handle standby mode - no heat demand
         if all(net.heat_consumer["qext_w"] == 0):
-            print("No heat flow detected. Switching to standby mode.")
+            logger.debug("No heat flow detected. Switching to standby mode.")
             net.circ_pump_pressure.loc[:, "plift_bar"] = self.min_plift
             net.circ_pump_pressure.loc[:, "p_flow_bar"] = self.min_pflow
             return super().control_step(net)
@@ -215,7 +230,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
     :type max_iterations: int
     :param temperature_adjustment_step: Temperature adjustment step [°C], defaults to 1.0
     :type temperature_adjustment_step: float
-    :param debug: Enable debug output, defaults to False
+    :param debug: Log every control decision (INFO level), defaults to False
     :type debug: bool
     :param \\**kwargs: Additional arguments for base controller
 
@@ -322,7 +337,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Handle standby mode - no heat demand
         if all(net.heat_consumer["qext_w"] == 0):
             if self.debug:
-                print("No heat flow detected. Switching to standby mode.")
+                logger.info("No heat flow detected. Switching to standby mode.")
             return super().control_step(net)
 
         # Get current inlet temperature
@@ -339,7 +354,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = new_T_out
 
             if self.debug:
-                print(
+                logger.info(
                     f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - KELVIN_OFFSET:.1f}°C."
                 )
 
@@ -380,7 +395,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Check minimum temperature requirement
         if current_T_in < self.min_supply_temperature:
             if self.debug:
-                print(
+                logger.info(
                     f"Supply temperature not met for heat_consumer_idx: {self.heat_consumer_idx}. "
                     f"current_temperature_in: {current_T_in:.1f}°C, "
                     f"current_temperature_out: {current_T_out:.1f}°C, "
@@ -391,7 +406,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Check temperature stability convergence
         if converged_T_in:
             if self.debug:
-                print(
+                logger.info(
                     f"Controller converged: heat_consumer_idx: {self.heat_consumer_idx}, "
                     f"current_temperature_in: {current_T_in:.1f}°C, "
                     f"current_temperature_out: {current_T_out:.1f}°C, "
@@ -402,7 +417,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Forced convergence after maximum iterations
         if self.iteration >= self.max_iterations:
             if self.debug:
-                print(f"Max iterations reached for heat_consumer_idx: {self.heat_consumer_idx}")
+                logger.info(f"Max iterations reached for heat_consumer_idx: {self.heat_consumer_idx}")
             return True
 
         return False

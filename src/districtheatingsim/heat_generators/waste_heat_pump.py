@@ -7,11 +7,14 @@ Waste heat pump modeling with variable source temperatures and heat recovery.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 from typing import Any
 
 import numpy as np
 
 from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
+
+logger = logging.getLogger(__name__)
 
 
 class WasteHeatPump(HeatPump):
@@ -293,7 +296,7 @@ class WasteHeatPump(HeatPump):
                 capacity_index = variables_order.index(capacity_var)
                 self.Kühlleistung_Abwärme = variables[capacity_index]
         except ValueError as e:
-            print(f"Error setting parameters for {self.name}: {e}")
+            logger.error("Error setting parameters for %s: %s", self.name, e)
 
     def add_optimization_parameters(self, idx: int) -> tuple[list, list, list]:
         """

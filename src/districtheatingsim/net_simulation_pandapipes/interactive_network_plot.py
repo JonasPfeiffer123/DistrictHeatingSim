@@ -17,6 +17,8 @@ Features:
 - Export capabilities (HTML, PNG)
 """
 
+import logging
+
 import geopandas as gpd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -32,6 +34,8 @@ from districtheatingsim.net_simulation_pandapipes.plot_data import (
     pipe_plot_data,
     pump_plot_data,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class InteractiveNetworkPlot:
@@ -119,14 +123,18 @@ class InteractiveNetworkPlot:
                 if param in self.net.res_flow_control.columns:
                     visualizations.append((f"Flow Control: {self._get_parameter_label(param)}", "flow_control", param))
 
-        print(f"[Performance] Creating {len(visualizations)} visualizations for dropdown...")
-        print(f"[Performance] Network: {len(self.net.junction)} junctions, {len(self.net.pipe)} pipes")
+        logger.debug(
+            "Creating %d dropdown visualizations (%d junctions, %d pipes)",
+            len(visualizations),
+            len(self.net.junction),
+            len(self.net.pipe),
+        )
 
         # Pre-generate all visualizations efficiently
         all_traces = []
         trace_counts = []
 
-        for i, (_label, comp_type, param) in enumerate(visualizations):
+        for _label, comp_type, param in visualizations:
             # Create temporary figure for this visualization
             temp_fig = go.Figure()
             self.fig = temp_fig
@@ -142,10 +150,7 @@ class InteractiveNetworkPlot:
             trace_counts.append(len(temp_fig.data))
             all_traces.extend(list(temp_fig.data))
 
-            if (i + 1) % 5 == 0:
-                print(f"[Performance] Generated {i + 1}/{len(visualizations)} visualizations...")
-
-        print(f"[Performance] Total traces: {len(all_traces)}")
+        logger.debug("Total traces: %d", len(all_traces))
 
         # Create final figure with all traces
         self.fig = go.Figure(data=all_traces)
@@ -189,8 +194,6 @@ class InteractiveNetworkPlot:
                 }
             ]
         )
-
-        print("[Performance] Interactive plot with dropdown ready!")
 
         return self.fig
 

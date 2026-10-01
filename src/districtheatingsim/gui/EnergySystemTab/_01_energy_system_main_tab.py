@@ -36,7 +36,14 @@ from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread i
 from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
 from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
-from districtheatingsim.gui.EnergySystemTab.config_naming import config_name_to_filename, filename_to_config_name
+from districtheatingsim.gui.EnergySystemTab.config_naming import (
+    DEFAULT_CONFIG_NAME,
+    DEFAULT_FILENAME,
+    config_file,
+    config_files,
+    config_name_to_filename,
+    discover_configs,
+)
 from districtheatingsim.gui.utilities import stop_qthreads
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
@@ -286,20 +293,10 @@ class EnergySystemTab(QWidget):
         """
         Scan the Ergebnisse folder and return (display_name, filename) pairs.
 
-        ``Ergebnisse.json`` always appears first as ``"Standard"``.
+        ``Standard`` always appears first (see ``config_naming.discover_configs``; Parquet and
+        legacy JSON files are both recognised).
         """
-        ergebnisse_dir = self._ergebnisse_dir()
-        configs = []
-        if os.path.isdir(ergebnisse_dir):
-            files = sorted(os.listdir(ergebnisse_dir))
-            if "Ergebnisse.json" in files:
-                configs.append(("Standard", "Ergebnisse.json"))
-            for f in files:
-                if f.startswith("Ergebnisse_") and f.endswith(".json"):
-                    configs.append((filename_to_config_name(f), f))
-        if not configs:
-            configs = [("Standard", "Ergebnisse.json")]
-        return configs
+        return discover_configs(self._ergebnisse_dir()) or [(DEFAULT_CONFIG_NAME, DEFAULT_FILENAME)]
 
     def _refresh_config_combo(self):
         """Repopulate the config ComboBox; restore saved active selection."""
@@ -322,7 +319,7 @@ class EnergySystemTab(QWidget):
         configs_on_disk = [
             c
             for c in configs
-            if c[0] != "Standard" or os.path.exists(os.path.join(self._ergebnisse_dir(), "Ergebnisse.json"))
+            if c[0] != "Standard" or config_file(self._ergebnisse_dir(), DEFAULT_CONFIG_NAME) is not None
         ]
         if len(configs_on_disk) > 1 and idx < 0:
             self.configCombo.blockSignals(False)
@@ -360,8 +357,7 @@ class EnergySystemTab(QWidget):
         if self.base_path:
             self.folder_manager.set_active_energy_config(self.base_path, name)
         # Load the config if a file already exists for it
-        filepath = os.path.join(self._ergebnisse_dir(), config_name_to_filename(name))
-        if os.path.exists(filepath):
+        if config_file(self._ergebnisse_dir(), name) is not None:
             self.load_results_JSON(show_dialog=False)
 
     def _new_config_action(self):
@@ -428,9 +424,9 @@ class EnergySystemTab(QWidget):
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        filepath = os.path.join(self._ergebnisse_dir(), config_name_to_filename(name))
         try:
-            if os.path.exists(filepath):
+            # Both formats — a leftover legacy JSON would otherwise bring the config back.
+            for filepath in config_files(self._ergebnisse_dir(), name):
                 os.remove(filepath)
         except OSError as e:
             QMessageBox.critical(self, "Fehler", f"Datei konnte nicht gelöscht werden:\n{e}")
@@ -822,7 +818,7 @@ class EnergySystemTab(QWidget):
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
     def _active_json_path(self) -> str:
-        """Return the full path to the active config's JSON file (no filesystem side effects).
+        """Return the full path the active config is saved to (current format; no filesystem side effects).
 
         Directory creation is done by the save path, not here — a path-getter that runs on every
         project load must not try to create (and possibly fail on) the results directory.
@@ -853,7 +849,7 @@ class EnergySystemTab(QWidget):
             except FileExistsError:
                 pass
             json_filename = self._active_json_path()
-            self.energy_system.save_to_json(json_filename)
+            self.energy_system.save_to_file(json_filename)
             # Refresh combo in case a new file was created
             self._refresh_config_combo()
             if show_dialog:
@@ -876,7 +872,8 @@ class EnergySystemTab(QWidget):
         :param show_dialog: Whether to show success/error dialogs.
         :type show_dialog: bool
         """
-        json_filename = self._active_json_path()
+        # Newer of Parquet / legacy JSON for this config (see config_naming.config_file)
+        json_filename = config_file(self._ergebnisse_dir(), self._active_config_name) or self._active_json_path()
         if not os.path.exists(json_filename):
             if show_dialog:
                 QMessageBox.warning(
@@ -885,7 +882,7 @@ class EnergySystemTab(QWidget):
             return
 
         try:
-            self.energy_system = EnergySystem.load_from_json(json_filename)
+            self.energy_system = EnergySystem.load_from_file(json_filename)
             self.process_data()
             if show_dialog:
                 QMessageBox.information(

@@ -173,6 +173,24 @@ class TestAssignElevationToGeoDataFrame:
         result = assign_elevation_to_geodataframe(gdf, {})
         assert result.geometry.iloc[0].z == pytest.approx(0.0)
 
+    def test_3d_linestring_input_is_re_elevated(self):
+        # C39: connection lines built from elevated building points are already 3-D; unpacking
+        # their vertices as (x, y) crashed network generation whenever elevation data existed.
+        from districtheatingsim.net_generation.elevation_utils import assign_elevation_to_geodataframe
+
+        gdf = _make_gdf_from_lines([LineString([(0, 0, 5), (10, 0, 7)])])
+        result = assign_elevation_to_geodataframe(gdf, {(0.0, 0.0): 50.0})
+        coords = list(result.geometry.iloc[0].coords)
+        assert coords[0] == pytest.approx((0.0, 0.0, 50.0))  # from the lookup
+        assert coords[1] == pytest.approx((10.0, 0.0, 7.0))  # not in the lookup: existing Z kept
+
+    def test_3d_point_keeps_z_when_not_in_lookup(self):
+        from districtheatingsim.net_generation.elevation_utils import assign_elevation_to_geodataframe
+
+        gdf = _make_gdf_from_points([Point(99, 99, 12.5)])
+        result = assign_elevation_to_geodataframe(gdf, {})
+        assert result.geometry.iloc[0].z == pytest.approx(12.5)
+
 
 # ---------------------------------------------------------------------------
 # net_generation: 3-D preservation

@@ -37,6 +37,8 @@ from districtheatingsim.net_generation.network_connectivity import (
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.utilities.crs_utils import crs_to_urn
 
+logger = logging.getLogger(__name__)
+
 
 def _nearest_address(vl, address_lookup, tolerance: float = 2.0):
     """
@@ -224,7 +226,7 @@ class GeoJsonReceiver(QObject):
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(edited_data, f, indent=2, ensure_ascii=False)
         except Exception:
-            logging.exception("Fehler beim Speichern des bearbeiteten Wärmenetzes")
+            logger.exception("Fehler beim Speichern des bearbeiteten Wärmenetzes")
 
     @pyqtSlot(float, float)
     def receiveCoordinateFromMap(self, lat, lon):
@@ -632,7 +634,7 @@ class VisualizationPresenter(QObject):
         try:
             self.add_geojson_layer([network_path])
         except Exception:
-            logging.exception("Automatisches Laden des Wärmenetzes fehlgeschlagen: %s", network_path)
+            logger.exception("Automatisches Laden des Wärmenetzes fehlgeschlagen: %s", network_path)
 
     def _reload_network_on_map(self, path):
         """Reload the empty map and re-display the (corrected) network once, avoiding duplicates."""

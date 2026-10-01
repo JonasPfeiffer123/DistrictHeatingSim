@@ -28,8 +28,7 @@ from districtheatingsim.net_simulation_pandapipes.controllers import (
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.utilities.utilities import get_resource_path
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def validate_minimum_pressure_difference(
@@ -53,10 +52,7 @@ def validate_minimum_pressure_difference(
     violations = []
 
     if verbose:
-        print(f"\n{'=' * 80}")
-        print("VALIDATING MINIMUM PRESSURE DIFFERENCE")
-        print(f"Target: dp_min >= {target_dp_min_bar} bar")
-        print(f"{'=' * 80}\n")
+        logger.info("Validating minimum pressure difference: dp_min >= %s bar", target_dp_min_bar)
 
     # Check each active heat consumer
     for idx in net.heat_consumer.index:
@@ -85,29 +81,33 @@ def validate_minimum_pressure_difference(
             violations.append(violation)
 
             if verbose:
-                print(f"⚠ WARNING: {consumer_name}")
-                print(f"  Pressure difference: {dp:.3f} bar < {target_dp_min_bar} bar")
-                print(f"  Deficit: {target_dp_min_bar - dp:.3f} bar")
-                print(f"  p_from: {p_from:.3f} bar, p_to: {p_to:.3f} bar")
-                print(f"  Heat demand: {qext / 1000:.1f} kW\n")
+                logger.warning(
+                    "%s: pressure difference %.3f bar < %s bar (deficit %.3f bar, p_from %.3f bar, "
+                    "p_to %.3f bar, heat demand %.1f kW)",
+                    consumer_name,
+                    dp,
+                    target_dp_min_bar,
+                    target_dp_min_bar - dp,
+                    p_from,
+                    p_to,
+                    qext / 1000,
+                )
         else:
             if verbose:
-                print(f"✓ OK: {consumer_name} - dp={dp:.3f} bar >= {target_dp_min_bar} bar")
+                logger.debug("%s: dp=%.3f bar >= %s bar", consumer_name, dp, target_dp_min_bar)
 
     all_ok = len(violations) == 0
 
     if verbose:
-        print(f"\n{'=' * 80}")
         if all_ok:
-            print("✓ VALIDATION PASSED - All consumers meet minimum pressure requirements")
+            logger.info("Pressure validation passed - all consumers meet the minimum pressure difference")
         else:
-            print(f"✗ VALIDATION FAILED - {len(violations)} consumers below minimum pressure")
-            print("\nRecommendations:")
-            print("  1. Increase pump pressure (p_flow_bar or plift_bar)")
-            print("  2. Use larger pipe diameters")
-            print("  3. Reduce pipe lengths if possible")
-            print("  4. Check for flow restrictions")
-        print(f"{'=' * 80}\n")
+            logger.warning(
+                "Pressure validation failed - %d consumers below the minimum pressure difference. Remedies: "
+                "raise the pump pressure (p_flow_bar or plift_bar), use larger pipe diameters, shorten pipes, "
+                "check for flow restrictions",
+                len(violations),
+            )
 
     return all_ok, violations
 
@@ -186,6 +186,32 @@ def COP_WP(
     return COP_L, VLT_L
 
 
+def secondary_producer_element_indices(net, k: int) -> tuple[int, int]:
+    """
+    Return the ``circ_pump_mass`` and ``flow_control`` row indices of the k-th secondary producer.
+
+    ``create_network`` adds exactly one mass-flow pump and one flow control per secondary
+    producer, in the order of the ``secondary_producers`` list, so the k-th producer owns the
+    k-th row of both tables.
+
+    :param net: Pandapipes network with the secondary producers' pumps and flow controls
+    :type net: pandapipes.pandapipesNet
+    :param k: Position of the producer in the ``secondary_producers`` list
+    :type k: int
+    :return: (circ_pump_mass index, flow_control index)
+    :rtype: Tuple[int, int]
+    :raises ValueError: If the net has fewer pumps/flow controls than secondary producers
+    """
+    n_pumps = len(net.circ_pump_mass) if "circ_pump_mass" in net else 0
+    n_flow_controls = len(net.flow_control) if "flow_control" in net else 0
+    if k >= n_pumps or k >= n_flow_controls:
+        raise ValueError(
+            f"Secondary producer {k} has no matching circ_pump_mass/flow_control "
+            f"(net has {n_pumps} pumps, {n_flow_controls} flow controls)."
+        )
+    return int(net.circ_pump_mass.index[k]), int(net.flow_control.index[k])
+
+
 def create_controllers(
     net,
     qext_w: np.ndarray,
@@ -245,8 +271,10 @@ def create_controllers(
         if min_supply_temperature_heat_consumer is not None and np.any(
             np.array(min_supply_temperature_heat_consumer) != 0
         ):
-            print(
-                f"Creating temperature controller for heat consumer {i} with min supply temperature {min_supply_temperature_heat_consumer[i]} °C"
+            logger.debug(
+                "Creating temperature controller for heat consumer %d with min supply temperature %s °C",
+                i,
+                min_supply_temperature_heat_consumer[i],
             )
 
             min_supply_temp_profile = pd.DataFrame(
@@ -277,10 +305,13 @@ def create_controllers(
 
     # Secondary producer controllers
     if secondary_producers:
-        for producer in secondary_producers:
+        for k, producer in enumerate(secondary_producers):
             # KORRIGIERT: Verwende Attribut-Zugriff statt Dictionary-Zugriff
             mass_flow = producer.mass_flow if hasattr(producer, "mass_flow") else 0
             producer_index = producer.index if hasattr(producer, "index") else 0
+            # create_network adds one circ_pump_mass + one flow_control per secondary producer,
+            # in list order — the k-th producer owns the k-th row of both tables (BACKLOG C35).
+            pump_idx, flow_control_idx = secondary_producer_element_indices(net, k)
 
             # Mass flow controller for circulation pump
             placeholder_df = pd.DataFrame({f"mdot_flow_kg_per_s_{producer_index}": [mass_flow]})
@@ -289,7 +320,7 @@ def create_controllers(
                 net,
                 element="circ_pump_mass",
                 variable="mdot_flow_kg_per_s",
-                element_index=0,
+                element_index=pump_idx,
                 data_source=placeholder_data_source,
                 profile_name=f"mdot_flow_kg_per_s_{producer_index}",
             )
@@ -301,7 +332,7 @@ def create_controllers(
                 net,
                 element="flow_control",
                 variable="controlled_mdot_kg_per_s",
-                element_index=0,
+                element_index=flow_control_idx,
                 data_source=placeholder_data_source_flow,
                 profile_name=f"controlled_mdot_kg_per_s_{producer_index}",
             )
@@ -311,7 +342,7 @@ def create_controllers(
                 net,
                 element="circ_pump_mass",
                 variable="t_flow_k",
-                element_index=0,
+                element_index=pump_idx,
                 data_source=placeholder_data_source_supply_temp,
                 profile_name="supply_temperature",
             )
@@ -340,7 +371,7 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
     try:
         pp.pipeflow(net, mode="bidirectional", iter=100)
     except UserWarning as e:
-        logging.warning(f"correct_flow_directions initial pipeflow: {e}")
+        logger.warning(f"correct_flow_directions initial pipeflow: {e}")
 
     # Identify and correct pipes with reverse flow
     corrections_made = 0
@@ -357,10 +388,10 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
     try:
         pp.pipeflow(net, mode="bidirectional", iter=100)
     except UserWarning as e:
-        logging.warning(f"correct_flow_directions verification pipeflow: {e}")
+        logger.warning(f"correct_flow_directions verification pipeflow: {e}")
 
     if corrections_made > 0:
-        logging.info(f"Corrected flow directions for {corrections_made} pipes")
+        logger.info(f"Corrected flow directions for {corrections_made} pipes")
 
     return net
 
@@ -441,7 +472,7 @@ def optimize_diameter_parameters(
             element_df = getattr(net, element)
             res_df = getattr(net, f"res_{element}")
 
-    logging.info(f"Diameter optimization completed in {iteration_count} iterations")
+    logger.info(f"Diameter optimization completed in {iteration_count} iterations")
     return net
 
 
@@ -468,9 +499,7 @@ def init_diameter_types(
     start_time = time.time()
 
     # Initial hydraulic calculation
-    print(f"\n{'=' * 80}")
-    print("INIT_DIAMETER_TYPES: Initial calculation (pipeflow + control)")
-    print(f"{'=' * 80}")
+    logger.debug("init_diameter_types: initial calculation (pipeflow + control)")
     # Step 1: Calculate velocities with current diameters
     pp.pipeflow(net, mode="bidirectional", iter=100)
     # Step 2: Let controller adjust pump parameters for proper pressures
@@ -484,11 +513,13 @@ def init_diameter_types(
         raise ValueError(f"No standard pipe types found for material filter: {material_filter}")
 
     # Initialize pipe diameters based on velocity requirements
-    print(f"\n{'=' * 80}")
-    print(f"INIT_DIAMETER_TYPES: Initializing {len(net.pipe)} pipes")
-    print(f"v_max_pipe = {v_max_pipe} m/s, material = {material_filter}")
-    print(f"Available types: {filtered_by_material.index.tolist()}")
-    print(f"{'=' * 80}\n")
+    logger.info(
+        "Initializing diameters of %d pipes (v_max_pipe = %s m/s, material = %s)",
+        len(net.pipe),
+        v_max_pipe,
+        material_filter,
+    )
+    logger.debug("Available types: %s", filtered_by_material.index.tolist())
 
     for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
         # pandapipes >=0.14: the pipe diameter column is inner_diameter_mm [mm]
@@ -513,21 +544,21 @@ def init_diameter_types(
         net.pipe.at[pipe_idx, "k_mm"] = k
 
     # Final hydraulic calculation with updated pipe properties
-    print(f"\n{'=' * 80}")
-    print("INIT_DIAMETER_TYPES: Final calculation with new diameters")
-    print(f"{'=' * 80}")
+    logger.debug("init_diameter_types: final calculation with new diameters")
     # Step 1: Calculate velocities with new diameters
     pp.pipeflow(net, mode="bidirectional", iter=100)
 
     # Step 2: Adjust pump parameters to meet pressure requirements
     run_control(net, mode="bidirectional", iter=100)
     if hasattr(net, "circ_pump_pressure") and len(net.circ_pump_pressure) > 0:
-        print(f"Final pump pressure: {net.circ_pump_pressure.at[0, 'p_flow_bar']:.2f} bar")
-        print(f"Final pump lift: {net.circ_pump_pressure.at[0, 'plift_bar']:.2f} bar")
-    print(f"{'=' * 80}\n")
+        logger.info(
+            "Pump after diameter initialization: pressure %.2f bar, lift %.2f bar",
+            net.circ_pump_pressure.at[0, "p_flow_bar"],
+            net.circ_pump_pressure.at[0, "plift_bar"],
+        )
 
     total_time = time.time() - start_time
-    logging.info(f"Pipe diameter initialization completed in {total_time:.2f} seconds")
+    logger.info(f"Pipe diameter initialization completed in {total_time:.2f} seconds")
 
     return net
 
@@ -642,11 +673,8 @@ def optimize_diameter_types(
     ladders = build_diameter_ladders(filtered_by_material)
 
     # Initial system state calculation
-    print(f"\n{'=' * 80}")
-    print("OPTIMIZE_DIAMETER_TYPES: Starting optimization")
-    print(f"v_max = {v_max} m/s, material = {material_filter}")
-    print(f"Available types: {filtered_by_material.index.tolist()}")
-    print(f"{'=' * 80}")
+    logger.info("Optimizing pipe diameters (v_max = %s m/s, material = %s)", v_max, material_filter)
+    logger.debug("Available types: %s", filtered_by_material.index.tolist())
 
     # Calculate current state (assumes init_diameter_types was called before)
     pp.pipeflow(net, mode="bidirectional", iter=100)
@@ -658,17 +686,13 @@ def optimize_diameter_types(
     iteration_count = 0
 
     # Iterative optimization loop
-    print(f"\n{'=' * 80}")
-    print("OPTIMIZE_DIAMETER_TYPES: Starting iterative optimization")
-    print(f"{'=' * 80}\n")
-
     while change_made:
         iteration_start = time.time()
         change_made = False
         pipes_within_target = 0
         pipes_outside_target = 0
 
-        print(f"\n--- Iteration {iteration_count + 1} ---")
+        logger.debug("Diameter optimization iteration %d", iteration_count + 1)
 
         for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
             # Skip already optimized pipes within limits
@@ -689,7 +713,9 @@ def optimize_diameter_types(
                     continue
                 properties = filtered_by_material.loc[new_type]
 
-                print(f"  {pipe_name}: UPSIZE v={velocity:.3f} > {v_max} m/s | {current_type} -> {new_type}")
+                logger.debug(
+                    "%s: upsize v=%.3f > %s m/s | %s -> %s", pipe_name, velocity, v_max, current_type, new_type
+                )
 
                 net.pipe.at[pipe_idx, "std_type"] = new_type
                 net.pipe.at[pipe_idx, "inner_diameter_mm"] = properties["inner_diameter_mm"]
@@ -716,22 +742,32 @@ def optimize_diameter_types(
                 net.pipe.at[pipe_idx, "k_mm"] = k
 
                 # Validate downsizing doesn't violate constraints
-                print(f"    Testing downsize: {current_type} -> {new_type}")
                 # Step 1: Calculate new velocities
                 pp.pipeflow(net, mode="bidirectional", iter=100)
                 # Step 2: Adjust pump if needed
                 run_control(net, mode="bidirectional", iter=100)
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
-                print(f"    New velocity: {new_velocity:.3f} m/s")
 
                 if new_velocity <= v_max:
-                    print(
-                        f"  {pipe_name}: DOWNSIZE v={velocity:.3f} <= {v_max} m/s | {current_type} -> {new_type} (new v={new_velocity:.3f})"
+                    logger.debug(
+                        "%s: downsize v=%.3f <= %s m/s | %s -> %s (new v=%.3f)",
+                        pipe_name,
+                        velocity,
+                        v_max,
+                        current_type,
+                        new_type,
+                        new_velocity,
                     )
                     change_made = True
                 else:
-                    print(
-                        f"  {pipe_name}: REVERT v={velocity:.3f} -> {new_velocity:.3f} > {v_max} m/s | {new_type} -> {current_type}"
+                    logger.debug(
+                        "%s: revert v=%.3f -> %.3f > %s m/s | %s -> %s",
+                        pipe_name,
+                        velocity,
+                        new_velocity,
+                        v_max,
+                        new_type,
+                        current_type,
                     )
                     # Revert to previous size and mark as optimized
                     properties = filtered_by_material.loc[current_type]
@@ -747,46 +783,40 @@ def optimize_diameter_types(
 
         # Recalculate if changes were made
         if change_made:
-            print("\nRecalculating network after changes...")
             # Step 1: Calculate velocities
             pp.pipeflow(net, mode="bidirectional", iter=100)
             # Step 2: Adjust pump parameters
             run_control(net, mode="bidirectional", iter=100)
-            print("Network recalculated with adjusted pump parameters")
 
         iteration_time = time.time() - iteration_start
-        print(
-            f"\nIteration {iteration_count} summary: {pipes_within_target} pipes OK, {pipes_outside_target} pipes adjusted ({iteration_time:.2f}s)"
-        )
-        logging.info(
-            f"Iteration {iteration_count}: {pipes_within_target} pipes within target, "
-            f"{pipes_outside_target} pipes outside target ({iteration_time:.2f}s)"
+        logger.info(
+            "Iteration %d: %d pipes within target, %d pipes outside target (%.2fs)",
+            iteration_count,
+            pipes_within_target,
+            pipes_outside_target,
+            iteration_time,
         )
 
         if not change_made:
-            print(f"\n{'=' * 80}")
-            print(f"OPTIMIZATION CONVERGED after {iteration_count} iterations")
-            print(f"{'=' * 80}\n")
+            logger.info("Diameter optimization converged after %d iterations", iteration_count)
 
     # Final calculation with optimized parameters
-    print(f"\n{'=' * 80}")
-    print("OPTIMIZE: Final calculation")
-    print(f"{'=' * 80}")
     # Step 1: Calculate final velocities
     pp.pipeflow(net, mode="bidirectional", iter=100)
-    print(f"Final velocities: {net.res_pipe.v_mean_m_per_s.values}")
+    logger.debug("Final velocities: %s", net.res_pipe.v_mean_m_per_s.values)
 
     # Step 2: Final pump adjustment
     run_control(net, mode="bidirectional", iter=100)
-    print("\nOptimization complete!")
     if hasattr(net, "circ_pump_pressure") and len(net.circ_pump_pressure) > 0:
-        print(f"Optimized pump pressure: {net.circ_pump_pressure.at[0, 'p_flow_bar']:.2f} bar")
-        print(f"Optimized pump lift: {net.circ_pump_pressure.at[0, 'plift_bar']:.2f} bar")
-    print(f"Optimized pipe types: {net.pipe.std_type.unique()}")
-    print(f"{'=' * 80}")
+        logger.info(
+            "Optimized pump: pressure %.2f bar, lift %.2f bar",
+            net.circ_pump_pressure.at[0, "p_flow_bar"],
+            net.circ_pump_pressure.at[0, "plift_bar"],
+        )
+    logger.info("Optimized pipe types: %s", net.pipe.std_type.unique())
 
     total_time = time.time() - start_time
-    logging.info(f"Total optimization time: {total_time:.2f} seconds")
+    logger.info(f"Total optimization time: {total_time:.2f} seconds")
 
     return net
 
@@ -807,17 +837,9 @@ def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
     .. note::
        Creates single file with flow/return lines, building connections, and generator connections.
     """
-    print(f"\n{'=' * 80}")
-    print(f"EXPORT_NET_GEOJSON: Starting export to {filename}")
-    print(f"{'=' * 80}\n")
-
     # Extract flow and return lines from pipes
     flow_features = []
     return_features = []
-
-    print(f"Checking pipe_geodata... hasattr: {hasattr(net, 'pipe_geodata')}")
-    if hasattr(net, "pipe_geodata"):
-        print(f"pipe_geodata empty: {net.pipe_geodata.empty}")
 
     if hasattr(net, "pipe_geodata") and not net.pipe_geodata.empty:
         pipe_count = len(net.pipe)
@@ -874,13 +896,6 @@ def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
 
     generator_gdf = gpd.GeoDataFrame(generator_features, crs=crs) if generator_features else gpd.GeoDataFrame()
 
-    print("\nExtracted features:")
-    print(f"  Flow: {len(flow_features)}")
-    print(f"  Return: {len(return_features)}")
-    print(f"  Buildings: {len(building_features)}")
-    print(f"  Generators: {len(generator_features)}")
-    print("\nCalling create_network_geojson...")
-
     # Create unified GeoJSON using NetworkGeoJSONSchema
     # (calculated data is automatically included from GeoDataFrame columns)
     unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
@@ -892,13 +907,12 @@ def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
         crs=crs,
     )
 
-    print(f"Exporting network to unified GeoJSON format: {filename}")
-    logging.info(f"Created unified GeoJSON with {len(unified_geojson.get('features', []))} total features")
+    logger.debug("Created unified GeoJSON with %d features", len(unified_geojson.get("features", [])))
 
     # Export to file
     NetworkGeoJSONSchema.export_to_file(unified_geojson, filename)
 
-    logging.info(
+    logger.info(
         f"Network exported to unified GeoJSON: {filename} "
         f"(Flow: {len(flow_features)}, Return: {len(return_features)}, "
         f"Buildings: {len(building_features)}, Generators: {len(generator_features)})"

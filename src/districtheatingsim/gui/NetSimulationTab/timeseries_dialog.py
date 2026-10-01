@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QRadioButton,
+    QSpinBox,
     QVBoxLayout,
 )
 
@@ -80,6 +81,21 @@ class TimeSeriesCalculationDialog(QDialog):
         self.layout.addWidget(self.StartTimeStepInput)
         self.layout.addWidget(self.EndTimeStepLabel)
         self.layout.addWidget(self.EndTimeStepInput)
+
+        # Parallel worker processes for the detailed calculation (BACKLOG G2)
+        self.WorkersLabel = QLabel("Parallele Prozesse (detaillierte Berechnung, 1 = aus):", self)
+        self.WorkersInput = QSpinBox(self)
+        self.WorkersInput.setRange(1, max(1, os.cpu_count() or 1))
+        self.WorkersInput.setValue(1)
+        self.WorkersInput.setToolTip(
+            "Teilt den Zeitraum in Blöcke (mind. eine Woche) und rechnet sie gleichzeitig.\n"
+            "Lohnt sich ab einigen Wochen; jeder Prozess braucht einige Sekunden zum Start.\n"
+            "An den Blockgrenzen startet die Pumpenregelung neu: Pumpendrücke weichen dort\n"
+            "kurzzeitig im Rahmen der Regeltoleranz ab, Wärmemengen und Temperaturen nicht."
+        )
+        self.simplifiedCalcRadio.toggled.connect(lambda simplified: self.WorkersInput.setEnabled(not simplified))
+        self.layout.addWidget(self.WorkersLabel)
+        self.layout.addWidget(self.WorkersInput)
 
         # Dateiauswahl
         self.fileInputlayout = QHBoxLayout()
@@ -162,4 +178,5 @@ class TimeSeriesCalculationDialog(QDialog):
             "start": int(self.StartTimeStepInput.text()),
             "end": int(self.EndTimeStepInput.text()),
             "simplified": self.simplifiedCalcRadio.isChecked(),
+            "workers": self.WorkersInput.value(),
         }
