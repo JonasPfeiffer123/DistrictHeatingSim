@@ -684,6 +684,31 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
     return NetworkGenerationData
 
 
+def design_consumer_load_kW(NetworkGenerationData) -> float:
+    """
+    Consumer heat load [kW] the design pipeflow of the initialised net was solved with.
+
+    The initialisation sets every heat consumer to its *own* peak load
+    (``max_waerme_hast_ges_W``), so the design load is the sum of the individual building peaks
+    — larger than the peak of the summed load profile, because the buildings do not peak in the
+    same hour. Taking the latter as the design load booked that non-simultaneity as a permanent
+    network loss in the simplified time series (BACKLOG UT-K7: Zittau 148 kW instead of ~50 kW).
+
+    :param NetworkGenerationData: Network data with an initialised (solved) net.
+    :return: Design consumer load [kW]; the peak of ``waerme_ges_kW`` if the net has no
+        heat-consumer results.
+    :rtype: float
+    """
+    net = NetworkGenerationData.net
+    for table in ("res_heat_consumer", "heat_consumer"):
+        frame = getattr(net, table, None)
+        if frame is not None and "qext_w" in frame and len(frame) > 0:
+            load_kw = float(np.nansum(frame["qext_w"].to_numpy(dtype=float))) / 1000.0
+            if np.isfinite(load_kw) and load_kw > 0:
+                return load_kw
+    return float(np.max(NetworkGenerationData.waerme_ges_kW))
+
+
 def simplified_time_series_net(NetworkGenerationData) -> Any:
     """
     Run simplified time series by scaling design state with building heat demand.
@@ -712,11 +737,10 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     )
     n_steps = len(time_steps)
 
-    # Find design point (maximum load)
-    max_load_idx = np.argmax(NetworkGenerationData.waerme_ges_kW)
-    total_building_demand_design = NetworkGenerationData.waerme_ges_kW[max_load_idx]
+    # Consumer load of the design state: what the design pipeflow was solved with
+    total_building_demand_design = design_consumer_load_kW(NetworkGenerationData)
 
-    logger.debug("Design state at maximum load: %.1f kW", total_building_demand_design)
+    logger.debug("Design state consumer load: %.1f kW", total_building_demand_design)
 
     # Extract design state results from already calculated network
     # (these were calculated during initialization)
