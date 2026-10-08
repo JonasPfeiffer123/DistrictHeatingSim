@@ -1638,3 +1638,68 @@ class TestParallelTimeSeries:
             np.testing.assert_allclose(b[key], a[key], rtol=1e-6)
         # merged pump results come from the whole range
         assert set(parallel.pump_results) == set(sequential.pump_results)
+
+
+class TestSimplifiedTimeSeries:
+    """UT-K7: the simplified time series adds the design-state network loss to the building
+    load. The design pipeflow is solved with every building at its *own* peak, so the design
+    loss is generation minus the sum of those peaks - not minus the peak of the summed profile,
+    which booked the buildings' non-simultaneity as a permanent loss (Zittau: 148 kW instead of
+    ~50 kW)."""
+
+    @staticmethod
+    def _network_data():
+        from types import SimpleNamespace
+
+        import pandas as pd
+
+        # Two buildings peaking in different hours: individual peaks 50 + 44.5 kW = 94.5 kW,
+        # the summed profile peaks at only 60 kW.
+        building_a = np.array([50.0, 10.0, 5.0, 20.0]) * 1000
+        building_b = np.array([10.0, 44.5, 5.0, 20.0]) * 1000
+        design_consumers = pd.DataFrame({"qext_w": [50000.0, 44500.0]})
+        # Design generation 1 kg/s * 4.18 kJ/(kg K) * 25 K = 104.5 kW -> 10 kW network loss.
+        pump = pd.DataFrame(
+            {
+                "mdot_from_kg_per_s": [1.0],
+                "p_to_bar": [5.0],
+                "p_from_bar": [3.0],
+                "t_from_k": [60 + 273.15],
+                "t_to_k": [85 + 273.15],
+            }
+        )
+        net = SimpleNamespace(
+            heat_consumer=design_consumers, res_heat_consumer=design_consumers, res_circ_pump_pressure=pump
+        )
+        waerme_hast_ges_W = np.vstack([building_a, building_b])
+        return SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=waerme_hast_ges_W,
+            waerme_ges_kW=waerme_hast_ges_W.sum(axis=0) / 1000,
+            start_time_step=0,
+            end_time_step=4,
+            supply_temperature_heat_generator=85.0,
+        )
+
+    def test_design_load_is_the_sum_of_the_building_peaks(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import design_consumer_load_kW
+
+        assert design_consumer_load_kW(self._network_data()) == pytest.approx(94.5)
+
+    def test_adds_only_the_design_network_loss(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            simplified_time_series_net,
+        )
+
+        data = simplified_time_series_net(self._network_data())
+        qext = data.pump_results["Heizentrale Haupteinspeisung"][0]["qext_kW"]
+        assert qext == pytest.approx(data.waerme_ges_kW + 10.0)
+
+    def test_falls_back_to_the_profile_peak_without_consumer_results(self):
+        from types import SimpleNamespace
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import design_consumer_load_kW
+
+        data = self._network_data()
+        data.net = SimpleNamespace(res_circ_pump_pressure=data.net.res_circ_pump_pressure)
+        assert design_consumer_load_kW(data) == pytest.approx(60.0)

@@ -1872,6 +1872,13 @@ IDs below are the report's IDs with a `UT-` prefix.
   126.2 → 52.7 kW, 0 of 146 pipes stale; Görlitz golden master re-pinned (generation −2.0 %,
   pump power −4.7 %). Tests: `TestApplyPipeStdType`, `TestMigrateLoadedNet`,
   `TestNetworkInitialization::test_*_lose_the_catalogue_heat`.
+- UT-K7 — *found while fixing UT-K1:* the simplified time series took the peak of the summed load
+  profile as the design consumer load, but the design pipeflow is solved with every building at its
+  own peak; the non-simultaneity was booked as a permanent network loss (Zittau 148 kW instead of
+  ~50 kW). **Fixed 2026-10-08:** `design_consumer_load_kW` reads the solved consumer load of the net.
+  Zittau yearly losses 49.3 % → 39.4 % (UT-K1) → 18.1 % (UT-K7). Tests: `TestSimplifiedTimeSeries`.
+  (Side note: pandapipes' own `res_circ_pump_*.qext_w` uses cp(T)·T with absolute temperatures and
+  is 3–5 % too high at 40–85 °C; the app computes m·cp·ΔT itself, so it is not affected.)
 - UT-K2 — CRS outside UTM 33: default 25833 without a hint, CRS change does not reproject,
   producer geocoding and OSMnx export ignore the project CRS. *Open.*
 - UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into
