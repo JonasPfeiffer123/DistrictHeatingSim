@@ -25,7 +25,7 @@ from districtheatingsim.net_simulation_pandapipes.controllers import (
     BadPointPressureLiftController,
     MinimumSupplyTemperatureController,
 )
-from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import apply_pipe_std_type
 from districtheatingsim.utilities.utilities import get_resource_path
 
 logger = logging.getLogger(__name__)
@@ -538,10 +538,7 @@ def init_diameter_types(
         # Update pipe properties
         properties = filtered_by_material.loc[chosen_type]
 
-        net.pipe.at[pipe_idx, "std_type"] = chosen_type
-        net.pipe.at[pipe_idx, "inner_diameter_mm"] = properties["inner_diameter_mm"]
-        net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(properties)
-        net.pipe.at[pipe_idx, "k_mm"] = k
+        apply_pipe_std_type(net, pipe_idx, chosen_type, properties, k_mm=k)
 
     # Final hydraulic calculation with updated pipe properties
     logger.debug("init_diameter_types: final calculation with new diameters")
@@ -717,10 +714,7 @@ def optimize_diameter_types(
                     "%s: upsize v=%.3f > %s m/s | %s -> %s", pipe_name, velocity, v_max, current_type, new_type
                 )
 
-                net.pipe.at[pipe_idx, "std_type"] = new_type
-                net.pipe.at[pipe_idx, "inner_diameter_mm"] = properties["inner_diameter_mm"]
-                net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(properties)
-                net.pipe.at[pipe_idx, "k_mm"] = k
+                apply_pipe_std_type(net, pipe_idx, new_type, properties, k_mm=k)
 
                 change_made = True
                 pipes_outside_target += 1
@@ -736,10 +730,7 @@ def optimize_diameter_types(
                 properties = filtered_by_material.loc[new_type]
 
                 # Temporarily apply smaller diameter
-                net.pipe.at[pipe_idx, "std_type"] = new_type
-                net.pipe.at[pipe_idx, "inner_diameter_mm"] = properties["inner_diameter_mm"]
-                net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(properties)
-                net.pipe.at[pipe_idx, "k_mm"] = k
+                apply_pipe_std_type(net, pipe_idx, new_type, properties, k_mm=k)
 
                 # Validate downsizing doesn't violate constraints
                 # Step 1: Calculate new velocities
@@ -771,10 +762,7 @@ def optimize_diameter_types(
                     )
                     # Revert to previous size and mark as optimized
                     properties = filtered_by_material.loc[current_type]
-                    net.pipe.at[pipe_idx, "std_type"] = current_type
-                    net.pipe.at[pipe_idx, "inner_diameter_mm"] = properties["inner_diameter_mm"]
-                    net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(properties)
-                    net.pipe.at[pipe_idx, "k_mm"] = k
+                    apply_pipe_std_type(net, pipe_idx, current_type, properties, k_mm=k)
 
                     net.pipe.at[pipe_idx, "optimized"] = True
                     pipes_within_target += 1

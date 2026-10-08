@@ -133,9 +133,12 @@ class TestGoerlitzGoldenMaster:
         # sizing, which under-sized pipes and inflated the pump head — see BACKLOG C14).
         # Re-pinned for C30: keeping the _2x insulation grade (the old init reset it to
         # _STD) lowers the pipe heat loss, so generation and pumpstrom both dropped ~1-3%.
+        # Re-pinned for UT-K1: resized pipes now carry their own outer diameter instead of
+        # the DN100 start type's, which had inflated their heat loss (pandapipes uses
+        # u * pi * outer diameter); generation dropped 2.0 %, pumpstrom 4.7 %.
         _, k = goerlitz_run
-        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.1981, rel=1e-2)
-        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0036684, rel=2e-2)
+        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.0716, rel=1e-2)
+        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0034973, rel=2e-2)
         # Distribution loss = generation − demand (negative here: an 8-step generation
         # is compared against the annual demand — a known partial-range artifact).
         assert k["Verteilverluste [MWh]"] == pytest.approx(

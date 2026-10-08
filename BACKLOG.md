@@ -1864,7 +1864,14 @@ reproduce them are in `tests/e2e/` (`CHECK <id>` / `WORKAROUND <id>` markers in 
 IDs below are the report's IDs with a `UT-` prefix.
 
 **Stage 1 – correctness (in progress, branch `fix/anwendertest-stufe1`):**
-- UT-K1 — pipe heat losses 2–4× too high: the diameter sizing never updates `outer_diameter_mm`. *Open.*
+- UT-K1 — pipe heat losses 2–4× too high: the diameter sizing never updates `outer_diameter_mm`.
+  **Fixed 2026-10-08:** `pipe_std_types.apply_pipe_std_type` takes over every type-dependent column
+  (std_type, inner/outer diameter, u, k) and is used by `init_diameter_types`,
+  `optimize_diameter_types` and the GUI pipe table; `migrate_loaded_net` resets stale outer
+  diameters of saved nets (`sync_outer_diameters_with_std_types`). Zittau design state: pipe losses
+  126.2 → 52.7 kW, 0 of 146 pipes stale; Görlitz golden master re-pinned (generation −2.0 %,
+  pump power −4.7 %). Tests: `TestApplyPipeStdType`, `TestMigrateLoadedNet`,
+  `TestNetworkInitialization::test_*_lose_the_catalogue_heat`.
 - UT-K2 — CRS outside UTM 33: default 25833 without a hint, CRS change does not reproject,
   producer geocoding and OSMnx export ignore the project CRS. *Open.*
 - UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into
