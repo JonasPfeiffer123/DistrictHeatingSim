@@ -1856,6 +1856,32 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
 
 ---
 
+## H. User test 2026-10-08 (`ANWENDERTEST_2026-10-08.md`)
+First-time-user run of the real GUI (headless, scripted) with four projects: Görlitz example,
+Zittau (address CSV), Ostritz (OSM buildings), Freiburg (Excel export, UTM 32). Full findings
+(German) with code locations in `ANWENDERTEST_2026-10-08.md`; the scenario scripts that
+reproduce them are in `tests/e2e/` (`CHECK <id>` / `WORKAROUND <id>` markers in `events.log`).
+IDs below are the report's IDs with a `UT-` prefix.
+
+**Stage 1 – correctness (in progress, branch `fix/anwendertest-stufe1`):**
+- UT-K1 — pipe heat losses 2–4× too high: the diameter sizing never updates `outer_diameter_mm`. *Open.*
+- UT-K2 — CRS outside UTM 33: default 25833 without a hint, CRS change does not reproject,
+  producer geocoding and OSMnx export ignore the project CRS. *Open.*
+- UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into
+  the user's source file. *Open.*
+- UT-K4 — saving while a net thread runs stores an intermediate net that never converges again. *Open.*
+- UT-K6 — recent-projects file in the package folder; read-only install → projects open silently
+  not at all; example project opened (and overwritten) in the package folder. *Open.*
+- UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. *Open.*
+- UT-H7 — project-tab CSV round trip prepends a BOM per save. *Open.*
+- UT-M3 — map: network layers loaded once per folder-change signal (3×), `fitBounds` ends on the
+  single producer point. *Open.*
+
+**Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
+default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H5/H6
+(import + geocoding quality), UT-H8 (project-tree double click), UT-H9 (climate data/location),
+UT-H10 (stale results), UT-M1…M17, UT-N.
+
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
 (`_04_technology_dialogs`, `osm_dialogs`, `interactive_network_plot`/B3), B5, C2

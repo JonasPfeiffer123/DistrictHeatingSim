@@ -1,0 +1,16 @@
+Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;Subtyp;WW_Anteil;Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max;Normaußentemperatur
+Deutschland;Sachsen;Zittau;Markt 1;420000;GKO;03;0.1;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Markt 9;95000;HMF;03;0.2;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Markt 13;88000;HMF;03;0.2;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Neustadt 23;120000;GHA;03;0.1;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Neustadt 32;76000;HMF;03;0.2;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Johannisplatz 1;60000;GKO;03;0.05;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Frauenstraße 5;54000;HMF;03;0.2;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Innere Weberstraße 10;67000;HMF;03;0.2;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Bautzner Straße 12;48000;HMF;03;0.2;FBH;55;1.0;35;-16
+Deutschland;Sachsen;Zittau;Theaterring 12;380000;GBD;03;0.05;HK;75;1.5;55;-16
+Deutschland;Sachsen;Zittau;Klosterplatz 3;150000;GBH;03;0.3;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Reichenberger Straße 3;82000;HMF;03;0.2;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Töpferberg 4;29000;HEF;03;0.15;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Karl-Liebknecht-Ring 7;210000;GBD;03;0.05;HK;70;1.5;55;-16
+Deutschland;Sachsen;Zittau;Lessingstraße 9;35000;HEF;03;0.15;HK;70;1.5;55;-16
