@@ -13,10 +13,12 @@ import pytest
 
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
     ISOPLUS_MATERIAL,
+    apply_pipe_std_type,
     isoplus_std_type_names,
     kmr_to_isoplus_std_type,
     nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
+    sync_outer_diameters_with_std_types,
 )
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
@@ -387,6 +389,80 @@ class TestResolvePipeU:
 
         s = pd.Series({"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3})
         assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)
+
+
+def _catalog():
+    import pandapipes as pp
+
+    return pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe")
+
+
+def _net_with_one_pipe(std_type="ISOPLUS_DRE100_2x"):
+    import pandapipes as pp
+
+    net = pp.create_empty_network(fluid="water")
+    j1 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
+    j2 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
+    pp.create_pipe(net, j1, j2, std_type=std_type, length_km=0.1, k_mm=0.1)
+    return net
+
+
+def _per_metre_loss_w_per_mk(pipe_row):
+    """Heat-loss coefficient pandapipes applies to a pipe row: u_w_per_m2k * pi * outer diameter."""
+    return pipe_row["u_w_per_m2k"] * np.pi * pipe_row["outer_diameter_mm"] / 1000.0
+
+
+class TestApplyPipeStdType:
+    """UT-K1: a type change must take over the outer diameter too. pandapipes spreads
+    u_w_per_m2k over pi * outer_diameter_mm of the pipe row, and u_w_per_m2k is derived from
+    the *new* type's outer diameter; a stale outer diameter scaled the heat loss (DN100 -> DN20:
+    4.25x)."""
+
+    def test_takes_over_every_type_dependent_column(self):
+        catalog = _catalog()
+        net = _net_with_one_pipe("ISOPLUS_DRE100_2x")
+        apply_pipe_std_type(net, 0, "ISOPLUS_DRE25_2x", catalog.loc["ISOPLUS_DRE25_2x"])
+        row, props = net.pipe.iloc[0], catalog.loc["ISOPLUS_DRE25_2x"]
+        assert row["std_type"] == "ISOPLUS_DRE25_2x"
+        assert row["inner_diameter_mm"] == pytest.approx(props["inner_diameter_mm"])
+        assert row["outer_diameter_mm"] == pytest.approx(props["outer_diameter_mm"])
+        # The pipe now loses exactly the catalogue heat per metre.
+        assert _per_metre_loss_w_per_mk(row) == pytest.approx(props["u_w_per_mk"], rel=1e-9)
+        assert row["k_mm"] == pytest.approx(0.1)  # untouched without k_mm
+
+    def test_sets_roughness_when_given(self):
+        catalog = _catalog()
+        net = _net_with_one_pipe()
+        apply_pipe_std_type(net, 0, "ISOPLUS_DRE40_2x", catalog.loc["ISOPLUS_DRE40_2x"], k_mm=0.05)
+        assert net.pipe.iloc[0]["k_mm"] == pytest.approx(0.05)
+
+    def test_type_without_heat_loss_value_leaves_the_pipe_unchanged(self):
+        net = _net_with_one_pipe()
+        before = net.pipe.iloc[0].copy()
+        props = {"inner_diameter_mm": 27.3, "outer_diameter_mm": 33.7, "u_w_per_m2k": np.nan, "u_w_per_mk": np.nan}
+        with pytest.raises(ValueError):
+            apply_pipe_std_type(net, 0, "NO_U_TYPE", props)
+        assert net.pipe.iloc[0].equals(before)
+
+    def test_sync_resets_stale_outer_diameters_once(self):
+        catalog = _catalog()
+        net = _net_with_one_pipe("ISOPLUS_DRE100_2x")
+        # A pipe resized before the fix: new type, bore and u, but the DN100 outer diameter.
+        props = catalog.loc["ISOPLUS_DRE25_2x"]
+        net.pipe.at[0, "std_type"] = "ISOPLUS_DRE25_2x"
+        net.pipe.at[0, "inner_diameter_mm"] = props["inner_diameter_mm"]
+        net.pipe.at[0, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(props)
+        assert _per_metre_loss_w_per_mk(net.pipe.iloc[0]) > 3 * props["u_w_per_mk"]
+        assert sync_outer_diameters_with_std_types(net, catalog) == 1
+        assert _per_metre_loss_w_per_mk(net.pipe.iloc[0]) == pytest.approx(props["u_w_per_mk"], rel=1e-9)
+        assert sync_outer_diameters_with_std_types(net, catalog) == 0
+
+    def test_sync_leaves_unknown_std_types_alone(self):
+        net = _net_with_one_pipe()
+        net.pipe.at[0, "std_type"] = "CUSTOM_TYPE"
+        net.pipe.at[0, "outer_diameter_mm"] = 123.0
+        assert sync_outer_diameters_with_std_types(net, _catalog()) == 0
+        assert net.pipe.iloc[0]["outer_diameter_mm"] == 123.0
 
 
 class TestIsoplusStdTypeNames:
@@ -788,6 +864,21 @@ class TestMigrateLoadedNet:
         # inner_diameter_mm derived from the legacy diameter_m [m] -> mm.
         assert net.pipe.iloc[0]["inner_diameter_mm"] == pytest.approx(37.0)
 
+    def test_stale_outer_diameter_of_a_resized_pipe_is_reset(self):
+        # UT-K1: projects saved before the fix carry the start type's outer diameter on every
+        # resized pipe; loading them must restore the catalogue heat loss.
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
+        catalog = _catalog()
+        props = catalog.loc["ISOPLUS_DRE20_2x"]
+        net = _net_with_one_pipe("ISOPLUS_DRE100_2x")
+        net.pipe.at[0, "std_type"] = "ISOPLUS_DRE20_2x"
+        net.pipe.at[0, "inner_diameter_mm"] = props["inner_diameter_mm"]
+        net.pipe.at[0, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(props)
+        migrate_loaded_net(net)
+        assert net.pipe.iloc[0]["outer_diameter_mm"] == pytest.approx(props["outer_diameter_mm"])
+        assert _per_metre_loss_w_per_mk(net.pipe.iloc[0]) == pytest.approx(props["u_w_per_mk"], rel=1e-9)
+
     @staticmethod
     def _net_with_pump_controller(gain):
         from types import SimpleNamespace
@@ -905,6 +996,27 @@ class TestNetworkInitialization:
         assert all(str(s).startswith("ISOPLUS_DRE") for s in net.pipe["std_type"])
         # Pipe diameters are stored in the 0.14 inner_diameter_mm column, all positive.
         assert np.all(net.pipe["inner_diameter_mm"].values > 0)
+
+    @staticmethod
+    def _assert_catalogue_heat_loss(net):
+        catalog = _catalog()
+        for _, row in net.pipe.iterrows():
+            props = catalog.loc[row["std_type"]]
+            assert row["outer_diameter_mm"] == pytest.approx(props["outer_diameter_mm"]), row["std_type"]
+            assert _per_metre_loss_w_per_mk(row) == pytest.approx(props["u_w_per_mk"], rel=1e-9), row["std_type"]
+
+    def test_sized_pipes_lose_the_catalogue_heat(self):
+        # UT-K1: init_diameter_types resizes every DN100 start pipe; each one must carry the
+        # outer diameter (and so the per-metre heat loss) of the type it was resized to.
+        net = self._build_and_init()
+        assert set(net.pipe["std_type"]) != {"ISOPLUS_DRE100_2x"}  # something was resized
+        self._assert_catalogue_heat_loss(net)
+
+    def test_optimized_pipes_lose_the_catalogue_heat(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types
+
+        net = optimize_diameter_types(self._build_and_init(), v_max=1.0, k=0.1)
+        self._assert_catalogue_heat_loss(net)
 
     def test_recalculate_net_reconverges_after_pipe_edit(self):
         # The domain step behind the GUI "recalculate" button (extracted from the view,

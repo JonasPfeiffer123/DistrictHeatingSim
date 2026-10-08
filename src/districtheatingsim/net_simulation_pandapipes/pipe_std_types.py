@@ -185,3 +185,58 @@ def resolve_pipe_u_w_per_m2k(properties) -> float:
         )
     # Match pandapipes: spread the per-length loss over the outer pipe surface.
     return float(u_len) / (math.pi * outer_d_m)
+
+
+def apply_pipe_std_type(net, pipe_idx, std_type: str, properties, k_mm: float | None = None) -> None:
+    """
+    Switch one pipe of a net to another std-type, taking over every type-dependent column.
+
+    Sets ``std_type``, ``inner_diameter_mm``, ``outer_diameter_mm`` and ``u_w_per_m2k`` (and
+    ``k_mm`` if given). The outer diameter is part of the heat loss: pandapipes spreads
+    ``u_w_per_m2k`` over ``π · outer_diameter_mm`` of the *pipe row*, while
+    :func:`resolve_pipe_u_w_per_m2k` derives the per-area value from the *std-type's* outer
+    diameter. A pipe that keeps the outer diameter of its previous type therefore loses
+    ``outer_old / outer_new`` times the catalogue heat — 4.25× for a DN20 resized from the
+    DN100 start type (BACKLOG UT-K1).
+
+    The heat-transfer value is resolved before anything is written, so a std-type without one
+    leaves the pipe unchanged.
+
+    :param net: pandapipes net.
+    :param pipe_idx: Index of the pipe in ``net.pipe``.
+    :param std_type: Name of the new std-type.
+    :param properties: The std-type's row of the pipe catalogue (``outer_diameter_mm``,
+        ``inner_diameter_mm`` and ``u_w_per_m2k``/``u_w_per_mk``).
+    :param k_mm: Wall roughness [mm] to set as well; ``None`` keeps the pipe's value.
+    :raises ValueError: If the std-type has no heat-transfer value (see
+        :func:`resolve_pipe_u_w_per_m2k`).
+    """
+    u_w_per_m2k = resolve_pipe_u_w_per_m2k(properties)
+    net.pipe.at[pipe_idx, "std_type"] = std_type
+    net.pipe.at[pipe_idx, "inner_diameter_mm"] = float(properties["inner_diameter_mm"])
+    net.pipe.at[pipe_idx, "outer_diameter_mm"] = float(properties["outer_diameter_mm"])
+    net.pipe.at[pipe_idx, "u_w_per_m2k"] = u_w_per_m2k
+    if k_mm is not None:
+        net.pipe.at[pipe_idx, "k_mm"] = k_mm
+
+
+def sync_outer_diameters_with_std_types(net, catalog) -> int:
+    """
+    Reset ``outer_diameter_mm`` of every pipe to the value of its std-type.
+
+    Repairs nets saved before the fix of BACKLOG UT-K1, whose resized pipes kept the outer
+    diameter of the start type. Pipes whose std-type is not in ``catalog`` are left alone;
+    ``u_w_per_m2k`` is already consistent with the std-type (it was always resolved from it).
+
+    :param net: pandapipes net.
+    :param catalog: Pipe catalogue (``pp.std_types.available_std_types(net, "pipe")``).
+    :return: Number of pipes whose outer diameter was corrected.
+    :rtype: int
+    """
+    if "std_type" not in net.pipe.columns or "outer_diameter_mm" not in net.pipe.columns:
+        return 0
+    expected = net.pipe["std_type"].map(catalog["outer_diameter_mm"])
+    known = expected.notna()
+    stale = known & ((expected - net.pipe["outer_diameter_mm"]).abs() > 1e-6)
+    net.pipe.loc[stale, "outer_diameter_mm"] = expected[stale].astype(float)
+    return int(stale.sum())
