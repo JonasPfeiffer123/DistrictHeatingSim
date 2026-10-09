@@ -34,7 +34,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.geocoding.building_csv import centroid_of, geojson_to_building_csv
+from districtheatingsim.geocoding.building_csv import centroid_of, format_building_csv_summary, geojson_to_building_csv
 from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
@@ -134,7 +134,7 @@ class ProjectModel:
         :return: Output file path.
         :rtype: str
         """
-        return geojson_to_building_csv(geojson_file_path, output_file_path, default_values, project_crs)
+        return geojson_to_building_csv(geojson_file_path, output_file_path, default_values, project_crs)["path"]
 
     def calculate_centroid(self, coordinates):
         """
@@ -449,7 +449,7 @@ class ProjectPresenter:
 
         self._store_imported_buildings(df, target_path)
 
-    def _store_imported_buildings(self, df, target_path: str) -> None:
+    def _store_imported_buildings(self, df, target_path: str, details: str = "") -> bool:
         """
         Write imported buildings to the project's building CSV and show them.
 
@@ -460,6 +460,8 @@ class ProjectPresenter:
 
         :param df: Imported buildings in the internal column schema.
         :param target_path: The project's ``Quartier IST.csv``.
+        :param details: Further lines for the success message (e.g. the OSM conversion report).
+        :return: True if the buildings were stored.
         """
         existing = self._count_buildings(target_path)
         if existing:
@@ -472,7 +474,7 @@ class ProjectPresenter:
                 QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
-                return
+                return False
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
         try:
             df.to_csv(target_path, sep=";", index=False, encoding="utf-8-sig")
@@ -481,10 +483,13 @@ class ProjectPresenter:
             QMessageBox.information(
                 self.view,
                 "Import erfolgreich",
-                f"{len(df)} Gebäude importiert und gespeichert unter:\n{target_path}",
+                f"{len(df)} Gebäude importiert und gespeichert unter:\n{target_path}"
+                + (f"\n\n{details}" if details else ""),
             )
         except Exception as e:
             QMessageBox.critical(self.view, "Fehler beim Speichern", str(e))
+            return False
+        return True
 
     def _count_buildings(self, csv_path: str) -> int:
         """Number of non-empty building rows in a building CSV (0 if it does not exist)."""
@@ -620,7 +625,7 @@ class ProjectPresenter:
             # Extract sample coordinates from first building for reverse geocoding
             sample_coords = None
             try:
-                with open(geojson_file_path) as f:
+                with open(geojson_file_path, encoding="utf-8") as f:
                     data = json.load(f)
                     if data.get("features") and len(data["features"]) > 0:
                         first_feature = data["features"][0]
@@ -653,6 +658,7 @@ class ProjectPresenter:
                     default_values,
                     self.model,
                     project_crs=self.folder_manager.project_crs,
+                    options=dialog.get_options(),
                 )
                 self.geojson_conversion_thread.progress_update.connect(self.on_geojson_conversion_progress)
                 self.geojson_conversion_thread.calculation_done.connect(self.on_geojson_conversion_done)
@@ -679,18 +685,27 @@ class ProjectPresenter:
             self.view.progressBar.setValue(current)
         self.view.statusLabel.setText(message)
 
-    def on_geojson_conversion_done(self, output_file_path):
+    def on_geojson_conversion_done(self, summary):
         """
         Handle completion of GeoJSON conversion.
 
-        :param output_file_path: Path to created CSV file.
-        :type output_file_path: str
+        The buildings go into the project's building list like an import (asking before existing
+        buildings are replaced); they used to stay in ``Gebäudedaten/OSM_building_data.csv`` and had
+        to be copied by hand (BACKLOG UT-K5).
+
+        :param summary: Report of ``geojson_to_building_csv`` (``path`` = the converted CSV).
+        :type summary: dict
         """
+        import pandas as pd
+
         self.view.progressBar.setRange(0, 1)
         self.view.progressBar.setValue(1)
         self.view.statusLabel.setText("Konvertierung abgeschlossen")
-        self.load_csv(output_file_path)
-        self.view.show_message("Erfolg", f"CSV-Datei wurde erfolgreich erstellt:\n{output_file_path}")
+        report = format_building_csv_summary(summary)
+        buildings = pd.read_csv(summary["path"], sep=";", encoding="utf-8-sig", dtype=str, keep_default_na=False)
+        if not self._store_imported_buildings(buildings, self._building_csv_path(), details=report):
+            self.load_csv(summary["path"])
+            self.view.show_message("Konvertierung abgeschlossen", f"{report}\n\nGespeichert unter:\n{summary['path']}")
 
     def on_geojson_conversion_error(self, error_message):
         """
