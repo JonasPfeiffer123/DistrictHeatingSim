@@ -2015,7 +2015,8 @@ IDs below are the report's IDs with a `UT-` prefix.
   consumers, 479.5 kW). Tests: `test_every_house_connection_ends_on_a_return_junction`,
   `TestUserTestH4`, `TestGenerationInputs`, `test_unconnected_buildings_are_marked_on_the_map`.
 
-**Later stages (see the report, section 6):** UT-H6 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
+**Later stages (see the report, section 6):** UT-H6 (geocoding quality), UT-H9 (climate
+data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
