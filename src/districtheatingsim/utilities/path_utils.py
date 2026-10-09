@@ -104,3 +104,34 @@ def get_app_root():
         return os.path.dirname(sys.executable)
     else:
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def user_settings_dir() -> str:
+    """
+    Per-user, always writable folder for the application's own settings (recent projects).
+
+    ``%APPDATA%/DistrictHeatingSim`` on Windows, ``~/.config/DistrictHeatingSim`` elsewhere;
+    ``$DHS_SETTINGS_DIR`` overrides it (tests). The settings used to live in the installation
+    folder, which is read-only under "C:/Program Files" or in a system site-packages; opening a
+    project then failed silently (BACKLOG UT-K6). The folder is not created here.
+
+    :return: Absolute folder path.
+    :rtype: str
+    """
+    override = os.environ.get("DHS_SETTINGS_DIR")
+    if override:
+        return override
+    base = os.environ.get("APPDATA") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "DistrictHeatingSim")
+
+
+def user_projects_dir() -> str:
+    """
+    Default folder for the user's own projects: ``~/Documents/DistrictHeatingSim``
+    (``~/DistrictHeatingSim`` if there is no Documents folder). Not created here.
+
+    :return: Absolute folder path.
+    :rtype: str
+    """
+    documents = os.path.join(os.path.expanduser("~"), "Documents")
+    return os.path.join(documents if os.path.isdir(documents) else os.path.expanduser("~"), "DistrictHeatingSim")

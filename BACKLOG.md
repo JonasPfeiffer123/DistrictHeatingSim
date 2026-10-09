@@ -1911,7 +1911,14 @@ IDs below are the report's IDs with a `UT-` prefix.
   `scenario_robustness.py save_while_calculating`. Tests: `tests/test_save_while_busy.py`. (Closing with
   "Ohne Speichern" during a run still waits for the worker — UT-H1.)
 - UT-K6 — recent-projects file in the package folder; read-only install → projects open silently
-  not at all; example project opened (and overwritten) in the package folder. *Open.*
+  not at all; example project opened (and overwritten) in the package folder. **Fixed 2026-10-09:**
+  the list lives in `path_utils.user_settings_dir()` (`%APPDATA%/DistrictHeatingSim`,
+  `$DHS_SETTINGS_DIR` for tests; a list in the package folder is taken over once); reading/writing it
+  can no longer fail an open; the welcome screen reports open/create errors instead of `except: pass`;
+  the bundled example opens as `~/Documents/DistrictHeatingSim/Görlitz (Beispiel)`
+  (`project_structure.working_copy_of_example`). Verified in `scenario_p0_example.py
+  open_bundled_example` and `scenario_robustness.py read_only_recent_list`. Tests:
+  `tests/test_user_settings.py`.
 - UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. *Open.*
 - UT-H7 — project-tab CSV round trip prepends a BOM per save. **Fixed 2026-10-09:** `ProjectModel.load_csv`
   and `geocoding.process_data` read with `utf-8-sig` and strip accumulated BOMs from the first header.
