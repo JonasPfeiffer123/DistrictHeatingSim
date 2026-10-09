@@ -231,6 +231,9 @@ def wait_until(condition, timeout=600, label="", poll=0.1):
         try:
             if condition():
                 elapsed = time.time() - start
+                # Deliver the queued signals of the finished worker (e.g. calculation_done) before
+                # the caller reads the results.
+                pump(0.5)
                 log("WAIT", label, f"done after {elapsed:.1f}s")
                 return elapsed
         except Exception:
