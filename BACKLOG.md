@@ -1900,12 +1900,17 @@ IDs below are the report's IDs with a `UT-` prefix.
   scenario: producer (412551 / 5314169), OSMnx network at 7.82° E. Tests: `tests/test_crs_handling.py`.
   Open: streets/network files of a project keep their CRS on a switch (the dialog says so).
 - UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into
-  the user's source file. *Open.*
+  the user's source file. **Fixed 2026-10-09:** both import paths write the project's
+  `Quartier IST.csv` (`;`, UTF-8 BOM, values as text) via `_store_imported_buildings`, asking before
+  existing buildings are replaced; choosing the project file itself just loads it. The building CSV
+  path is normalised (no more `…\Variante 1\..\…` in messages). Tests: `tests/test_project_tab_import.py`.
 - UT-K4 — saving while a net thread runs stores an intermediate net that never converges again. *Open.*
 - UT-K6 — recent-projects file in the package folder; read-only install → projects open silently
   not at all; example project opened (and overwritten) in the package folder. *Open.*
 - UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. *Open.*
-- UT-H7 — project-tab CSV round trip prepends a BOM per save. *Open.*
+- UT-H7 — project-tab CSV round trip prepends a BOM per save. **Fixed 2026-10-09:** `ProjectModel.load_csv`
+  and `geocoding.process_data` read with `utf-8-sig` and strip accumulated BOMs from the first header.
+  Tests: `TestBomRoundTrip`.
 - UT-M3 — map: network layers loaded once per folder-change signal (3×), `fitBounds` ends on the
   single producer point. *Open.*
 
