@@ -1952,9 +1952,24 @@ IDs below are the report's IDs with a `UT-` prefix.
   0.2, and short source names ("Typ") no longer match by substring. Verified with the Freiburg Excel
   export in `scenario_p3_freiburg.py import_excel geocode_default_crs` (12/12 geocoded with house
   numbers, heat demand computed). Tests: `tests/test_csv_import_dialog.py`, `TestImportExcelTables`.
+- UT-H3 — Overpass/Nominatim without an error strategy: one Overpass endpoint, no retry, raw
+  tracebacks; geopy's `RateLimiter` swallowed Nominatim failures, so a blocked or unreachable
+  Nominatim looked like "address not found". **Fixed 2026-10-09:** `utilities/web_services.py` —
+  `call_with_retries` asks every server per round (`OVERPASS_SERVERS`: overpass-api.de, then the
+  public instance overpass.private.coffee) and pauses 15 s / 45 s between three rounds;
+  `is_transient` separates busy/unreachable servers from bad queries and empty areas; a final
+  failure is a `ServiceUnavailableError` with a German message, shown without traceback by the
+  download, net-generation and geocoding threads and the producer geocoding. Used by the building
+  download (overpy), the street download and the OSMnx net generation (`osmnx_with_retries`, which
+  points OSMnx at the next server per attempt). Nominatim: `swallow_exceptions=False`; geocoding stops
+  with the message and leaves the CSV unchanged. Verified with `scenario_robustness.py
+  osm_server_down` (unreachable server simulated) and against the real servers on 2026-10-09, when
+  overpass-api.de answered 504 "Server load too high" to every query and private.coffee 500: three
+  rounds, then the message after ~90 s. Tests: `tests/test_web_services.py`.
+  Open: a local response cache for the building query (OSMnx caches already).
 
 **Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
-default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H6
+default/progress/cancel), UT-H4 (connectivity), UT-H6
 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
