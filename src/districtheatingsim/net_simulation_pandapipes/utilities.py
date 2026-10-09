@@ -30,6 +30,35 @@ from districtheatingsim.utilities.utilities import get_resource_path
 
 logger = logging.getLogger(__name__)
 
+#: Minimum load of a house station, as a share of the station's own peak load.
+MIN_LOAD_SHARE = 0.02
+
+
+def apply_minimum_load(heat_w, power_w, share: float = MIN_LOAD_SHARE):
+    """
+    Raise every house station's low-load hours to a minimum, so each station keeps a small flow.
+
+    The minimum is ``share`` of the station's *own* peak (rows = stations, columns = time
+    steps). It used to be ``share`` of the largest station's peak, which raised small buildings
+    far above their demand - in the Zittau user test a single-family house next to the town
+    hall by 49 %, the whole quarter by 4 % (BACKLOG UT-K8). Electricity (cold network) is set to
+    its own minimum in the same hours; the mask is taken from the unclamped heat.
+
+    :param heat_w: Heat load per station [W], shape ``(stations, steps)`` (or ``(steps,)``).
+    :param power_w: Electricity per station [W], same shape.
+    :param share: Minimum as a share of the station's peak.
+    :return: ``(heat_w, power_w)`` with the minimum applied (new arrays).
+    :rtype: tuple[numpy.ndarray, numpy.ndarray]
+    """
+    heat = np.asarray(heat_w, dtype=float)
+    power = np.asarray(power_w, dtype=float)
+    if heat.size == 0:
+        return heat, power
+    min_heat = share * np.max(heat, axis=-1, keepdims=True)
+    min_power = share * np.max(power, axis=-1, keepdims=True)
+    below_minimum = heat < min_heat
+    return np.where(below_minimum, min_heat, heat), np.where(below_minimum, min_power, power)
+
 
 def validate_minimum_pressure_difference(
     net, target_dp_min_bar: float = 1.0, verbose: bool = True
