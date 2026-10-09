@@ -20,6 +20,8 @@ import stat
 import harness as H
 from PyQt6.QtGui import QCloseEvent
 
+from districtheatingsim.gui.MainTab.project_structure import create_variant_structure
+
 ZITTAU = H.project_path("Zittau_Altstadt")
 
 
@@ -33,7 +35,7 @@ def cancel_open():
 
 
 def tree_double_click():
-    """R2: double click on 'Eingangsdaten allgemein' in the project tree."""
+    """R2: double click on 'Eingangsdaten allgemein', then on another variant in the project tree."""
     folder_manager = H.VIEW.presenter.folder_manager
     tab = H.VIEW.projectTab
     H.log("STATE", "before", f"project={folder_manager.project_folder} try={folder_manager.try_filename}")
@@ -42,6 +44,14 @@ def tree_double_click():
     H.pump(1)
     H.log("CHECK H8", "after", f"project={folder_manager.project_folder} try={folder_manager.try_filename}")
     H.log("CHECK H8", "recent projects", json.load(open(H.RECENT_FILE[0], encoding="utf-8"))["recent_projects"][:2])
+
+    # Another variant: the main window asks to save first, then switches and loads its results.
+    create_variant_structure(os.path.join(ZITTAU, "Variante 2"))
+    H.MSGBOX_ANSWERS.append("Ohne Speichern")
+    index = tab.view.treeView.model().index(os.path.join(ZITTAU, "Variante 2"))
+    tab.presenter.on_tree_view_double_clicked(index)
+    H.pump(2)
+    H.log("CHECK H8", "variant after double click", folder_manager.variant_folder)
 
 
 def existing_name():

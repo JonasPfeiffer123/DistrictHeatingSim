@@ -599,6 +599,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.projectTab = ProjectTab(
             self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager
         )
+        self.projectTab.view.variantRequested.connect(self.on_variant_requested)
 
         self.buildingTab = BuildingTab(
             self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager
@@ -874,19 +875,8 @@ class HeatSystemDesignGUI(QMainWindow):
             self.show_error_message("Kein Projektordner ausgewählt.")
             return
 
-        # Check if user wants to save current changes before opening variant
-        dialog_result = self.show_save_dialog(
-            "Variante öffnen",
-            "Möchten Sie Ihre Änderungen vor dem Öffnen der Variante speichern?",
-            "Speichern und Variante öffnen",
-        )
-
-        if dialog_result == "cancel":
-            return  # User cancelled operation
-        elif dialog_result == "save":
-            if not self.save_all_project_results():
-                return  # User cancelled save operation
-        # If 'discard', proceed without saving
+        if not self._confirm_leaving_variant():
+            return
 
         # Discover available variants in current project
         available_variants = self.get_available_variants(project_folder)
@@ -904,6 +894,33 @@ class HeatSystemDesignGUI(QMainWindow):
                 self.on_importResultsAction()
         else:
             self.show_error_message("Keine Varianten im Projekt gefunden.")
+
+    def on_variant_requested(self, variant_name: str) -> None:
+        """
+        Switch to a variant double-clicked in the project tree (UT-H8).
+
+        Same path as "Variante öffnen": ask to save, activate the variant, load its results.
+
+        :param variant_name: Name of the variant folder (e.g. "Variante 2")
+        :type variant_name: str
+        """
+        if not self.folder_manager.project_folder or not self._confirm_leaving_variant():
+            return
+        self.presenter.folder_manager.set_variant_folder(variant_name)
+        self.on_importResultsAction()
+
+    def _confirm_leaving_variant(self) -> bool:
+        """Ask to save before another variant opens; False if the user cancelled."""
+        dialog_result = self.show_save_dialog(
+            "Variante öffnen",
+            "Möchten Sie Ihre Änderungen vor dem Öffnen der Variante speichern?",
+            "Speichern und Variante öffnen",
+        )
+        if dialog_result == "cancel":
+            return False
+        if dialog_result == "save":
+            return bool(self.save_all_project_results())
+        return True  # 'discard' or 'continue': proceed without saving
 
     def on_create_project_variant(self) -> None:
         """

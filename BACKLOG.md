@@ -1933,10 +1933,18 @@ IDs below are the report's IDs with a `UT-` prefix.
   9 → 3 layer entries, the whole network in view. Tests: `tests/test_map_reload.py`. (Old layers on
   re-generation: still open, cf. report M3.)
 
+**Stage 2 – the most frequent breaks on first contact (branch `fix/anwendertest-stufe2`):**
+- UT-H8 — a double click on any non-variant folder in the project tree made it the project folder
+  (TRY/COP reset, CRS default, sub-folder in "Zuletzt geöffnet"); a variant switched without asking
+  to save and without loading its results. **Fixed 2026-10-09:** only another variant folder of the
+  open project reacts; the tree emits `ProjectTabView.variantRequested` and the main window switches
+  through the same path as "Variante öffnen" (`_confirm_leaving_variant`, then results). Other folders
+  just expand. Verified in `scenario_robustness.py tree_double_click`. Tests: `tests/test_project_tree.py`.
+
 **Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
 default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H5/H6
-(import + geocoding quality), UT-H8 (project-tree double click), UT-H9 (climate data/location),
-UT-H10 (stale results), UT-M1…M17, UT-N.
+(import + geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17,
+UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
