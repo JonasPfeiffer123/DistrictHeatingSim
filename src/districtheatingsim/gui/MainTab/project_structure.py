@@ -14,6 +14,7 @@ user switches between.
 """
 
 import os
+import shutil
 
 #: Prefix shared by every variant folder. Used both to construct new variant
 #: names and to detect existing variant folders, so the creation and detection
@@ -101,3 +102,25 @@ def discover_variants(project_path: str) -> list[str]:
     return sorted(
         name for name in entries if name.startswith(VARIANT_PREFIX) and os.path.isdir(os.path.join(project_path, name))
     )
+
+
+def working_copy_of_example(example_path: str, projects_dir: str) -> tuple[str, bool]:
+    """
+    Return the user's working copy of the bundled example project, creating it on first use.
+
+    The example ships inside the installation; opening and saving it there overwrote the bundled
+    data (or failed in a read-only installation, BACKLOG UT-K6). The copy is
+    ``<projects_dir>/<example name> (Beispiel)``; an existing copy is reused, so the user's changes
+    are kept.
+
+    :param example_path: Folder of the bundled example project.
+    :param projects_dir: Folder for the user's projects.
+    :return: ``(copy_path, created)``.
+    :rtype: tuple[str, bool]
+    """
+    target = os.path.join(projects_dir, f"{os.path.basename(os.path.normpath(example_path))} (Beispiel)")
+    if os.path.exists(target):
+        return target, False
+    os.makedirs(projects_dir, exist_ok=True)
+    shutil.copytree(example_path, target)
+    return target, True

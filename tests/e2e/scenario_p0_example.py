@@ -38,6 +38,24 @@ def open_example():
     H.log("STATE", "map layer list", H.map_layer_names(view.visTab2.view.web_view))
 
 
+def open_bundled_example():
+    """UT-K6: opening the bundled example from the welcome screen works on a copy."""
+    import hashlib
+
+    from districtheatingsim.gui.MainTab import main_view
+
+    def digest():
+        return hashlib.sha256(open(os.path.join(EXAMPLE, "project_settings.json"), "rb").read()).hexdigest()
+
+    before = digest()
+    main_view.user_projects_dir = lambda: H.PROJECTS  # keep the copy in the work folder
+    shutil.rmtree(os.path.join(H.PROJECTS, "Görlitz (Beispiel)"), ignore_errors=True)
+    H.VIEW.show_welcome_screen()
+    H.open_project(EXAMPLE)
+    H.log("CHECK K6", "opened project", H.VIEW.presenter.folder_manager.project_folder)
+    H.log("CHECK K6", "bundled example unchanged", digest() == before)
+
+
 if __name__ == "__main__":
     H.start_app()
-    H.run_steps({"welcome": welcome, "open_example": open_example})
+    H.run_steps({"welcome": welcome, "open_example": open_example, "open_bundled_example": open_bundled_example})
