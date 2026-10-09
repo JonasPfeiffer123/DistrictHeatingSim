@@ -19,7 +19,11 @@ from districtheatingsim.net_generation.elevation_utils import (
     build_elevation_lookup,
     collect_unique_points_from_gdfs,
 )
-from districtheatingsim.net_generation.net_generation import generate_connection_lines, generate_network
+from districtheatingsim.net_generation.net_generation import (
+    build_offset_map,
+    generate_connection_lines,
+    generate_network,
+)
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.utilities.csv_schemas import validate_csv_columns
 
@@ -223,8 +227,14 @@ def generate_and_export_layers(
     )
 
     # Generate service connections for heat consumers and producers
-    heat_consumer_gdf = generate_connection_lines(heat_consumer_layer, offset_distance, offset_angle, heat_consumer_df)
-    heat_producer_gdf = generate_connection_lines(heat_generator_layer, offset_distance, offset_angle)
+    # Connections end on the return junctions: the same per-vertex offset as the return lines.
+    offset_map = build_offset_map(flow_lines_gdf, offset_distance, offset_angle)
+    heat_consumer_gdf = generate_connection_lines(
+        heat_consumer_layer, offset_distance, offset_angle, heat_consumer_df, offset_map=offset_map
+    )
+    heat_producer_gdf = generate_connection_lines(
+        heat_generator_layer, offset_distance, offset_angle, offset_map=offset_map
+    )
 
     # Standardize coordinate reference system
     heat_consumer_gdf = heat_consumer_gdf.set_crs(crs)

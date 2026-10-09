@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (
 )
 
 from districtheatingsim.geocoding.geocoding import get_coordinates
+from districtheatingsim.utilities.web_services import ServiceUnavailableError
 
 
 class LayerGenerationDialog(QDialog):
@@ -501,7 +502,11 @@ class LayerGenerationDialog(QDialog):
         if address:
             # In the project CRS: the default target was EPSG:25833, which put the producer of a
             # UTM-32 project ~450 km off (BACKLOG UT-K2).
-            x, y = get_coordinates(address, to_crs=self.project_crs)
+            try:
+                x, y = get_coordinates(address, to_crs=self.project_crs)
+            except ServiceUnavailableError as e:
+                QMessageBox.warning(self, "Adressdienst nicht erreichbar", str(e))
+                return
             if x and y:
                 self.insertRowInTable(str(x), str(y))
             else:
@@ -805,8 +810,36 @@ class LayerGenerationDialog(QDialog):
         Handle accept event.
 
         Collects all input data and emits the accepted_inputs signal
-        before closing the dialog.
+        before closing the dialog. Missing inputs are named instead of failing later with a
+        traceback (e.g. "Advanced MST" without a street file, BACKLOG UT-H4).
         """
         inputs = self.getInputs()
+        problems = missing_generation_inputs(inputs)
+        if problems:
+            QMessageBox.warning(self, "Netz generieren", "\n\n".join(problems))
+            return
         self.accepted_inputs.emit(inputs)
         self.accept()
+
+
+def missing_generation_inputs(inputs: dict) -> list[str]:
+    """
+    What the network generation needs but does not have (German messages; empty = ready).
+
+    MST and Advanced MST route along a street file; OSMnx loads the streets itself.
+    """
+    problems = []
+    if not inputs.get("dataCsv") or not os.path.exists(inputs["dataCsv"]):
+        problems.append(f"Die Gebäudedatei wurde nicht gefunden:\n{inputs.get('dataCsv') or '(keine angegeben)'}")
+    if inputs.get("generation_mode") != "OSMnx":
+        street_file = inputs.get("streetLayer")
+        if not street_file or not os.path.exists(street_file):
+            problems.append(
+                f"Für „{inputs.get('generation_mode')}“ wird eine Straßendatei benötigt, sie wurde nicht gefunden:\n"
+                f"{street_file or '(keine angegeben)'}\n\n"
+                "Laden Sie zuerst die OSM-Straßen herunter oder wählen Sie den Modus „OSMnx“, "
+                "der die Straßen selbst lädt."
+            )
+    if not inputs.get("coordinates"):
+        problems.append("Bitte mindestens einen Erzeugerstandort angeben.")
+    return problems

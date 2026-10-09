@@ -45,19 +45,11 @@ def _map_columns(dialog):
 
     keys = [column[0] for column in TARGET_COLUMNS]
     automatic = {keys[row]: dialog.table.cellWidget(row, dialog._COL_SOURCE).currentText() for row in range(len(keys))}
-    H.log("STATE", "automatic mapping (H5)", automatic)
-    # The best a user can do: there is no way to combine 'Straße' and 'Hausnr.' (H5).
-    wanted = {
-        "Stadt": "Ort",
-        "Adresse": "Straße",
-        "Wärmebedarf": "Jahreswärmebedarf [kWh]",
-        "Gebäudetyp": "Nutzung",
-        "WW_Anteil": "Anteil WW",
-    }
-    for key, source in wanted.items():
-        combo = dialog.table.cellWidget(keys.index(key), dialog._COL_SOURCE)
-        combo.setCurrentIndex(combo.findText(source))
-    dialog.table.cellWidget(keys.index("Bundesland"), 2).setText("Baden-Württemberg")
+    H.log("CHECK H5", "automatic mapping", automatic)
+    addition = dialog.table.cellWidget(keys.index("Adresse"), dialog._COL_ADDITION).currentText()
+    H.log("CHECK H5", "appended to the address", addition)
+    # Only the federal state is not in the file.
+    dialog.table.cellWidget(keys.index("Bundesland"), dialog._COL_DEFAULT).setText("Baden-Württemberg")
     H.shot(dialog, "p3_mapping")
     dialog._on_import()
     return dialog.result()
@@ -202,6 +194,38 @@ def networks():
         H.pump(1)
 
 
+def mst_hydraulics():
+    """H4: an MST network (house connections now on the return junctions) through pandapipes."""
+    ensure_open()
+    view = H.VIEW
+    view.tabWidget.setCurrentIndex(2)
+    H.pump(2)
+    presenter = view.visTab2.presenter
+    presenter.open_layer_generation_dialog()
+    H.pump(1)
+    dialog = H.find_top("LayerGenerationDialog")
+    dialog.coordSystemComboBox.setCurrentText("WGS84")
+    dialog.coordInput.setText(PRODUCER_WGS84)
+    dialog.addCoordFromInput()
+    dialog.generationModeComboBox.setCurrentText("MST")
+    dialog.onAccept()
+    H.wait_until(H.thread_finished(presenter, "netgenerationThread"), 900, "network MST")
+    H.pump(2)
+    tab = view.calcTab
+    H.DIALOG_HANDLERS["NetGenerationDialog"] = [lambda d: d.generateNetwork() or d.result()]
+    tab.openNetGenerationDialog()
+    H.wait_until(H.thread_finished(tab, "_init_thread"), 900, "net initialisation (MST)")
+    net = tab.NetworkGenerationData.net if tab.NetworkGenerationData else None
+    if net is not None and hasattr(net, "res_heat_consumer"):
+        H.log(
+            "CHECK H4",
+            "MST net in pandapipes",
+            f"pipes={len(net.pipe)} consumers={len(net.heat_consumer)} "
+            f"consumer load={net.res_heat_consumer.qext_w.sum() / 1000:.1f} kW "
+            f"pump={net.res_circ_pump_pressure.qext_w.sum() / 1000:.1f} kW",
+        )
+
+
 if __name__ == "__main__":
     H.start_app()
     H.run_steps(
@@ -211,5 +235,6 @@ if __name__ == "__main__":
             "corrected_data": corrected_data,
             "producer_geocoding": producer_geocoding,
             "networks": networks,
+            "mst_hydraulics": mst_hydraulics,
         }
     )

@@ -14,9 +14,12 @@ from decimal import Decimal
 import geojson
 import overpy
 
-# Canonical Overpass endpoint (HTTPS). overpy 0.7 defaults to plain-HTTP
+from districtheatingsim.utilities.web_services import OVERPASS_SERVERS, call_with_retries
+
+# Overpass interpreter endpoints (HTTPS), main server first. overpy 0.7 defaults to plain-HTTP
 # ``http://overpass-api.de/api/interpreter``.
-OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
+OVERPASS_ENDPOINTS = tuple(f"{server}/interpreter" for server in OVERPASS_SERVERS)
+OVERPASS_ENDPOINT = OVERPASS_ENDPOINTS[0]
 
 # overpy 0.7 calls ``urllib.request.urlopen`` without a User-Agent, so requests go
 # out as ``Python-urllib/x.y`` — which overpass-api.de now rejects with HTTP 406
@@ -92,13 +95,16 @@ def download_data(query, element_type):
     :type element_type: str
     :return: GeoJSON FeatureCollection with OSM data
     :rtype: geojson.FeatureCollection
-    :raises OverpassError: If API query fails
+    :raises ServiceUnavailableError: If the servers stay busy or unreachable after the retries
+    :raises OverpassError: If the query itself fails
 
     .. note::
         Ways create LineString geometries, buildings create Polygon/MultiPolygon.
     """
-    api = overpy.Overpass(url=OVERPASS_ENDPOINT)
-    result = api.query(query)
+    # Busy servers and dropped connections are retried, also on the second server (UT-H3).
+    result = call_with_retries(
+        lambda url: overpy.Overpass(url=url).query(query), service="Overpass", endpoints=OVERPASS_ENDPOINTS
+    )
 
     features = []
 

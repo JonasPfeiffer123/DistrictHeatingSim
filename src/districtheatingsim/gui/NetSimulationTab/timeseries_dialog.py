@@ -57,16 +57,28 @@ class TimeSeriesCalculationDialog(QDialog):
         calculationMethodGroup = QGroupBox("Berechnungsmethode", self)
         calculationMethodLayout = QVBoxLayout()
 
-        self.detailedCalcRadio = QRadioButton("Ausführliche Berechnung mit pandapipes (detailliert, langsamer)", self)
-        self.simplifiedCalcRadio = QRadioButton("Vereinfachte Berechnung (schnell, basierend auf Auslegung)", self)
-        self.detailedCalcRadio.setChecked(True)
+        # Simplified is the default: seconds for a year, enough for the producer design. The detailed
+        # run took 1.5-3 h for a year with 15 buildings and was the default (BACKLOG UT-H1).
+        self.simplifiedCalcRadio = QRadioButton(
+            "Vereinfachte Berechnung (Sekunden; Lastgang für die Erzeugerauslegung)", self
+        )
+        self.detailedCalcRadio = QRadioButton(
+            "Detaillierte hydraulische Berechnung mit pandapipes (Minuten bis Stunden; zur Prüfung)", self
+        )
+        self.simplifiedCalcRadio.setChecked(True)
 
         self.calculationMethodGroup = QButtonGroup(self)
         self.calculationMethodGroup.addButton(self.detailedCalcRadio, 0)
         self.calculationMethodGroup.addButton(self.simplifiedCalcRadio, 1)
 
-        calculationMethodLayout.addWidget(self.detailedCalcRadio)
         calculationMethodLayout.addWidget(self.simplifiedCalcRadio)
+        calculationMethodLayout.addWidget(self.detailedCalcRadio)
+        detailedHint = QLabel(
+            "Die detaillierte Berechnung zeigt Zeitschritt und Restzeit an und lässt sich jederzeit abbrechen.",
+            self,
+        )
+        detailedHint.setWordWrap(True)
+        calculationMethodLayout.addWidget(detailedHint)
         calculationMethodGroup.setLayout(calculationMethodLayout)
 
         self.layout.addWidget(calculationMethodGroup)
@@ -94,6 +106,7 @@ class TimeSeriesCalculationDialog(QDialog):
             "kurzzeitig im Rahmen der Regeltoleranz ab, Wärmemengen und Temperaturen nicht."
         )
         self.simplifiedCalcRadio.toggled.connect(lambda simplified: self.WorkersInput.setEnabled(not simplified))
+        self.WorkersInput.setEnabled(not self.simplifiedCalcRadio.isChecked())
         self.layout.addWidget(self.WorkersLabel)
         self.layout.addWidget(self.WorkersInput)
 

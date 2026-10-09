@@ -15,6 +15,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.geocoding.geocoding import process_data
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
+from districtheatingsim.utilities.web_services import ServiceUnavailableError
 
 
 class NetGenerationThread(QThread):
@@ -77,6 +78,8 @@ class NetGenerationThread(QThread):
                 )
 
             self.calculation_done.emit(())
+        except ServiceUnavailableError as e:
+            self.calculation_error.emit(str(e))  # busy OSM server: a message, not a traceback (UT-H3)
         except Exception as e:
             error_msg = f"{str(e)}\n{traceback.format_exc()}"
             self.calculation_error.emit(error_msg)
@@ -129,6 +132,8 @@ class OSMStreetDownloadThread(QThread):
         try:
             filepath = self.download_func(*self.args, **self.kwargs)
             self.download_done.emit(filepath)
+        except ServiceUnavailableError as e:
+            self.download_error.emit(str(e))  # busy OSM server: a message, not a traceback (UT-H3)
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Fehler beim Download:\n{str(e)}\n\n{tb}"
@@ -172,6 +177,8 @@ class OSMBuildingDownloadThread(QThread):
         try:
             filepath, building_count = self.download_func(*self.args, **self.kwargs)
             self.download_done.emit(filepath, building_count)
+        except ServiceUnavailableError as e:
+            self.download_error.emit(str(e))  # busy OSM server: a message, not a traceback (UT-H3)
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Fehler beim Download:\n{str(e)}\n\n{tb}"
@@ -276,6 +283,8 @@ class GeocodingThread(QThread):
         try:
             result = process_data(self.inputfilename, crs=self.project_crs)
             self.calculation_done.emit((self.inputfilename, result))
+        except ServiceUnavailableError as e:
+            self.calculation_error.emit(str(e))  # Nominatim blocked or unreachable (UT-H3)
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
@@ -298,10 +307,18 @@ class GeoJSONToCSVThread(QThread):
     """
 
     progress_update = pyqtSignal(int, int, str)  # current, total, message
-    calculation_done = pyqtSignal(str)  # output_file_path
+    calculation_done = pyqtSignal(object)  # summary dict of geojson_to_building_csv (incl. "path")
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, geojson_file_path, output_file_path, default_values, model, project_crs: str = "EPSG:25833"):
+    def __init__(
+        self,
+        geojson_file_path,
+        output_file_path,
+        default_values,
+        model,
+        project_crs: str = "EPSG:25833",
+        options: dict | None = None,
+    ):
         """
         Initialize GeoJSON to CSV conversion thread.
 
@@ -318,6 +335,8 @@ class GeoJSONToCSVThread(QThread):
         :type model: ProjectModel
         :param project_crs: Projected CRS of the input coordinates
         :type project_crs: str
+        :param options: Keyword options of ``geojson_to_building_csv`` (demand estimate, filters)
+        :type options: dict
         """
         super().__init__()
         self.geojson_file_path = geojson_file_path
@@ -325,6 +344,7 @@ class GeoJSONToCSVThread(QThread):
         self.default_values = default_values
         self.model = model
         self.project_crs = project_crs
+        self.options = options or {}
 
     def run(self):
         """
@@ -336,15 +356,16 @@ class GeoJSONToCSVThread(QThread):
         from districtheatingsim.geocoding.building_csv import geojson_to_building_csv
 
         try:
-            geojson_to_building_csv(
+            summary = geojson_to_building_csv(
                 self.geojson_file_path,
                 self.output_file_path,
                 self.default_values,
                 self.project_crs,
                 progress=lambda done, total, message: self.progress_update.emit(done, total, message),
                 should_stop=self.isInterruptionRequested,
+                **self.options,
             )
-            self.calculation_done.emit(self.output_file_path)
+            self.calculation_done.emit(summary)
         except InterruptedError:
             self.calculation_error.emit("Konvertierung abgebrochen")
         except Exception as e:
