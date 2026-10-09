@@ -171,3 +171,5 @@ cache/
 # Claude Code working files
 .claude/
 CLAUDE.md
+# GUI end-to-end harness output (tests/e2e/harness.py)
+tests/e2e/_work/

@@ -8,6 +8,7 @@ managing UI elements, menu system, theme management, and tab coordination.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 import os
 
 from PyQt6.QtCore import Qt, pyqtSlot
@@ -32,8 +33,15 @@ from PyQt6.QtWidgets import (
 # up (BACKLOG G8). QtWebEngineWidgets itself is imported by the entry point before the
 # QApplication exists, as Qt requires.
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
-from districtheatingsim.gui.MainTab.project_structure import discover_variants, resolve_new_project_start_dir
+from districtheatingsim.gui.MainTab.project_structure import (
+    discover_variants,
+    resolve_new_project_start_dir,
+    working_copy_of_example,
+)
 from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
+from districtheatingsim.utilities.path_utils import user_projects_dir
+
+logger = logging.getLogger(__name__)
 
 _TAB_ATTRIBUTES = ("projectTab", "buildingTab", "visTab2", "calcTab", "energySystemTab", "comparisonTab")
 
@@ -284,12 +292,35 @@ class HeatSystemDesignGUI(QMainWindow):
         # Sync theme toggle state
         self.sync_theme_toggle_state()
 
-        # Use the existing project opening functionality
+        # Errors used to be swallowed here, so a failed open just showed empty tabs (BACKLOG UT-K6).
         try:
-            # Call the existing method that handles project opening with all the proper logic
+            project_path = self._working_project_path(project_path)
             self.on_open_existing_project(project_path)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Projekt konnte nicht geöffnet werden: %s", project_path)
+            self.show_error_message(f"Das Projekt konnte nicht geöffnet werden:\n{project_path}\n\n{e}")
+
+    def _working_project_path(self, project_path: str) -> str:
+        """
+        Open the bundled example as the user's working copy instead of in the installation folder.
+
+        :param project_path: The selected project folder.
+        :return: The folder to open (unchanged for every other project).
+        """
+        example = self.welcome_screen.get_bundled_example_project() if self.welcome_screen else None
+        if not example or os.path.normcase(os.path.abspath(example[0])) != os.path.normcase(
+            os.path.abspath(project_path)
+        ):
+            return project_path
+        copy_path, created = working_copy_of_example(example[0], user_projects_dir())
+        if created:
+            QMessageBox.information(
+                self,
+                "Beispielprojekt",
+                f"Das Beispielprojekt wurde nach\n{copy_path}\nkopiert. Änderungen werden dort gespeichert; "
+                "das mitgelieferte Beispiel bleibt unverändert.",
+            )
+        return copy_path
 
     def on_new_project_requested(self):
         """Handle new project creation request from welcome screen."""
@@ -299,11 +330,11 @@ class HeatSystemDesignGUI(QMainWindow):
         # Sync theme toggle state
         self.sync_theme_toggle_state()
 
-        # Use the existing new project functionality
         try:
             self.on_create_new_project()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Projekt konnte nicht erstellt werden")
+            self.show_error_message(f"Das Projekt konnte nicht erstellt werden:\n\n{e}")
 
     def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:
         """
@@ -1017,6 +1048,25 @@ class HeatSystemDesignGUI(QMainWindow):
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
 
+    #: Tab attribute → label of the calculations it runs (for the "still running" message).
+    _BUSY_LABELS = {
+        "projectTab": "Projektdefinition: Geocoding / OSM-Import",
+        "buildingTab": "Wärmebedarf Gebäude",
+        "visTab2": "Kartenansicht: Geocoding / Netzgenerierung",
+        "calcTab": "Wärmenetzberechnung",
+        "energySystemTab": "Erzeugerauslegung",
+    }
+
+    def running_calculations(self) -> list[str]:
+        """Labels of the tabs that have a worker in flight (``is_busy()``)."""
+        running = []
+        for attribute, label in self._BUSY_LABELS.items():
+            tab = getattr(self, attribute, None)
+            is_busy = getattr(tab, "is_busy", None)
+            if callable(is_busy) and is_busy():
+                running.append(label)
+        return running
+
     def save_all_project_results(self) -> bool:
         """
         Zentrale Speicherlogik für alle Projektergebnisse.
@@ -1030,6 +1080,19 @@ class HeatSystemDesignGUI(QMainWindow):
         bool
             True wenn erfolgreich gespeichert, False wenn abgebrochen
         """
+        # Saving while a worker runs stored intermediate states (a net that never converged
+        # again, BACKLOG UT-K4); the caller (close, project/variant switch) is cancelled instead.
+        running = self.running_calculations()
+        if running:
+            details = "\n".join(f"  • {name}" for name in running)
+            QMessageBox.information(
+                self,
+                "Berechnung läuft",
+                f"Gespeichert werden kann erst, wenn diese Berechnungen abgeschlossen sind:\n{details}\n\n"
+                "Es wurde nichts gespeichert.",
+            )
+            return False
+
         reply = QMessageBox.warning(
             self,
             "Achtung: Daten werden überschrieben!",

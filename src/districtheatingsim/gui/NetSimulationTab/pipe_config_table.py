@@ -29,8 +29,8 @@ from PyQt6.QtWidgets import (
 
 from districtheatingsim.gui.utilities import NoScrollComboBox
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
+    apply_pipe_std_type,
     isoplus_std_type_names,
-    resolve_pipe_u_w_per_m2k,
 )
 
 logger = logging.getLogger(__name__)
@@ -132,13 +132,14 @@ class PipeConfigTable(QWidget):
                 if std_type:
                     net.pipe.at[pipe_idx, "std_type"] = std_type
                     if pipe_std_types is not None and std_type in pipe_std_types.index:
+                        props = pipe_std_types.loc[std_type]
                         try:
-                            net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(
-                                pipe_std_types.loc[std_type]
-                            )
+                            # Diameters and u from the type; the bore below may still be edited.
+                            apply_pipe_std_type(net, pipe_idx, std_type, props)
                         except ValueError:
                             # std-type carries no heat-loss value (e.g. an uninsulated
-                            # type); keep the pipe's existing u_w_per_m2k.
+                            # type); take its outer diameter, keep the pipe's existing u.
+                            net.pipe.at[pipe_idx, "outer_diameter_mm"] = float(props["outer_diameter_mm"])
                             logger.warning(
                                 "No heat-loss value for std-type '%s'; keeping existing u for pipe %d",
                                 std_type,
@@ -400,9 +401,7 @@ class PipeConfigTable(QWidget):
         try:
             pipe_std_types = pp.std_types.available_std_types(net, "pipe")
             props = pipe_std_types.loc[new_std_type]
-            net.pipe.at[pipe_idx, "std_type"] = new_std_type
-            net.pipe.at[pipe_idx, "inner_diameter_mm"] = props["inner_diameter_mm"]
-            net.pipe.at[pipe_idx, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(props)
+            apply_pipe_std_type(net, pipe_idx, new_std_type, props)
 
             self._table.blockSignals(True)
             item = self._table.item(row, 6)

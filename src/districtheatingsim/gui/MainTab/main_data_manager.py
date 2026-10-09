@@ -10,6 +10,7 @@ This module implements the Model layer of the MVP pattern, providing three core 
 """
 
 import json
+import logging
 import os
 import shutil
 from typing import Any
@@ -18,8 +19,14 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.gui.MainTab.project_structure import DEFAULT_VARIANT_NAME
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
+from districtheatingsim.utilities.path_utils import user_settings_dir
 from districtheatingsim.utilities.schema import add_meta, check_version
 from districtheatingsim.utilities.utilities import DEFAULT_COP_RESOURCE, DEFAULT_TRY_RESOURCE, get_resource_path
+
+logger = logging.getLogger(__name__)
+
+#: Where the recent-projects list was kept before BACKLOG UT-K6 (inside the installation).
+LEGACY_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recent_projects.json")
 
 
 class ProjectConfigManager:
@@ -56,12 +63,23 @@ class ProjectConfigManager:
 
     def get_default_config_path(self) -> str:
         """
-        Get the default path to recent_projects.json.
+        Path of ``recent_projects.json`` in the per-user settings folder.
+
+        It used to be written into the installation folder, which is read-only for a normal
+        installation; ``set_last_project`` then raised and opening a project failed silently
+        (BACKLOG UT-K6). A list left in the installation folder is taken over once.
 
         :return: Absolute path to the default configuration file
         :rtype: str
         """
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "recent_projects.json")
+        path = os.path.join(user_settings_dir(), "recent_projects.json")
+        if not os.path.exists(path) and os.path.exists(LEGACY_CONFIG_PATH):
+            try:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                shutil.copy2(LEGACY_CONFIG_PATH, path)
+            except OSError as e:
+                logger.warning("Liste der zuletzt geöffneten Projekte nicht übernommen: %s", e)
+        return path
 
     def get_default_file_paths_path(self) -> str:
         """
@@ -83,7 +101,8 @@ class ProjectConfigManager:
             try:
                 with open(self.config_path, encoding="utf-8") as file:
                     return json.load(file)
-            except (json.JSONDecodeError, UnicodeDecodeError):
+            except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
+                logger.warning("Liste der zuletzt geöffneten Projekte nicht lesbar (%s): %s", self.config_path, e)
                 return {}
         return {}
 
@@ -108,13 +127,15 @@ class ProjectConfigManager:
 
         :param config: Configuration data to save
         :type config: dict
-        :raises Exception: If file cannot be written
         """
+        # The recent-projects list is a convenience: failing to write it must never stop a
+        # project from opening (BACKLOG UT-K6).
         try:
+            os.makedirs(os.path.dirname(os.path.abspath(self.config_path)), exist_ok=True)
             with open(self.config_path, "w", encoding="utf-8") as file:
                 json.dump(config, file, indent=4, ensure_ascii=False)
-        except Exception:
-            raise
+        except OSError as e:
+            logger.warning("Liste der zuletzt geöffneten Projekte nicht gespeichert (%s): %s", self.config_path, e)
 
     def save_file_paths(self, file_paths: dict[str, str]) -> None:
         """
@@ -191,7 +212,9 @@ class ProjectConfigManager:
         if not relative_path:
             raise KeyError(f"Key '{key}' not found in file paths configuration.")
 
-        return relative_path
+        # file_paths.json uses Windows separators; on Linux/macOS a backslash is part of the file
+        # name, so "Variante 1/..\Definition Quartier IST\Quartier IST.csv" pointed nowhere.
+        return os.path.normpath(relative_path.replace("\\", "/"))
 
     def get_resource_path(self, key: str) -> str:
         """

@@ -26,6 +26,20 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # app uses). Must be set before the pytest-qt plugin reads it.
 os.environ.setdefault("PYTEST_QT_API", "pyqt6")
 
+# Keep the user's real settings (recent-projects list in %APPDATA%) out of the test run; the
+# subprocess tests inherit the variable.
+import tempfile  # noqa: E402
+
+os.environ.setdefault("DHS_SETTINGS_DIR", tempfile.mkdtemp(prefix="dhs-test-settings-"))
+
+# Modules that use QtWebEngine (map, Sankey) can only be imported before the first QApplication
+# exists. Importing it here, before any test creates one, lets GUI tests import such modules in
+# any order.
+try:
+    from PyQt6 import QtWebEngineWidgets  # noqa: F401
+except ImportError:  # QtWebEngine not installed - tests that need it fail on their own import
+    pass
+
 import numpy as np
 import pandas as pd
 import pytest
