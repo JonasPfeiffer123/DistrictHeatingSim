@@ -593,18 +593,28 @@ class VisualizationPresenter(QObject):
             )
 
     def _reload_map_then(self, callback):
-        """Reload the empty map HTML, then run *callback* once, after the page has loaded."""
+        """
+        Reload the empty map HTML, then run *callback* once after the page has loaded.
 
-        def _on_loaded(_ok=True):
-            try:
-                self.view.web_view.loadFinished.disconnect(_on_loaded)
-            except TypeError:
-                pass
-            callback()
-
-        self.view.web_view.loadFinished.connect(_on_loaded)
+        Only the latest callback runs. Each project/variant change used to connect another
+        one-shot handler; opening a project emits several folder changes in a row, and all
+        handlers then fired on the final page - the network appeared three times in the layer
+        list (BACKLOG UT-M3).
+        """
+        self._after_map_load = callback
+        if not getattr(self, "_map_load_handler_connected", False):
+            self.view.web_view.loadFinished.connect(self._on_map_loaded)
+            self._map_load_handler_connected = True
         if hasattr(self, "map_file_path"):
             self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
+
+    def _on_map_loaded(self, ok=True):
+        """Run the pending callback of ``_reload_map_then`` once the (latest) page load succeeded."""
+        if not ok:
+            return  # an aborted load (superseded by a newer reload) keeps the callback pending
+        callback, self._after_map_load = getattr(self, "_after_map_load", None), None
+        if callback is not None:
+            callback()
 
     def _auto_load_network(self, base_path):
         """
@@ -1031,6 +1041,16 @@ class VisualizationTabView(QWidget):
         Sets up web view configuration and Python-JavaScript bridge.
         """
         self.web_view = QWebEngineView()
+
+        # The OSM tile usage policy asks applications to identify themselves (BACKLOG UT-H2).
+        profile = self.web_view.page().profile()
+        if "DistrictHeatingSim" not in profile.httpUserAgent():
+            from districtheatingsim import __version__
+
+            profile.setHttpUserAgent(
+                f"{profile.httpUserAgent()} DistrictHeatingSim/{__version__} "
+                "(+https://github.com/JonasPfeiffer123/DistrictHeatingSim)"
+            )
 
         # Configure WebEngine settings to allow mixed content and local requests
         settings = self.web_view.page().settings()

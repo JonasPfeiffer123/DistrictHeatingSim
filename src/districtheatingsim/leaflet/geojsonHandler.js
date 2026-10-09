@@ -126,10 +126,7 @@ function importGeoJSON(geojsonData, fileName, editable) {
         console.log(`Transforming coordinates from ${sourceCRS} to WGS84 for`, geojsonData.features.length, "features");
         geojsonData.features.forEach(feature => {
             if (feature.geometry && feature.geometry.coordinates) {
-                const beforeCoord = JSON.stringify(feature.geometry.coordinates[0]);
                 transformCoordinates(feature, sourceCRS);
-                const afterCoord = JSON.stringify(feature.geometry.coordinates[0]);
-                console.log("Transformed:", beforeCoord, "->", afterCoord);
             }
         });
     } else {
@@ -215,10 +212,9 @@ function importGeoJSON(geojsonData, fileName, editable) {
     allLayers.addLayer(layerGroup);
     map.addLayer(layerGroup);
 
-    // Layer in den Kartenausschnitt anpassen
-    if (layerGroup.getBounds && layerGroup.getBounds().isValid()) {
-        map.fitBounds(layerGroup.getBounds());
-    }
+    // Show everything that is loaded. Fitting each layer on its own ended on the last one -
+    // for a network that is the single producer point, at maximum zoom (BACKLOG UT-M3).
+    fitMapToAllLayers();
 
     console.log("Layer-Gruppe importiert:", layerGroup.options.name,
                 "Features:", layerGroup.getLayers().length,
@@ -392,5 +388,14 @@ function transformCoordinatesToUTM(feature) {
     }
 }
 
+// Fit the map to all loaded layers; maxZoom keeps a single point from zooming in to the maximum.
+function fitMapToAllLayers() {
+    const bounds = allLayers.getBounds();
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
+    }
+}
+
+window.fitMapToAllLayers = fitMapToAllLayers;
 window.importGeoJSON = importGeoJSON; // Funktion global verfügbar machen
 window.getAllLayersAsGeoJSON = getAllLayersAsGeoJSON; // Export-Funktion verfügbar machen
