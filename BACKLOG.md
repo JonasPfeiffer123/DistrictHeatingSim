@@ -1889,7 +1889,16 @@ IDs below are the report's IDs with a `UT-` prefix.
   (inflated) station profiles until the net is initialised again. Tests: `TestMinimumLoad`,
   `test_network_demand_matches_the_building_profiles`.
 - UT-K2 — CRS outside UTM 33: default 25833 without a hint, CRS change does not reproject,
-  producer geocoding and OSMnx export ignore the project CRS. *Open.*
+  producer geocoding and OSMnx export ignore the project CRS.
+  **Fixed 2026-10-09:** `ProjectPresenter.change_project_crs` asks and converts the building CSV
+  (`crs_utils.reproject_building_csv`, other columns kept as text) for the combo, "Vorschlagen" and
+  after geocoding; geocoded coordinates outside the CRS's area of use (pyproj, ±1°) trigger the
+  suggestion (`outside_crs_area`, `suggest_crs_for_coordinates`). Producer geocoding uses the project
+  CRS; the OSMnx export is labelled with it (`export_unified_network`, and it now raises instead of
+  swallowing export errors, cf. C44). The project tab now also reports addresses that were not found
+  (`format_geocoding_summary`, shared with the map tab; part of UT-H6). Verified with the Freiburg
+  scenario: producer (412551 / 5314169), OSMnx network at 7.82° E. Tests: `tests/test_crs_handling.py`.
+  Open: streets/network files of a project keep their CRS on a switch (the dialog says so).
 - UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into
   the user's source file. *Open.*
 - UT-K4 — saving while a net thread runs stores an intermediate net that never converges again. *Open.*

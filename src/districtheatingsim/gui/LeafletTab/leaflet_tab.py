@@ -25,6 +25,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QFileDialog, QMenuBar, QMessageBox, QProgressBar, QVBoxLayout, QWidget
 from shapely.geometry import Point
 
+from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
@@ -449,22 +450,11 @@ class VisualizationPresenter(QObject):
         self.view.progressBar.setRange(0, 1)
 
         fname, summary = result
-        total = summary.get("total", 0)
-        success = summary.get("success", 0)
-        failed = summary.get("failed", 0)
-        failed_addresses = summary.get("failed_addresses", [])
-
-        if failed == 0:
-            msg = f"Geocoding abgeschlossen: {success} von {total} Adressen erfolgreich."
-            QMessageBox.information(self.view, "Geocoding erfolgreich", msg)
+        all_found, message = format_geocoding_summary(summary)
+        if all_found:
+            QMessageBox.information(self.view, "Geocoding erfolgreich", message)
         else:
-            details = "\n".join(f"  • {a}" for a in failed_addresses)
-            msg = (
-                f"Geocoding abgeschlossen: {success} von {total} Adressen erfolgreich.\n\n"
-                f"Nicht gefunden ({failed}):\n{details}\n\n"
-                f"Bitte prüfen Sie diese Adressen und ergänzen Sie die Koordinaten manuell."
-            )
-            QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", msg)
+            QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", message)
 
         self.load_csv_coordinates(fname)
 
