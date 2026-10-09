@@ -39,6 +39,7 @@ from districtheatingsim.net_simulation_pandapipes.result_validation import (
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import (
     COP_WP,
+    apply_minimum_load,
     correct_flow_directions,
     create_controllers,
     init_diameter_types,
@@ -272,18 +273,9 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     NetworkGenerationData.max_waerme_hast_ges_W = max_waerme_hast_ges_W
     NetworkGenerationData.max_el_leistung_hast_ges_W = max_el_leistung_hast_ges_W
 
-    # Apply minimum load constraints (2% of maximum)
-    max_heat = np.max(NetworkGenerationData.waerme_hast_ges_W)
-    max_power = np.max(NetworkGenerationData.strombedarf_hast_ges_W)
-    NetworkGenerationData.waerme_hast_ges_W = np.where(
-        NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat,
-        0.02 * max_heat,
-        NetworkGenerationData.waerme_hast_ges_W,
-    )
-    NetworkGenerationData.strombedarf_hast_ges_W = np.where(
-        NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat,
-        0.02 * max_power,
-        NetworkGenerationData.strombedarf_hast_ges_W,
+    # Minimum load per house station (share of the station's own peak, BACKLOG UT-K8)
+    NetworkGenerationData.waerme_hast_ges_W, NetworkGenerationData.strombedarf_hast_ges_W = apply_minimum_load(
+        NetworkGenerationData.waerme_hast_ges_W, NetworkGenerationData.strombedarf_hast_ges_W
     )
 
     # Convert to kW units

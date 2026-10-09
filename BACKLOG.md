@@ -1856,6 +1856,88 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
 
 ---
 
+## H. User test 2026-10-08 (`ANWENDERTEST_2026-10-08.md`)
+First-time-user run of the real GUI (headless, scripted) with four projects: Görlitz example,
+Zittau (address CSV), Ostritz (OSM buildings), Freiburg (Excel export, UTM 32). Full findings
+(German) with code locations in `ANWENDERTEST_2026-10-08.md`; the scenario scripts that
+reproduce them are in `tests/e2e/` (`CHECK <id>` / `WORKAROUND <id>` markers in `events.log`).
+IDs below are the report's IDs with a `UT-` prefix.
+
+**Stage 1 – correctness (done 2026-10-09, branch `fix/anwendertest-stufe1`):**
+- UT-K1 — pipe heat losses 2–4× too high: the diameter sizing never updates `outer_diameter_mm`.
+  **Fixed 2026-10-08:** `pipe_std_types.apply_pipe_std_type` takes over every type-dependent column
+  (std_type, inner/outer diameter, u, k) and is used by `init_diameter_types`,
+  `optimize_diameter_types` and the GUI pipe table; `migrate_loaded_net` resets stale outer
+  diameters of saved nets (`sync_outer_diameters_with_std_types`). Zittau design state: pipe losses
+  126.2 → 52.7 kW, 0 of 146 pipes stale; Görlitz golden master re-pinned (generation −2.0 %,
+  pump power −4.7 %). Tests: `TestApplyPipeStdType`, `TestMigrateLoadedNet`,
+  `TestNetworkInitialization::test_*_lose_the_catalogue_heat`.
+- UT-K7 — *found while fixing UT-K1:* the simplified time series took the peak of the summed load
+  profile as the design consumer load, but the design pipeflow is solved with every building at its
+  own peak; the non-simultaneity was booked as a permanent network loss (Zittau 148 kW instead of
+  ~50 kW). **Fixed 2026-10-08:** `design_consumer_load_kW` reads the solved consumer load of the net.
+  Zittau yearly losses 49.3 % → 39.4 % (UT-K1) → 18.1 % (UT-K7). Tests: `TestSimplifiedTimeSeries`.
+  (Side note: pandapipes' own `res_circ_pump_*.qext_w` uses cp(T)·T with absolute temperatures and
+  is 3–5 % too high at 40–85 °C; the app computes m·cp·ΔT itself, so it is not affected.)
+- UT-K8 — *found while checking UT-K7:* the minimum load (2 %) used the peak of the *largest* house
+  station as reference for every station, in both `initialize_geojson` and
+  `time_series_preprocessing` (copy-pasted); the electricity minimum compared the already clamped
+  heat and never applied. Zittau: a single-family house +49 %, the quarter +4 %; Görlitz +7 %.
+  **Fixed 2026-10-08:** one `utilities.apply_minimum_load` (2 % of each station's own peak, mask from
+  the unclamped heat) used by both. Golden master re-pinned (demand 4443.6 → 4155.1 MWh/a) and a new
+  invariant pins the network demand to the building profiles (±0.1 %). Projects keep their stored
+  (inflated) station profiles until the net is initialised again. Tests: `TestMinimumLoad`,
+  `test_network_demand_matches_the_building_profiles`.
+- UT-K2 — CRS outside UTM 33: default 25833 without a hint, CRS change does not reproject,
+  producer geocoding and OSMnx export ignore the project CRS.
+  **Fixed 2026-10-09:** `ProjectPresenter.change_project_crs` asks and converts the building CSV
+  (`crs_utils.reproject_building_csv`, other columns kept as text) for the combo, "Vorschlagen" and
+  after geocoding; geocoded coordinates outside the CRS's area of use (pyproj, ±1°) trigger the
+  suggestion (`outside_crs_area`, `suggest_crs_for_coordinates`). Producer geocoding uses the project
+  CRS; the OSMnx export is labelled with it (`export_unified_network`, and it now raises instead of
+  swallowing export errors, cf. C44). The project tab now also reports addresses that were not found
+  (`format_geocoding_summary`, shared with the map tab; part of UT-H6). Verified with the Freiburg
+  scenario: producer (412551 / 5314169), OSMnx network at 7.82° E. Tests: `tests/test_crs_handling.py`.
+  Open: streets/network files of a project keep their CRS on a switch (the dialog says so).
+- UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into
+  the user's source file. **Fixed 2026-10-09:** both import paths write the project's
+  `Quartier IST.csv` (`;`, UTF-8 BOM, values as text) via `_store_imported_buildings`, asking before
+  existing buildings are replaced; choosing the project file itself just loads it. The building CSV
+  path is normalised (no more `…\Variante 1\..\…` in messages). Tests: `tests/test_project_tab_import.py`.
+- UT-K4 — saving while a net thread runs stores an intermediate net that never converges again.
+  **Fixed 2026-10-09:** every calculating tab has `is_busy()`; `save_all_project_results` (also behind
+  "Speichern und schließen" and project/variant switches) lists the running calculations and saves
+  nothing; `saveNet`, the GeoJSON export and the energy-system save refuse on their own too. Verified in
+  `scenario_robustness.py save_while_calculating`. Tests: `tests/test_save_while_busy.py`. (Closing with
+  "Ohne Speichern" during a run still waits for the worker — UT-H1.)
+- UT-K6 — recent-projects file in the package folder; read-only install → projects open silently
+  not at all; example project opened (and overwritten) in the package folder. **Fixed 2026-10-09:**
+  the list lives in `path_utils.user_settings_dir()` (`%APPDATA%/DistrictHeatingSim`,
+  `$DHS_SETTINGS_DIR` for tests; a list in the package folder is taken over once); reading/writing it
+  can no longer fail an open; the welcome screen reports open/create errors instead of `except: pass`;
+  the bundled example opens as `~/Documents/DistrictHeatingSim/Görlitz (Beispiel)`
+  (`project_structure.working_copy_of_example`). Verified in `scenario_p0_example.py
+  open_bundled_example` and `scenario_robustness.py read_only_recent_list`. Tests:
+  `tests/test_user_settings.py`.
+- UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. **Fixed 2026-10-09:** basemaps
+  OpenStreetMap (default), OpenStreetMap Deutschland (FOSSGIS) and OpenTopoMap, all without a key;
+  after repeated tile errors the map switches to the next one; the web view identifies the app in its
+  User-Agent (OSM tile usage policy). Plotly's `carto-positron` (vector tiles) still works and stays.
+- UT-H7 — project-tab CSV round trip prepends a BOM per save. **Fixed 2026-10-09:** `ProjectModel.load_csv`
+  and `geocoding.process_data` read with `utf-8-sig` and strip accumulated BOMs from the first header.
+  Tests: `TestBomRoundTrip`.
+- UT-M3 — map: network layers loaded once per folder-change signal (3×), `fitBounds` ends on the
+  single producer point. **Fixed 2026-10-09:** `_reload_map_then` keeps one pending callback and runs it
+  on the first successful load (aborted loads keep it pending); imports fit the map to all layers
+  (`fitMapToAllLayers`, maxZoom 18); the per-feature console log on import is gone. Görlitz example:
+  9 → 3 layer entries, the whole network in view. Tests: `tests/test_map_reload.py`. (Old layers on
+  re-generation: still open, cf. report M3.)
+
+**Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
+default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H5/H6
+(import + geocoding quality), UT-H8 (project-tree double click), UT-H9 (climate data/location),
+UT-H10 (stale results), UT-M1…M17, UT-N.
+
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
 (`_04_technology_dialogs`, `osm_dialogs`, `interactive_network_plot`/B3), B5, C2

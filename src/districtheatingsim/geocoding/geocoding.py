@@ -55,6 +55,27 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
         return (None, None)
 
 
+def format_geocoding_summary(summary: dict) -> tuple[bool, str]:
+    """
+    German user message for the summary returned by :func:`process_data`.
+
+    :param summary: Dict with ``total``, ``success``, ``failed`` and ``failed_addresses``.
+    :return: ``(all_found, message)``.
+    :rtype: tuple[bool, str]
+    """
+    total = summary.get("total", 0)
+    success = summary.get("success", 0)
+    failed_addresses = summary.get("failed_addresses", [])
+    message = f"Geocoding abgeschlossen: {success} von {total} Adressen gefunden."
+    if not failed_addresses:
+        return True, message
+    details = "\n".join(f"  • {address}" for address in failed_addresses)
+    return False, (
+        f"{message}\n\nNicht gefunden ({len(failed_addresses)}):\n{details}\n\n"
+        "Bitte prüfen Sie diese Adressen und ergänzen Sie die Koordinaten manuell."
+    )
+
+
 def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     """
     Add projected coordinates to CSV file via geocoding.
@@ -76,14 +97,17 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     failed_addresses = []
 
     try:
+        # utf-8-sig on both sides: reading the BOM-prefixed file as plain utf-8 kept the BOM in the
+        # first header and prepended another one on every run (BACKLOG UT-H7).
         with (
-            open(input_csv, encoding="utf-8") as infile,
+            open(input_csv, encoding="utf-8-sig") as infile,
             open(temp_path, mode="w", newline="", encoding="utf-8-sig") as outfile,
         ):
             reader = csv.reader(infile, delimiter=";")
             writer = csv.writer(outfile, delimiter=";")
 
             headers = next(reader)
+            headers[0] = headers[0].lstrip("\ufeff")
 
             # Check if UTM_X and UTM_Y columns are already in the headers
             if "UTM_X" in headers and "UTM_Y" in headers:

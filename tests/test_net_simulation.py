@@ -13,10 +13,12 @@ import pytest
 
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
     ISOPLUS_MATERIAL,
+    apply_pipe_std_type,
     isoplus_std_type_names,
     kmr_to_isoplus_std_type,
     nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
+    sync_outer_diameters_with_std_types,
 )
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
@@ -387,6 +389,80 @@ class TestResolvePipeU:
 
         s = pd.Series({"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3})
         assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)
+
+
+def _catalog():
+    import pandapipes as pp
+
+    return pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe")
+
+
+def _net_with_one_pipe(std_type="ISOPLUS_DRE100_2x"):
+    import pandapipes as pp
+
+    net = pp.create_empty_network(fluid="water")
+    j1 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
+    j2 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
+    pp.create_pipe(net, j1, j2, std_type=std_type, length_km=0.1, k_mm=0.1)
+    return net
+
+
+def _per_metre_loss_w_per_mk(pipe_row):
+    """Heat-loss coefficient pandapipes applies to a pipe row: u_w_per_m2k * pi * outer diameter."""
+    return pipe_row["u_w_per_m2k"] * np.pi * pipe_row["outer_diameter_mm"] / 1000.0
+
+
+class TestApplyPipeStdType:
+    """UT-K1: a type change must take over the outer diameter too. pandapipes spreads
+    u_w_per_m2k over pi * outer_diameter_mm of the pipe row, and u_w_per_m2k is derived from
+    the *new* type's outer diameter; a stale outer diameter scaled the heat loss (DN100 -> DN20:
+    4.25x)."""
+
+    def test_takes_over_every_type_dependent_column(self):
+        catalog = _catalog()
+        net = _net_with_one_pipe("ISOPLUS_DRE100_2x")
+        apply_pipe_std_type(net, 0, "ISOPLUS_DRE25_2x", catalog.loc["ISOPLUS_DRE25_2x"])
+        row, props = net.pipe.iloc[0], catalog.loc["ISOPLUS_DRE25_2x"]
+        assert row["std_type"] == "ISOPLUS_DRE25_2x"
+        assert row["inner_diameter_mm"] == pytest.approx(props["inner_diameter_mm"])
+        assert row["outer_diameter_mm"] == pytest.approx(props["outer_diameter_mm"])
+        # The pipe now loses exactly the catalogue heat per metre.
+        assert _per_metre_loss_w_per_mk(row) == pytest.approx(props["u_w_per_mk"], rel=1e-9)
+        assert row["k_mm"] == pytest.approx(0.1)  # untouched without k_mm
+
+    def test_sets_roughness_when_given(self):
+        catalog = _catalog()
+        net = _net_with_one_pipe()
+        apply_pipe_std_type(net, 0, "ISOPLUS_DRE40_2x", catalog.loc["ISOPLUS_DRE40_2x"], k_mm=0.05)
+        assert net.pipe.iloc[0]["k_mm"] == pytest.approx(0.05)
+
+    def test_type_without_heat_loss_value_leaves_the_pipe_unchanged(self):
+        net = _net_with_one_pipe()
+        before = net.pipe.iloc[0].copy()
+        props = {"inner_diameter_mm": 27.3, "outer_diameter_mm": 33.7, "u_w_per_m2k": np.nan, "u_w_per_mk": np.nan}
+        with pytest.raises(ValueError):
+            apply_pipe_std_type(net, 0, "NO_U_TYPE", props)
+        assert net.pipe.iloc[0].equals(before)
+
+    def test_sync_resets_stale_outer_diameters_once(self):
+        catalog = _catalog()
+        net = _net_with_one_pipe("ISOPLUS_DRE100_2x")
+        # A pipe resized before the fix: new type, bore and u, but the DN100 outer diameter.
+        props = catalog.loc["ISOPLUS_DRE25_2x"]
+        net.pipe.at[0, "std_type"] = "ISOPLUS_DRE25_2x"
+        net.pipe.at[0, "inner_diameter_mm"] = props["inner_diameter_mm"]
+        net.pipe.at[0, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(props)
+        assert _per_metre_loss_w_per_mk(net.pipe.iloc[0]) > 3 * props["u_w_per_mk"]
+        assert sync_outer_diameters_with_std_types(net, catalog) == 1
+        assert _per_metre_loss_w_per_mk(net.pipe.iloc[0]) == pytest.approx(props["u_w_per_mk"], rel=1e-9)
+        assert sync_outer_diameters_with_std_types(net, catalog) == 0
+
+    def test_sync_leaves_unknown_std_types_alone(self):
+        net = _net_with_one_pipe()
+        net.pipe.at[0, "std_type"] = "CUSTOM_TYPE"
+        net.pipe.at[0, "outer_diameter_mm"] = 123.0
+        assert sync_outer_diameters_with_std_types(net, _catalog()) == 0
+        assert net.pipe.iloc[0]["outer_diameter_mm"] == 123.0
 
 
 class TestIsoplusStdTypeNames:
@@ -788,6 +864,21 @@ class TestMigrateLoadedNet:
         # inner_diameter_mm derived from the legacy diameter_m [m] -> mm.
         assert net.pipe.iloc[0]["inner_diameter_mm"] == pytest.approx(37.0)
 
+    def test_stale_outer_diameter_of_a_resized_pipe_is_reset(self):
+        # UT-K1: projects saved before the fix carry the start type's outer diameter on every
+        # resized pipe; loading them must restore the catalogue heat loss.
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+
+        catalog = _catalog()
+        props = catalog.loc["ISOPLUS_DRE20_2x"]
+        net = _net_with_one_pipe("ISOPLUS_DRE100_2x")
+        net.pipe.at[0, "std_type"] = "ISOPLUS_DRE20_2x"
+        net.pipe.at[0, "inner_diameter_mm"] = props["inner_diameter_mm"]
+        net.pipe.at[0, "u_w_per_m2k"] = resolve_pipe_u_w_per_m2k(props)
+        migrate_loaded_net(net)
+        assert net.pipe.iloc[0]["outer_diameter_mm"] == pytest.approx(props["outer_diameter_mm"])
+        assert _per_metre_loss_w_per_mk(net.pipe.iloc[0]) == pytest.approx(props["u_w_per_mk"], rel=1e-9)
+
     @staticmethod
     def _net_with_pump_controller(gain):
         from types import SimpleNamespace
@@ -905,6 +996,27 @@ class TestNetworkInitialization:
         assert all(str(s).startswith("ISOPLUS_DRE") for s in net.pipe["std_type"])
         # Pipe diameters are stored in the 0.14 inner_diameter_mm column, all positive.
         assert np.all(net.pipe["inner_diameter_mm"].values > 0)
+
+    @staticmethod
+    def _assert_catalogue_heat_loss(net):
+        catalog = _catalog()
+        for _, row in net.pipe.iterrows():
+            props = catalog.loc[row["std_type"]]
+            assert row["outer_diameter_mm"] == pytest.approx(props["outer_diameter_mm"]), row["std_type"]
+            assert _per_metre_loss_w_per_mk(row) == pytest.approx(props["u_w_per_mk"], rel=1e-9), row["std_type"]
+
+    def test_sized_pipes_lose_the_catalogue_heat(self):
+        # UT-K1: init_diameter_types resizes every DN100 start pipe; each one must carry the
+        # outer diameter (and so the per-metre heat loss) of the type it was resized to.
+        net = self._build_and_init()
+        assert set(net.pipe["std_type"]) != {"ISOPLUS_DRE100_2x"}  # something was resized
+        self._assert_catalogue_heat_loss(net)
+
+    def test_optimized_pipes_lose_the_catalogue_heat(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types
+
+        net = optimize_diameter_types(self._build_and_init(), v_max=1.0, k=0.1)
+        self._assert_catalogue_heat_loss(net)
 
     def test_recalculate_net_reconverges_after_pipe_edit(self):
         # The domain step behind the GUI "recalculate" button (extracted from the view,
@@ -1526,3 +1638,112 @@ class TestParallelTimeSeries:
             np.testing.assert_allclose(b[key], a[key], rtol=1e-6)
         # merged pump results come from the whole range
         assert set(parallel.pump_results) == set(sequential.pump_results)
+
+
+class TestSimplifiedTimeSeries:
+    """UT-K7: the simplified time series adds the design-state network loss to the building
+    load. The design pipeflow is solved with every building at its *own* peak, so the design
+    loss is generation minus the sum of those peaks - not minus the peak of the summed profile,
+    which booked the buildings' non-simultaneity as a permanent loss (Zittau: 148 kW instead of
+    ~50 kW)."""
+
+    @staticmethod
+    def _network_data():
+        from types import SimpleNamespace
+
+        import pandas as pd
+
+        # Two buildings peaking in different hours: individual peaks 50 + 44.5 kW = 94.5 kW,
+        # the summed profile peaks at only 60 kW.
+        building_a = np.array([50.0, 10.0, 5.0, 20.0]) * 1000
+        building_b = np.array([10.0, 44.5, 5.0, 20.0]) * 1000
+        design_consumers = pd.DataFrame({"qext_w": [50000.0, 44500.0]})
+        # Design generation 1 kg/s * 4.18 kJ/(kg K) * 25 K = 104.5 kW -> 10 kW network loss.
+        pump = pd.DataFrame(
+            {
+                "mdot_from_kg_per_s": [1.0],
+                "p_to_bar": [5.0],
+                "p_from_bar": [3.0],
+                "t_from_k": [60 + 273.15],
+                "t_to_k": [85 + 273.15],
+            }
+        )
+        net = SimpleNamespace(
+            heat_consumer=design_consumers, res_heat_consumer=design_consumers, res_circ_pump_pressure=pump
+        )
+        waerme_hast_ges_W = np.vstack([building_a, building_b])
+        return SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=waerme_hast_ges_W,
+            waerme_ges_kW=waerme_hast_ges_W.sum(axis=0) / 1000,
+            start_time_step=0,
+            end_time_step=4,
+            supply_temperature_heat_generator=85.0,
+        )
+
+    def test_design_load_is_the_sum_of_the_building_peaks(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import design_consumer_load_kW
+
+        assert design_consumer_load_kW(self._network_data()) == pytest.approx(94.5)
+
+    def test_adds_only_the_design_network_loss(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            simplified_time_series_net,
+        )
+
+        data = simplified_time_series_net(self._network_data())
+        qext = data.pump_results["Heizentrale Haupteinspeisung"][0]["qext_kW"]
+        assert qext == pytest.approx(data.waerme_ges_kW + 10.0)
+
+    def test_falls_back_to_the_profile_peak_without_consumer_results(self):
+        from types import SimpleNamespace
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import design_consumer_load_kW
+
+        data = self._network_data()
+        data.net = SimpleNamespace(res_circ_pump_pressure=data.net.res_circ_pump_pressure)
+        assert design_consumer_load_kW(data) == pytest.approx(60.0)
+
+
+class TestMinimumLoad:
+    """UT-K8: time_series_preprocessing raises low-load hours to a minimum so every house
+    station keeps a small flow. The minimum must be a share of the station's *own* peak; the
+    peak of the largest station raised a single-family house next to the town hall by 49 %."""
+
+    @staticmethod
+    def _network_data(heat_w, power_w=None):
+        from types import SimpleNamespace
+
+        heat_w = np.asarray(heat_w, dtype=float)
+        return SimpleNamespace(
+            netconfiguration="Niedertemperaturnetz",
+            supply_temperature_control="Statisch",
+            max_supply_temperature_heat_generator=85.0,
+            min_supply_temperature_heat_consumer=None,
+            return_temperature_heat_consumer=None,
+            supply_temperature_buildings=None,
+            return_temperature_buildings=None,
+            building_temperature_checked=False,
+            COP_filename=None,
+            secondary_producers=[],
+            waerme_hast_ges_W=heat_w,
+            strombedarf_hast_ges_W=np.zeros_like(heat_w) if power_w is None else np.asarray(power_w, dtype=float),
+        )
+
+    def test_minimum_is_a_share_of_each_stations_own_peak(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+        from districtheatingsim.net_simulation_pandapipes.utilities import MIN_LOAD_SHARE
+
+        town_hall = [250_000.0, 100_000.0, 0.0, 0.0]
+        house = [12_000.0, 3_000.0, 100.0, 0.0]
+        data = time_series_preprocessing(self._network_data([town_hall, house]))
+        assert data.waerme_hast_ges_W[0].tolist() == [250_000.0, 100_000.0, 5_000.0, 5_000.0]
+        house_min = MIN_LOAD_SHARE * 12_000.0
+        assert data.waerme_hast_ges_W[1].tolist() == [12_000.0, 3_000.0, house_min, house_min]
+        assert data.waerme_ges_kW.tolist() == pytest.approx([262.0, 103.0, 5.24, 5.24])
+
+    def test_electricity_minimum_applies_in_the_same_hours(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(self._network_data([[10_000.0, 0.0]], power_w=[[2_000.0, 0.0]]))
+        assert data.strombedarf_hast_ges_W.tolist() == [[2_000.0, 40.0]]

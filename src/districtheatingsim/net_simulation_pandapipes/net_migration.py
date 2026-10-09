@@ -23,6 +23,7 @@ from districtheatingsim.net_simulation_pandapipes.controllers import (
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
     nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
+    sync_outer_diameters_with_std_types,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,9 @@ def migrate_loaded_net(net):
       anchored as ISOPLUS in pandapipes 0.14).
     - Ensure the pipe table has the 0.14 ``inner_diameter_mm`` column, deriving it
       from the legacy ``diameter_m`` [m] for any pipe not covered by the remap.
+    - Reset every pipe's ``outer_diameter_mm`` to its std-type: nets saved before the fix
+      of BACKLOG UT-K1 kept the start type's outer diameter on resized pipes, which scales
+      their heat loss (up to 4.25× for a DN20 resized from DN100).
     - Raise the pickled pump controller's legacy gain (0.2) to the current default, so
       loaded projects get the faster-converging time series too (BACKLOG G1).
 
@@ -78,6 +82,10 @@ def migrate_loaded_net(net):
 
     if remapped:
         logger.info("Migrated %d KMR pipe(s) to ISOPLUS std-types", remapped)
+
+    corrected = sync_outer_diameters_with_std_types(net, catalog)
+    if corrected:
+        logger.info("Reset the outer diameter of %d resized pipe(s) to their std-type (BACKLOG UT-K1)", corrected)
 
     return net
 

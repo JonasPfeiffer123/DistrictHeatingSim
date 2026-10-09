@@ -129,3 +129,36 @@ def test_start_dir_recent_without_parent_falls_back(monkeypatch, tmp_path):
     (home / "Documents").mkdir(parents=True)
     monkeypatch.setattr(os.path, "expanduser", lambda p: p.replace("~", str(home)))
     assert os.path.normpath(resolve_new_project_start_dir(["Projekt"])) == os.path.normpath(str(home / "Documents"))
+
+
+class TestRelativePaths:
+    """file_paths.json is written with Windows separators; the paths must work on every platform."""
+
+    @staticmethod
+    def _config_manager(tmp_path):
+        from districtheatingsim.gui.MainTab.main_data_manager import ProjectConfigManager
+
+        return ProjectConfigManager(config_path=str(tmp_path / "recent.json"))
+
+    def test_building_csv_resolves_from_the_variant(self, tmp_path):
+        config_manager = self._config_manager(tmp_path)
+        variant = tmp_path / "Projekt" / DEFAULT_VARIANT_NAME
+        relative = config_manager.get_relative_path("current_building_data_path")
+        assert os.path.normpath(os.path.join(str(variant), relative)) == str(
+            tmp_path / "Projekt" / "Definition Quartier IST" / "Quartier IST.csv"
+        )
+
+    def test_backslashes_become_separators_on_posix(self, tmp_path, monkeypatch):
+        import posixpath
+        from types import SimpleNamespace
+
+        from districtheatingsim.gui.MainTab import main_data_manager
+
+        config_manager = self._config_manager(tmp_path)
+        monkeypatch.setattr(main_data_manager, "os", SimpleNamespace(path=posixpath))
+        for key in config_manager.file_paths_data:
+            assert "\\" not in config_manager.get_relative_path(key), key
+        assert (
+            config_manager.get_relative_path("current_building_data_path")
+            == "../Definition Quartier IST/Quartier IST.csv"
+        )

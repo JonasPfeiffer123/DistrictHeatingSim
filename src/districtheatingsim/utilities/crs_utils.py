@@ -94,3 +94,132 @@ def crs_to_urn(crs: str) -> str:
     """
     code = crs.upper().replace("EPSG:", "")
     return f"urn:ogc:def:crs:EPSG::{code}"
+
+
+#: Tolerance [degrees of longitude/latitude] around a CRS's area of use before a point counts as
+#: outside: a UTM zone can be stretched a little past its 6° band without noticeable distortion.
+CRS_AREA_TOLERANCE_DEG = 1.0
+
+
+def to_wgs84(xs, ys, crs: str):
+    """
+    Transform projected coordinates to WGS84.
+
+    :param xs: Easting values in ``crs``.
+    :param ys: Northing values in ``crs``.
+    :param crs: Source CRS, e.g. ``"EPSG:25833"``.
+    :return: ``(lon, lat)`` arrays in degrees.
+    :rtype: tuple[numpy.ndarray, numpy.ndarray]
+    """
+    import numpy as np
+    from pyproj import Transformer
+
+    transformer = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+    lon, lat = transformer.transform(np.asarray(xs, dtype=float), np.asarray(ys, dtype=float))
+    return np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)
+
+
+def outside_crs_area(xs, ys, crs: str, tolerance_deg: float = CRS_AREA_TOLERANCE_DEG):
+    """
+    Mark coordinates that lie outside the area of use of ``crs``.
+
+    Geocoding computes coordinates in the project CRS even far outside its zone (Freiburg in
+    EPSG:25833 gives a negative easting), so wrong projects are only visible this way
+    (BACKLOG UT-K2).
+
+    :param xs: Easting values in ``crs``.
+    :param ys: Northing values in ``crs``.
+    :param crs: The CRS the coordinates are in.
+    :param tolerance_deg: Margin around the area of use [degrees].
+    :return: Boolean array, ``True`` = outside; all ``False`` if ``crs`` has no area of use.
+    :rtype: numpy.ndarray
+    """
+    import numpy as np
+    from pyproj import CRS
+
+    lon, lat = to_wgs84(xs, ys, crs)
+    area = CRS.from_user_input(crs).area_of_use
+    if area is None:
+        return np.zeros(lon.shape, dtype=bool)
+    return (
+        (lon < area.west - tolerance_deg)
+        | (lon > area.east + tolerance_deg)
+        | (lat < area.south - tolerance_deg)
+        | (lat > area.north + tolerance_deg)
+    )
+
+
+def suggest_crs_for_coordinates(xs, ys, crs: str) -> str:
+    """
+    Suggest a projected CRS for coordinates given in ``crs`` (from their median WGS84 position).
+
+    :param xs: Easting values in ``crs``.
+    :param ys: Northing values in ``crs``.
+    :param crs: The CRS the coordinates are in.
+    :return: EPSG code, see :func:`suggest_crs_from_location`.
+    :rtype: str
+    """
+    import numpy as np
+
+    lon, lat = to_wgs84(xs, ys, crs)
+    return suggest_crs_from_location(float(np.nanmedian(lon)), float(np.nanmedian(lat)))
+
+
+def read_building_coordinates(csv_path: str):
+    """
+    Read the ``UTM_X``/``UTM_Y`` columns of a building CSV.
+
+    :param csv_path: Building CSV (``;``-separated, UTF-8 with or without BOM).
+    :return: ``(xs, ys)`` arrays of the rows with numeric coordinates; empty arrays if the file
+        or the columns do not exist.
+    :rtype: tuple[numpy.ndarray, numpy.ndarray]
+    """
+    import os
+
+    import numpy as np
+    import pandas as pd
+
+    if not csv_path or not os.path.exists(csv_path):
+        return np.array([]), np.array([])
+    frame = pd.read_csv(csv_path, sep=";", encoding="utf-8-sig", dtype=str)
+    frame.columns = [str(c).lstrip("\ufeff") for c in frame.columns]
+    if "UTM_X" not in frame.columns or "UTM_Y" not in frame.columns:
+        return np.array([]), np.array([])
+    xs = pd.to_numeric(frame["UTM_X"], errors="coerce")
+    ys = pd.to_numeric(frame["UTM_Y"], errors="coerce")
+    valid = xs.notna() & ys.notna()
+    return xs[valid].to_numpy(dtype=float), ys[valid].to_numpy(dtype=float)
+
+
+def reproject_building_csv(csv_path: str, from_crs: str, to_crs: str) -> int:
+    """
+    Convert the ``UTM_X``/``UTM_Y`` columns of a building CSV to another CRS, in place.
+
+    All other columns are written back as they were read (as text, so e.g. a ``Subtyp`` of
+    ``03`` keeps its leading zero). Changing the project CRS used to keep the coordinates, which
+    then were read in the new CRS and moved the buildings by hundreds of kilometres
+    (BACKLOG UT-K2).
+
+    :param csv_path: Building CSV (``;``-separated, UTF-8; written back with BOM).
+    :param from_crs: CRS the coordinates are in.
+    :param to_crs: Target CRS.
+    :return: Number of rows whose coordinates were converted.
+    :rtype: int
+    """
+    import pandas as pd
+    from pyproj import Transformer
+
+    frame = pd.read_csv(csv_path, sep=";", encoding="utf-8-sig", dtype=str, keep_default_na=False)
+    frame.columns = [str(c).lstrip("\ufeff") for c in frame.columns]
+    if "UTM_X" not in frame.columns or "UTM_Y" not in frame.columns:
+        return 0
+    xs = pd.to_numeric(frame["UTM_X"], errors="coerce")
+    ys = pd.to_numeric(frame["UTM_Y"], errors="coerce")
+    valid = xs.notna() & ys.notna()
+    if valid.any():
+        transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+        new_x, new_y = transformer.transform(xs[valid].to_numpy(dtype=float), ys[valid].to_numpy(dtype=float))
+        frame.loc[valid, "UTM_X"] = [repr(float(v)) for v in new_x]
+        frame.loc[valid, "UTM_Y"] = [repr(float(v)) for v in new_y]
+    frame.to_csv(csv_path, sep=";", index=False, encoding="utf-8-sig")
+    return int(valid.sum())

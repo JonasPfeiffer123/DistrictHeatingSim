@@ -11,30 +11,47 @@ if (document.getElementById('map')._leaflet_id) {
     
     // Initialize Leaflet map centered on Landkreis Görlitz
     const map = L.map('map').setView([51.158677, 14.740906], 10);
-    // CartoDB Positron – does not require a Referer header (works from file:// in Qt WebEngine)
-    // OSM tiles block requests without a Referer (HTTP 403) when loaded from local files.
-    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 22
+    // Basemaps without an API key. The CARTO basemaps used before now answer every request with an
+    // "API KEY REQUIRED" image (HTTP 200, so no tile error either) - the map had no background at
+    // all (BACKLOG UT-H2). The app identifies itself in the User-Agent (OSM tile usage policy).
+    var osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende';
+    var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: osmAttribution,
+        maxZoom: 19
     });
-    var cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 22
+    var osmDeLayer = L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', {
+        attribution: osmAttribution + ', Kacheln: <a href="https://www.fossgis.de/">FOSSGIS e.V.</a>',
+        maxZoom: 18
     });
-    var cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 22
+    var topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: osmAttribution + ', <a href="http://viewfinderpanoramas.org">SRTM</a> | Stil: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+        subdomains: 'abc',
+        maxZoom: 17
     });
-    cartoLight.addTo(map);
+    var basemaps = {
+        'OpenStreetMap': osmLayer,
+        'OpenStreetMap Deutschland': osmDeLayer,
+        'OpenTopoMap': topoLayer
+    };
+    osmLayer.addTo(map);
+
+    // If a tile server keeps failing (blocked, offline), switch to the next basemap once.
+    var basemapOrder = [osmLayer, osmDeLayer, topoLayer];
+    basemapOrder.forEach(function (layer, index) {
+        var errors = 0;
+        layer.on('tileerror', function () {
+            errors += 1;
+            var next = basemapOrder[index + 1];
+            if (errors === 6 && next && map.hasLayer(layer)) {
+                console.warn('Basemap tiles failing, switching to the next basemap');
+                map.removeLayer(layer);
+                next.addTo(map);
+            }
+        });
+    });
 
     // Basemap switcher
-    L.control.layers({
-        'CartoDB Light': cartoLight,
-        'CartoDB Dark': cartoDark,
-        'OpenStreetMap': osmLayer
-    }, {}, { position: 'topright', collapsed: true }).addTo(map);
+    L.control.layers(basemaps, {}, { position: 'topright', collapsed: true }).addTo(map);
 
     // Store map globally
     window.map = map;

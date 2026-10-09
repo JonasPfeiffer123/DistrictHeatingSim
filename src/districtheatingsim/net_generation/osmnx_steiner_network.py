@@ -512,6 +512,47 @@ def create_generator_connection(
     return erzeuger_gdf
 
 
+def export_unified_network(
+    supply_network: gpd.GeoDataFrame,
+    return_network: gpd.GeoDataFrame,
+    hast_connections: gpd.GeoDataFrame,
+    generator_connection: gpd.GeoDataFrame,
+    output_dir: str,
+    crs: str,
+) -> str:
+    """
+    Write the generated network as the unified ``Wärmenetz.geojson``, labelled with its CRS.
+
+    The label must be the CRS the geometries are in (the project CRS): the map, the elevation
+    lookup and the network initialisation read it from the file. The export used to omit it, so
+    every OSMnx network was labelled with the default EPSG:25833 and a UTM-32 network (Freiburg)
+    was drawn 6° east, near Gmunden (BACKLOG UT-K2).
+
+    :param supply_network: Flow lines.
+    :param return_network: Return lines.
+    :param hast_connections: House-station connections.
+    :param generator_connection: Generator connections.
+    :param output_dir: Folder to write ``Wärmenetz.geojson`` into.
+    :param crs: CRS of the geometries, e.g. ``"EPSG:25832"``.
+    :return: Path of the written file.
+    :rtype: str
+    """
+    from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+
+    unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
+        flow_lines=supply_network,
+        return_lines=return_network,
+        building_connections=hast_connections,
+        generator_connections=generator_connection,
+        state="designed",
+        crs=crs,
+    )
+    unified_path = os.path.join(output_dir, "Wärmenetz.geojson")
+    NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
+    logger.info("✓ Exported unified format: %s (%s)", unified_path, crs)
+    return unified_path
+
+
 def generate_osmnx_network(
     buildings: gpd.GeoDataFrame,
     generator_coords: list[tuple[float, float]],
@@ -670,29 +711,12 @@ def generate_osmnx_network(
     output_files = {}
     if export_geojson:
         logger.info("Step 11/12: Exporting to GeoJSON")
-
-        # Export in unified format
-        try:
-            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-
-            unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
-                flow_lines=supply_network,
-                return_lines=return_network,
-                building_connections=hast_connections,
-                generator_connections=generator_connection,
-                state="designed",
+        # Raises on failure, so the GUI reports the error instead of showing an older file (C44).
+        output_files = {
+            "unified": export_unified_network(
+                supply_network, return_network, hast_connections, generator_connection, output_dir, crs=target_crs
             )
-            # Use default filename for unified network
-            unified_filename = "Wärmenetz.geojson"
-            unified_path = os.path.join(output_dir, unified_filename)
-            NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
-            logger.info(f"✓ Exported unified format: {unified_filename}")
-
-            output_files = {"unified": unified_path}
-        except Exception as e:
-            logger.warning(f"Failed to export unified format: {e}")
-            output_files = {}
-
+        }
         logger.info(f"✓ Exported to: {output_dir}")
 
     logger.info("Step 12/12: Complete")

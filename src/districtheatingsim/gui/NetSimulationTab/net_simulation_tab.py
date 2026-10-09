@@ -360,6 +360,29 @@ class NetSimulationTab(QWidget):
         """Stop running worker threads (called from the main window on close)."""
         stop_qthreads(self._init_thread, self._calc_thread, self._recalc_thread)
 
+    def is_busy(self) -> bool:
+        """True while an init/time-series/recalc worker runs (the main window then refuses to save, UT-K4)."""
+        return self._net_thread_running()
+
+    def _refuse_while_busy(self, show_dialog: bool) -> bool:
+        """
+        Refuse to save or export while a network worker runs.
+
+        The worker mutates the shared net in place (controllers, time-series state); a net saved
+        in that state never converged again after loading (BACKLOG UT-K4).
+
+        :param show_dialog: Tell the user (menu action) instead of raising (central save).
+        :return: True if refused and the user was told.
+        :raises RuntimeError: If refused and ``show_dialog`` is False (the caller collects it).
+        """
+        if not self._net_thread_running():
+            return False
+        message = "Die Netzberechnung läuft noch. Das Netz wird erst nach ihrem Abschluss gespeichert."
+        if not show_dialog:
+            raise RuntimeError(message)
+        QMessageBox.information(self, "Berechnung läuft", message)
+        return True
+
     def _net_thread_running(self) -> bool:
         """True if an init/time-series/recalc worker is currently in flight.
 
@@ -445,6 +468,8 @@ class NetSimulationTab(QWidget):
         if not self.NetworkGenerationData:
             if show_dialog:
                 QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
+            return
+        if self._refuse_while_busy(show_dialog):
             return
 
         try:
@@ -627,6 +652,8 @@ class NetSimulationTab(QWidget):
                     "Kein Netz vorhanden",
                     "Es muss zuerst ein Netz generiert werden, bevor es exportiert werden kann.",
                 )
+            return
+        if self._refuse_while_busy(show_dialog):
             return
 
         try:

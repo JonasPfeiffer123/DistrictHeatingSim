@@ -25,10 +25,11 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QFileDialog, QMenuBar, QMessageBox, QProgressBar, QVBoxLayout, QWidget
 from shapely.geometry import Point
 
+from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
-from districtheatingsim.gui.utilities import stop_qthreads
+from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
 from districtheatingsim.net_generation.flow_network_rebuild import rebuild_network_from_flow
 from districtheatingsim.net_generation.network_connectivity import (
     check_geojson_connectivity,
@@ -449,22 +450,11 @@ class VisualizationPresenter(QObject):
         self.view.progressBar.setRange(0, 1)
 
         fname, summary = result
-        total = summary.get("total", 0)
-        success = summary.get("success", 0)
-        failed = summary.get("failed", 0)
-        failed_addresses = summary.get("failed_addresses", [])
-
-        if failed == 0:
-            msg = f"Geocoding abgeschlossen: {success} von {total} Adressen erfolgreich."
-            QMessageBox.information(self.view, "Geocoding erfolgreich", msg)
+        all_found, message = format_geocoding_summary(summary)
+        if all_found:
+            QMessageBox.information(self.view, "Geocoding erfolgreich", message)
         else:
-            details = "\n".join(f"  • {a}" for a in failed_addresses)
-            msg = (
-                f"Geocoding abgeschlossen: {success} von {total} Adressen erfolgreich.\n\n"
-                f"Nicht gefunden ({failed}):\n{details}\n\n"
-                f"Bitte prüfen Sie diese Adressen und ergänzen Sie die Koordinaten manuell."
-            )
-            QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", msg)
+            QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", message)
 
         self.load_csv_coordinates(fname)
 
@@ -603,18 +593,28 @@ class VisualizationPresenter(QObject):
             )
 
     def _reload_map_then(self, callback):
-        """Reload the empty map HTML, then run *callback* once, after the page has loaded."""
+        """
+        Reload the empty map HTML, then run *callback* once after the page has loaded.
 
-        def _on_loaded(_ok=True):
-            try:
-                self.view.web_view.loadFinished.disconnect(_on_loaded)
-            except TypeError:
-                pass
-            callback()
-
-        self.view.web_view.loadFinished.connect(_on_loaded)
+        Only the latest callback runs. Each project/variant change used to connect another
+        one-shot handler; opening a project emits several folder changes in a row, and all
+        handlers then fired on the final page - the network appeared three times in the layer
+        list (BACKLOG UT-M3).
+        """
+        self._after_map_load = callback
+        if not getattr(self, "_map_load_handler_connected", False):
+            self.view.web_view.loadFinished.connect(self._on_map_loaded)
+            self._map_load_handler_connected = True
         if hasattr(self, "map_file_path"):
             self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
+
+    def _on_map_loaded(self, ok=True):
+        """Run the pending callback of ``_reload_map_then`` once the (latest) page load succeeded."""
+        if not ok:
+            return  # an aborted load (superseded by a newer reload) keeps the callback pending
+        callback, self._after_map_load = getattr(self, "_after_map_load", None), None
+        if callback is not None:
+            callback()
 
     def _auto_load_network(self, base_path):
         """
@@ -1042,6 +1042,16 @@ class VisualizationTabView(QWidget):
         """
         self.web_view = QWebEngineView()
 
+        # The OSM tile usage policy asks applications to identify themselves (BACKLOG UT-H2).
+        profile = self.web_view.page().profile()
+        if "DistrictHeatingSim" not in profile.httpUserAgent():
+            from districtheatingsim import __version__
+
+            profile.setHttpUserAgent(
+                f"{profile.httpUserAgent()} DistrictHeatingSim/{__version__} "
+                "(+https://github.com/JonasPfeiffer123/DistrictHeatingSim)"
+            )
+
         # Configure WebEngine settings to allow mixed content and local requests
         settings = self.web_view.page().settings()
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
@@ -1150,6 +1160,13 @@ class VisualizationTabLeaflet(QWidget):
     def stop_threads(self):
         """Stop running worker threads (called from the main window on close)."""
         self.presenter.stop_threads()
+
+    def is_busy(self) -> bool:
+        """True while geocoding or a network generation writes project files (UT-K4)."""
+        presenter = self.presenter
+        return any_thread_running(
+            getattr(presenter, "geocodingThread", None), getattr(presenter, "netgenerationThread", None)
+        )
 
     def update_base_path(self, base_path):
         """Update base path in model and view.
