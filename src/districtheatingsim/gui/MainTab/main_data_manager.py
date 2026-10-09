@@ -212,7 +212,9 @@ class ProjectConfigManager:
         if not relative_path:
             raise KeyError(f"Key '{key}' not found in file paths configuration.")
 
-        return relative_path
+        # file_paths.json uses Windows separators; on Linux/macOS a backslash is part of the file
+        # name, so "Variante 1/..\Definition Quartier IST\Quartier IST.csv" pointed nowhere.
+        return os.path.normpath(relative_path.replace("\\", "/"))
 
     def get_resource_path(self, key: str) -> str:
         """
