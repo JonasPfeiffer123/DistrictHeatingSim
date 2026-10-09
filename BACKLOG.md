@@ -1879,6 +1879,15 @@ IDs below are the report's IDs with a `UT-` prefix.
   Zittau yearly losses 49.3 % → 39.4 % (UT-K1) → 18.1 % (UT-K7). Tests: `TestSimplifiedTimeSeries`.
   (Side note: pandapipes' own `res_circ_pump_*.qext_w` uses cp(T)·T with absolute temperatures and
   is 3–5 % too high at 40–85 °C; the app computes m·cp·ΔT itself, so it is not affected.)
+- UT-K8 — *found while checking UT-K7:* the minimum load (2 %) used the peak of the *largest* house
+  station as reference for every station, in both `initialize_geojson` and
+  `time_series_preprocessing` (copy-pasted); the electricity minimum compared the already clamped
+  heat and never applied. Zittau: a single-family house +49 %, the quarter +4 %; Görlitz +7 %.
+  **Fixed 2026-10-08:** one `utilities.apply_minimum_load` (2 % of each station's own peak, mask from
+  the unclamped heat) used by both. Golden master re-pinned (demand 4443.6 → 4155.1 MWh/a) and a new
+  invariant pins the network demand to the building profiles (±0.1 %). Projects keep their stored
+  (inflated) station profiles until the net is initialised again. Tests: `TestMinimumLoad`,
+  `test_network_demand_matches_the_building_profiles`.
 - UT-K2 — CRS outside UTM 33: default 25833 without a hint, CRS change does not reproject,
   producer geocoding and OSMnx export ignore the project CRS. *Open.*
 - UT-K3 — "CSV importieren" fast path does not copy into the project; geocoding then writes into

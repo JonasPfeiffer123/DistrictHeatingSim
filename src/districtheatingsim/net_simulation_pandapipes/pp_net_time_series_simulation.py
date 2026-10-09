@@ -26,7 +26,11 @@ from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
     validate_simulation_results,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, secondary_producer_element_indices
+from districtheatingsim.net_simulation_pandapipes.utilities import (
+    COP_WP,
+    apply_minimum_load,
+    secondary_producer_element_indices,
+)
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 logger = logging.getLogger(__name__)
@@ -305,7 +309,8 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
 
     .. note::
        Implements static/sliding temperature control, COP calculations for cold networks,
-       applies 2% minimum load, calculates secondary producer mass flows. Converts W to kW.
+       applies the per-station minimum load (``apply_minimum_load``), calculates secondary producer
+       mass flows. Converts W to kW.
     """
     logger.debug(
         "Time series preprocessing: max supply temperature net %s °C, min supply temperature HAST %s °C, "
@@ -409,18 +414,9 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
         NetworkGenerationData.waerme_hast_ges_W = waerme_hast
         NetworkGenerationData.strombedarf_hast_ges_W = strom_wp
 
-    # Apply minimum load constraints (2% of maximum)
-    max_heat = np.max(NetworkGenerationData.waerme_hast_ges_W)
-    max_power = np.max(NetworkGenerationData.strombedarf_hast_ges_W)
-    NetworkGenerationData.waerme_hast_ges_W = np.where(
-        NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat,
-        0.02 * max_heat,
-        NetworkGenerationData.waerme_hast_ges_W,
-    )
-    NetworkGenerationData.strombedarf_hast_ges_W = np.where(
-        NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat,
-        0.02 * max_power,
-        NetworkGenerationData.strombedarf_hast_ges_W,
+    # Minimum load per house station (share of the station's own peak, BACKLOG UT-K8)
+    NetworkGenerationData.waerme_hast_ges_W, NetworkGenerationData.strombedarf_hast_ges_W = apply_minimum_load(
+        NetworkGenerationData.waerme_hast_ges_W, NetworkGenerationData.strombedarf_hast_ges_W
     )
 
     # Convert power values from W to kW

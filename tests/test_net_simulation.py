@@ -1703,3 +1703,47 @@ class TestSimplifiedTimeSeries:
         data = self._network_data()
         data.net = SimpleNamespace(res_circ_pump_pressure=data.net.res_circ_pump_pressure)
         assert design_consumer_load_kW(data) == pytest.approx(60.0)
+
+
+class TestMinimumLoad:
+    """UT-K8: time_series_preprocessing raises low-load hours to a minimum so every house
+    station keeps a small flow. The minimum must be a share of the station's *own* peak; the
+    peak of the largest station raised a single-family house next to the town hall by 49 %."""
+
+    @staticmethod
+    def _network_data(heat_w, power_w=None):
+        from types import SimpleNamespace
+
+        heat_w = np.asarray(heat_w, dtype=float)
+        return SimpleNamespace(
+            netconfiguration="Niedertemperaturnetz",
+            supply_temperature_control="Statisch",
+            max_supply_temperature_heat_generator=85.0,
+            min_supply_temperature_heat_consumer=None,
+            return_temperature_heat_consumer=None,
+            supply_temperature_buildings=None,
+            return_temperature_buildings=None,
+            building_temperature_checked=False,
+            COP_filename=None,
+            secondary_producers=[],
+            waerme_hast_ges_W=heat_w,
+            strombedarf_hast_ges_W=np.zeros_like(heat_w) if power_w is None else np.asarray(power_w, dtype=float),
+        )
+
+    def test_minimum_is_a_share_of_each_stations_own_peak(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+        from districtheatingsim.net_simulation_pandapipes.utilities import MIN_LOAD_SHARE
+
+        town_hall = [250_000.0, 100_000.0, 0.0, 0.0]
+        house = [12_000.0, 3_000.0, 100.0, 0.0]
+        data = time_series_preprocessing(self._network_data([town_hall, house]))
+        assert data.waerme_hast_ges_W[0].tolist() == [250_000.0, 100_000.0, 5_000.0, 5_000.0]
+        house_min = MIN_LOAD_SHARE * 12_000.0
+        assert data.waerme_hast_ges_W[1].tolist() == [12_000.0, 3_000.0, house_min, house_min]
+        assert data.waerme_ges_kW.tolist() == pytest.approx([262.0, 103.0, 5.24, 5.24])
+
+    def test_electricity_minimum_applies_in_the_same_hours(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(self._network_data([[10_000.0, 0.0]], power_w=[[2_000.0, 0.0]]))
+        assert data.strombedarf_hast_ges_W.tolist() == [[2_000.0, 40.0]]

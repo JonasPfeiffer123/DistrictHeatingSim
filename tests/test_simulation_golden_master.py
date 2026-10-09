@@ -112,19 +112,31 @@ class TestGoerlitzGoldenMaster:
 
     def test_topology_and_demand_kpis(self, goerlitz_run):
         # Geometry + load-profile KPIs — platform-independent, match the GUI; pinned tight.
+        # Re-pinned for UT-K8: the minimum load is now 2 % of each station's own peak (it was 2 %
+        # of the largest station's peak, which had raised the annual demand by 7 %).
         _, k = goerlitz_run
         assert k["Anzahl angeschlossene Gebäude"] == 9
         assert k["Anzahl Heizzentralen"] == 1
         assert k["Trassenlänge Wärmenetz [m]"] == pytest.approx(1171.1128, rel=1e-4)
-        assert k["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] == pytest.approx(4443.6060, rel=1e-4)
-        assert k["max. Heizlast Gebäude [kW]"] == pytest.approx(2107.7698, rel=1e-4)
-        assert k["Wärmebedarfsdichte [MWh/(a*m)]"] == pytest.approx(3.794345, rel=1e-4)
-        assert k["Anschlussdichte [kW/m]"] == pytest.approx(1.799801, rel=1e-4)
+        assert k["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] == pytest.approx(4155.1464, rel=1e-4)
+        assert k["max. Heizlast Gebäude [kW]"] == pytest.approx(2081.3026, rel=1e-4)
+        assert k["Wärmebedarfsdichte [MWh/(a*m)]"] == pytest.approx(3.548033, rel=1e-4)
+        assert k["Anschlussdichte [kW/m]"] == pytest.approx(1.777201, rel=1e-4)
         # C34: trace length + densities also reported *without* the house-connection (HAST)
         # stubs, which inflate the usual density KPIs.
         assert k["Trassenlänge ohne Hausanschlüsse [m]"] == pytest.approx(966.5170, rel=1e-4)
-        assert k["Wärmebedarfsdichte ohne Hausanschlüsse [MWh/(a*m)]"] == pytest.approx(4.597546, rel=1e-4)
-        assert k["Anschlussdichte ohne Hausanschlüsse [kW/m]"] == pytest.approx(2.180789, rel=1e-4)
+        assert k["Wärmebedarfsdichte ohne Hausanschlüsse [MWh/(a*m)]"] == pytest.approx(4.299093, rel=1e-4)
+        assert k["Anschlussdichte ohne Hausanschlüsse [kW/m]"] == pytest.approx(2.153405, rel=1e-4)
+
+    def test_network_demand_matches_the_building_profiles(self, goerlitz_run):
+        # UT-K8: the minimum load may only add a trace; with the old rule (2 % of the largest
+        # station's peak for every station) the network carried 7 % more heat than the buildings.
+        from districtheatingsim.heat_requirement.building_profiles_io import read_building_profiles
+
+        profiles = read_building_profiles(str(_LOAD))
+        building_mwh = sum(np.nansum(v["wärme"]) for v in profiles.values() if isinstance(v, dict) and "wärme" in v)
+        _, k = goerlitz_run
+        assert k["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] == pytest.approx(building_mwh / 1000, rel=1e-3)
 
     def test_solver_kpis(self, goerlitz_run):
         # Pipeflow-derived KPIs for the fixed 8-step range; looser tolerance to survive
@@ -136,9 +148,10 @@ class TestGoerlitzGoldenMaster:
         # Re-pinned for UT-K1: resized pipes now carry their own outer diameter instead of
         # the DN100 start type's, which had inflated their heat loss (pandapipes uses
         # u * pi * outer diameter); generation dropped 2.0 %, pumpstrom 4.7 %.
+        # Re-pinned for UT-K8 (per-station minimum load): generation -2.6 %, pumpstrom -4.4 %.
         _, k = goerlitz_run
-        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.0716, rel=1e-2)
-        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0034973, rel=2e-2)
+        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(5.9167, rel=1e-2)
+        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0033425, rel=2e-2)
         # Distribution loss = generation − demand (negative here: an 8-step generation
         # is compared against the annual demand — a known partial-range artifact).
         assert k["Verteilverluste [MWh]"] == pytest.approx(
