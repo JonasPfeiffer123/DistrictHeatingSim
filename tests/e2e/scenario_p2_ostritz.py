@@ -11,7 +11,8 @@ Reproduces (ANWENDERTEST_2026-10-08.md): H3 (Overpass "Server load too high"), K
 ignored; identical demand/type for every building incl. church and garages; result not written
 to the project CSV), H4 (connectivity false alarm), performance at village size.
 
-Run: ``python tests/e2e/scenario_p2_ostritz.py``  (the conversion step alone takes ~20 min)
+Run: ``python tests/e2e/scenario_p2_ostritz.py``  (the conversion took ~20 min before UT-K5).
+``convert_example_subset`` checks the conversion without Overpass, on bundled example buildings.
 """
 
 import json
@@ -148,6 +149,63 @@ def heat_and_network():
     H.wait_until(H.thread_finished(tab, "_calc_thread"), 900, "time series (simplified)")
 
 
+SUBSET_NAME = "OSM_Ausschnitt_Zittau"
+EXAMPLE_BUILDINGS = os.path.join(H.REPO_ROOT, "examples", "data", "osm_building_data.geojson")
+
+
+def convert_example_subset():
+    """
+    K5 without Overpass: the 139 OSM buildings around the Zittau market from the bundled example
+    data (WGS84) are saved like the building download does (project CRS) and converted.
+    """
+    import geopandas as gpd
+
+    H.fresh_project_slot(SUBSET_NAME)
+    path = H.new_project(SUBSET_NAME)
+    crs = H.VIEW.presenter.folder_manager.project_crs
+    buildings = gpd.read_file(EXAMPLE_BUILDINGS).cx[14.8055:14.8085, 50.895025:50.896975].to_crs(crs)
+    geojson = os.path.join(path, "Variante 1", "Gebäudedaten", "OSM_Gebäude.geojson")
+    buildings.to_file(geojson, driver="GeoJSON")
+    H.log("STATE", "subset", f"{len(buildings)} buildings; {buildings['building'].value_counts().to_dict()}")
+
+    def accept_defaults(dialog):
+        _record_import_defaults(dialog)
+        H.log("STATE", "OSM import options (K5)", dialog.get_options())
+        dialog.accept()
+        return dialog.result()
+
+    H.VIEW.tabWidget.setCurrentIndex(0)
+    tab = H.VIEW.projectTab
+    H.DIALOG_HANDLERS["OSMImportDialog"] = [accept_defaults]
+    H.FILE_ANSWERS.append(geojson)
+    tab.presenter.create_csv_from_geojson()
+    H.wait_until(H.thread_finished(tab.presenter, "geojson_conversion_thread"), 1800, "OSM -> CSV (subset)")
+    H.pump(1)
+    data = pd.read_csv(
+        os.path.join(path, "Definition Quartier IST", "Quartier IST.csv"),
+        sep=";",
+        encoding="utf-8-sig",
+        dtype=str,
+        keep_default_na=False,
+    )
+    addresses = data["Adresse"][data["Adresse"] != ""]
+    H.log(
+        "CHECK K5",
+        "project CSV",
+        f"{len(data)} rows; empty addresses={int((data['Adresse'] == '').sum())}; "
+        f"duplicate addresses={int(addresses.duplicated().sum())}; "
+        f"types={data['Gebäudetyp'].value_counts().to_dict()}; "
+        f"demand MWh/a min/median/max={pd.to_numeric(data['Wärmebedarf']).describe()[['min', '50%', 'max']].div(1000).round(1).to_dict()}",
+    )
+
+
 if __name__ == "__main__":
     H.start_app()
-    H.run_steps({"buildings": buildings, "convert": convert, "heat_and_network": heat_and_network})
+    H.run_steps(
+        {
+            "buildings": buildings,
+            "convert": convert,
+            "heat_and_network": heat_and_network,
+            "convert_example_subset": convert_example_subset,
+        }
+    )

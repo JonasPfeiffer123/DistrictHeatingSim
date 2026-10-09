@@ -31,6 +31,7 @@ from districtheatingsim.gui.LeafletTab.net_generation_threads import OSMBuilding
 from districtheatingsim.gui.LeafletTab.osm_dialogs_base import OSMDownloadDialogBase
 from districtheatingsim.osm.area_selection import build_highway_filter, resolve_area_polygon
 from districtheatingsim.osm.import_osm_data_geojson import download_data
+from districtheatingsim.utilities.web_services import osmnx_with_retries
 
 
 class DownloadOSMDataDialog(OSMDownloadDialogBase):
@@ -614,17 +615,24 @@ class DownloadOSMDataDialog(OSMDownloadDialogBase):
         area_type = area_params["area_type"]
         custom_filter = area_params["custom_filter"]
 
-        # Get the street network either by place name or by resolved polygon.
+        # Get the street network either by place name or by resolved polygon; busy Overpass
+        # servers and dropped connections are retried (UT-H3).
         if area_type == "Stadt/Ortsname":
             city_name = area_params["city_name"]
-            G = ox.graph_from_place(city_name, network_type="all", custom_filter=custom_filter)
+            G = osmnx_with_retries(
+                lambda: ox.graph_from_place(city_name, network_type="all", custom_filter=custom_filter)
+            )
         else:
             # CSV / GeoJSON / drawn polygon → WGS84 polygon (raises ValueError on a
             # malformed CSV; caught by the download thread → error signal).
             polygon = resolve_area_polygon(area_params, buffer_m=area_params.get("buffer_dist"))
             # truncate_by_edge keeps streets that cross the polygon boundary (otherwise an edge
             # with one node outside the polygon is dropped, so boundary streets go missing).
-            G = ox.graph_from_polygon(polygon, network_type="all", custom_filter=custom_filter, truncate_by_edge=True)
+            G = osmnx_with_retries(
+                lambda: ox.graph_from_polygon(
+                    polygon, network_type="all", custom_filter=custom_filter, truncate_by_edge=True
+                )
+            )
 
         # Convert to GeoDataFrame
         gdf_edges = ox.graph_to_gdfs(G, nodes=False, edges=True)

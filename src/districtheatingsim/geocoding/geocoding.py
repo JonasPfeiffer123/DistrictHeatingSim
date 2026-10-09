@@ -13,15 +13,28 @@ import os
 import shutil
 import tempfile
 
+from geopy.exc import GeocoderParseError, GeocoderQueryError, GeocoderServiceError
 from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
 
+from districtheatingsim.utilities.web_services import ServiceUnavailableError, describe_service_error, is_transient
+
 logger = logging.getLogger(__name__)
 
-# Shared geolocator instance (Nominatim usage policy: max 1 req/sec, identify your app)
+# Shared geolocator instance (Nominatim usage policy: max 1 req/sec, identify your app). Errors are
+# not swallowed: a blocked or unreachable Nominatim looked like "address not found" (UT-H3).
 _geolocator = Nominatim(user_agent="DistrictHeatingSim/1.0")
-_geocode = RateLimiter(_geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=5)
+_geocode = RateLimiter(
+    _geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=5, swallow_exceptions=False
+)
+
+
+def _is_service_failure(exc: BaseException) -> bool:
+    """True if Nominatim itself failed (blocked, overloaded, unreachable) - not the address."""
+    if isinstance(exc, (GeocoderQueryError, GeocoderParseError)):
+        return False
+    return isinstance(exc, GeocoderServiceError) or is_transient(exc)
 
 
 def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
@@ -37,22 +50,24 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     :type from_crs: str
     :param to_crs: Target CRS (default: ETRS89/UTM Zone 33N)
     :type to_crs: str
-    :return: (UTM_X, UTM_Y) coordinates or (None, None) if failed
+    :return: (UTM_X, UTM_Y) coordinates or (None, None) if the address was not found
     :rtype: tuple of float
+    :raises ServiceUnavailableError: If Nominatim is blocked, overloaded or unreachable
     """
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
 
     try:
         location = _geocode(address)
-        if location:
-            utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
-            return (utm_x, utm_y)
-        else:
-            logger.warning("Could not geocode the address %s", address)
-            return (None, None)
     except Exception as e:
+        if _is_service_failure(e):
+            raise ServiceUnavailableError(describe_service_error("Nominatim", e, attempts=4)) from e
         logger.warning("Geocoding of %s failed: %s", address, e)
         return (None, None)
+    if location:
+        utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
+        return (utm_x, utm_y)
+    logger.warning("Could not geocode the address %s", address)
+    return (None, None)
 
 
 def format_geocoding_summary(summary: dict) -> tuple[bool, str]:
@@ -88,6 +103,7 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     :type crs: str
     :return: Summary dict with keys ``total``, ``success``, ``failed``, ``failed_addresses``
     :rtype: dict
+    :raises ServiceUnavailableError: If Nominatim fails; the CSV is left unchanged
     """
     temp_fd, temp_path = tempfile.mkstemp()
     os.close(temp_fd)

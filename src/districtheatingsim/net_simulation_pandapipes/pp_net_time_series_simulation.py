@@ -10,7 +10,7 @@ import copy
 import logging
 import multiprocessing
 import os
-from concurrent.futures import ProcessPoolExecutor
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -468,11 +468,25 @@ def pipeflow_with_damping_fallback(net, **kwargs) -> None:
     :param kwargs: Pipeflow options (``mode``, ``iter``, …); any ``alpha`` is overridden
     :raises PipeflowNotConverged: If the damped retry does not converge either
     """
+    kwargs.pop("progress_function", None)  # the time-series progress hook, not a pipeflow option
     try:
         pipeflow(net, **{**kwargs, "alpha": 1.0})
     except PipeflowNotConverged:
         logger.debug("Undamped pipeflow did not converge, retrying with alpha=0.5")
         pipeflow(net, **{**kwargs, "alpha": 0.5})
+
+
+class TimeSeriesCancelled(Exception):
+    """The user cancelled the time series; the network data of that run is incomplete."""
+
+
+def _progress_function(progress: Callable[[int, int], None]) -> Callable[..., None]:
+    """Adapt ``progress(done, total)`` to pandapower's ``progress_function`` hook (called before each step)."""
+
+    def progress_function(i, time_step, time_steps, **kwargs):
+        progress(i, len(time_steps))
+
+    return progress_function
 
 
 # A parallel block is at least one week: every worker process pays a few seconds to start
@@ -525,13 +539,23 @@ def _single_threaded_blas_in_children():
                 os.environ[name] = value
 
 
-def _time_series_block(NetworkGenerationData):
-    """Worker-process entry: simulate one block sequentially, return its net and logged results."""
-    result = thermohydraulic_time_series_net(NetworkGenerationData)
+def _time_series_block(job):
+    """
+    Worker-process entry: simulate one block sequentially, return its net and logged results.
+
+    :param job: ``(NetworkGenerationData, queue)``; with a queue, every simulated step puts a 1 on it.
+    """
+    NetworkGenerationData, queue = job
+    progress = (lambda done, total: queue.put(1) if done else None) if queue is not None else None
+    result = thermohydraulic_time_series_net(NetworkGenerationData, progress=progress)
+    if queue is not None:
+        queue.put(1)  # the last step
     return result.net, result.net_results
 
 
-def _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks: list) -> Any:
+def _parallel_thermohydraulic_time_series(
+    NetworkGenerationData, blocks: list, progress: Callable[[int, int], None] | None = None
+) -> Any:
     """
     Simulate the time blocks in parallel processes and merge them in time order (BACKLOG G2).
 
@@ -539,17 +563,37 @@ def _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks: list) -
     the bad-point controller, which a sequential run carries over from the previous hour. Block
     results therefore differ from a sequential run within the controller tolerance. The merged
     object ends in the state of the last block's final hour, like a sequential run.
+
+    :param progress: ``progress(done, total)`` over all blocks, called from this process a few times
+        per second; raising :class:`TimeSeriesCancelled` from it terminates the workers (UT-H1).
     """
     jobs = []
     for block_start, block_end in blocks:
         job = copy.copy(NetworkGenerationData)  # the net is pickled into each worker separately
         job.start_time_step, job.end_time_step = block_start, block_end
         jobs.append(job)
+    total = sum(block_end - block_start for block_start, block_end in blocks)
 
     # "spawn" everywhere: forking a process that runs Qt threads is unsafe.
     context = multiprocessing.get_context("spawn")
-    with _single_threaded_blas_in_children(), ProcessPoolExecutor(max_workers=len(jobs), mp_context=context) as pool:
-        outcomes = list(pool.map(_time_series_block, jobs))
+    with _single_threaded_blas_in_children(), contextlib.ExitStack() as stack:
+        queue = stack.enter_context(context.Manager()).Queue() if progress else None
+        pool = context.Pool(processes=len(jobs))
+        stack.callback(pool.join)
+        stack.callback(pool.terminate)  # also stops the workers when the user cancels
+        pending = pool.map_async(_time_series_block, [(job, queue) for job in jobs])
+        done = 0
+        while True:
+            # Checked before draining: a finished worker has put all its steps on the queue.
+            finished = pending.ready()
+            if progress:
+                while not queue.empty():
+                    done += queue.get_nowait()
+                progress(min(done, total), total)
+            if finished:
+                break
+            pending.wait(0.25)
+        outcomes = pending.get()
 
     NetworkGenerationData.net = outcomes[-1][0]
     NetworkGenerationData.net_results = {
@@ -560,7 +604,9 @@ def _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks: list) -
     return NetworkGenerationData
 
 
-def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> Any:
+def thermohydraulic_time_series_net(
+    NetworkGenerationData, workers: int = 1, progress: Callable[[int, int], None] | None = None
+) -> Any:
     """
     Run thermohydraulic time series simulation with controller updates.
 
@@ -571,8 +617,11 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
         parallel (results differ within the pump-controller tolerance, see
         ``_parallel_thermohydraulic_time_series``).
     :type workers: int
+    :param progress: Called as ``progress(done, total)`` before each time step; raising
+        :class:`TimeSeriesCancelled` from it stops the run between two steps (UT-H1).
     :return: Updated NetworkGenerationData with simulation results and pump operations
     :rtype: Any
+    :raises TimeSeriesCancelled: If ``progress`` cancelled the run
 
     .. note::
        Runs bidirectional simulation with iter=100, undamped with a damped (alpha=0.5) retry per
@@ -588,7 +637,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
             min_block=PARALLEL_MIN_BLOCK_STEPS,
         )
         if len(blocks) > 1:
-            return _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks)
+            return _parallel_thermohydraulic_time_series(NetworkGenerationData, blocks, progress)
 
     # Update the ConstControl
     time_steps = range(
@@ -660,6 +709,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
     log_variables = create_log_variables(NetworkGenerationData.net)
     ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
 
+    hook = {"progress_function": _progress_function(progress)} if progress else {}
     try:
         run_time_series.run_timeseries(
             NetworkGenerationData.net,
@@ -667,7 +717,10 @@ def thermohydraulic_time_series_net(NetworkGenerationData, workers: int = 1) -> 
             mode="bidirectional",
             iter=100,
             run=pipeflow_with_damping_fallback,
+            **hook,
         )
+    except TimeSeriesCancelled:
+        raise
     except Exception as e:
         raise RuntimeError(f"Thermohydraulic time-series simulation failed (bidirectional, iter=100): {e}") from e
 

@@ -11,7 +11,7 @@ import json
 import logging
 import os
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -34,10 +34,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.geocoding.building_csv import centroid_of, geojson_to_building_csv
+from districtheatingsim.geocoding.building_csv import centroid_of, format_building_csv_summary, geojson_to_building_csv
 from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
-from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
+from districtheatingsim.gui.MainTab.project_structure import discover_variants
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
@@ -134,7 +134,7 @@ class ProjectModel:
         :return: Output file path.
         :rtype: str
         """
-        return geojson_to_building_csv(geojson_file_path, output_file_path, default_values, project_crs)
+        return geojson_to_building_csv(geojson_file_path, output_file_path, default_values, project_crs)["path"]
 
     def calculate_centroid(self, coordinates):
         """
@@ -278,16 +278,31 @@ class ProjectPresenter:
         :param index: Tree view index.
         :type index: QModelIndex
         """
-        """Handle tree view double-click events."""
         file_path = self.view.get_selected_file_path(index)
 
         if os.path.isdir(file_path):
-            if VARIANT_PREFIX in os.path.basename(file_path):
-                self.folder_manager.set_variant_folder(file_path)
-            else:
-                self.folder_manager.set_project_folder(file_path)
+            # Only a variant folder of the open project switches the variant - through the main
+            # window, which asks to save and loads the variant's results. Any other folder just
+            # expands; making it the project folder dropped TRY/COP/CRS (UT-H8).
+            variant = self._variant_of_folder(file_path)
+            if variant:
+                self.view.variantRequested.emit(variant)
         elif file_path.endswith(".csv"):
             self.load_csv(file_path)
+
+    def _variant_of_folder(self, folder: str) -> str | None:
+        """Name of the variant ``folder`` is, if it is another variant of the open project."""
+        project = self.folder_manager.project_folder
+        if not project:
+            return None
+        folder = os.path.normcase(os.path.normpath(folder))
+        if os.path.dirname(folder) != os.path.normcase(os.path.normpath(project)):
+            return None
+        current = self.folder_manager.variant_folder
+        if current and folder == os.path.normcase(os.path.normpath(current)):
+            return None
+        names = {os.path.normcase(name): name for name in discover_variants(project)}
+        return names.get(os.path.basename(folder))
 
     def _building_csv_path(self) -> str:
         """Path of the project's building CSV (``Quartier IST.csv``), normalised."""
@@ -402,24 +417,29 @@ class ProjectPresenter:
             self.load_csv(target_path)  # the project's own file: nothing to import
             return
 
-        import pandas as pd
+        from districtheatingsim.gui.ProjectTab.csv_import_dialog import (
+            TARGET_COLUMNS,
+            confirm_import_with_problems,
+            prepare_buildings,
+            read_source_table,
+            validate_buildings,
+        )
 
-        from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, _detect_delimiter
-
-        # A file that already uses the internal column schema is taken over as it is; otherwise
-        # the mapping dialog assigns the columns.
-        df = None
+        # Excel exports (Windows-1252, decimal commas) are read and normalised the same way on both
+        # paths (UT-H5). A file that already uses the internal column schema is taken over as it is;
+        # otherwise the mapping dialog assigns the columns.
         try:
-            delim = _detect_delimiter(fname)
-            probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
-            required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
-            if required_cols.issubset(set(probe.columns)):
-                df = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", dtype=str, keep_default_na=False)
+            source, _delimiter, _encoding = read_source_table(fname)
         except Exception as e:
-            # Best-effort fast path; fall through to the mapping dialog on any error.
-            logger.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
+            QMessageBox.warning(self.view, "CSV importieren", f"Die Datei konnte nicht gelesen werden:\n{fname}\n\n{e}")
+            return
 
-        if df is None:
+        required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
+        if required_cols.issubset(set(source.columns)):
+            df = prepare_buildings(source)
+            if not confirm_import_with_problems(self.view, validate_buildings(df)):
+                return
+        else:
             dialog = CsvImportDialog(fname, parent=self.view)
             if dialog.exec() != CsvImportDialog.DialogCode.Accepted:
                 return
@@ -429,7 +449,7 @@ class ProjectPresenter:
 
         self._store_imported_buildings(df, target_path)
 
-    def _store_imported_buildings(self, df, target_path: str) -> None:
+    def _store_imported_buildings(self, df, target_path: str, details: str = "") -> bool:
         """
         Write imported buildings to the project's building CSV and show them.
 
@@ -440,6 +460,8 @@ class ProjectPresenter:
 
         :param df: Imported buildings in the internal column schema.
         :param target_path: The project's ``Quartier IST.csv``.
+        :param details: Further lines for the success message (e.g. the OSM conversion report).
+        :return: True if the buildings were stored.
         """
         existing = self._count_buildings(target_path)
         if existing:
@@ -452,7 +474,7 @@ class ProjectPresenter:
                 QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
-                return
+                return False
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
         try:
             df.to_csv(target_path, sep=";", index=False, encoding="utf-8-sig")
@@ -461,10 +483,13 @@ class ProjectPresenter:
             QMessageBox.information(
                 self.view,
                 "Import erfolgreich",
-                f"{len(df)} Gebäude importiert und gespeichert unter:\n{target_path}",
+                f"{len(df)} Gebäude importiert und gespeichert unter:\n{target_path}"
+                + (f"\n\n{details}" if details else ""),
             )
         except Exception as e:
             QMessageBox.critical(self.view, "Fehler beim Speichern", str(e))
+            return False
+        return True
 
     def _count_buildings(self, csv_path: str) -> int:
         """Number of non-empty building rows in a building CSV (0 if it does not exist)."""
@@ -600,7 +625,7 @@ class ProjectPresenter:
             # Extract sample coordinates from first building for reverse geocoding
             sample_coords = None
             try:
-                with open(geojson_file_path) as f:
+                with open(geojson_file_path, encoding="utf-8") as f:
                     data = json.load(f)
                     if data.get("features") and len(data["features"]) > 0:
                         first_feature = data["features"][0]
@@ -633,6 +658,7 @@ class ProjectPresenter:
                     default_values,
                     self.model,
                     project_crs=self.folder_manager.project_crs,
+                    options=dialog.get_options(),
                 )
                 self.geojson_conversion_thread.progress_update.connect(self.on_geojson_conversion_progress)
                 self.geojson_conversion_thread.calculation_done.connect(self.on_geojson_conversion_done)
@@ -659,18 +685,27 @@ class ProjectPresenter:
             self.view.progressBar.setValue(current)
         self.view.statusLabel.setText(message)
 
-    def on_geojson_conversion_done(self, output_file_path):
+    def on_geojson_conversion_done(self, summary):
         """
         Handle completion of GeoJSON conversion.
 
-        :param output_file_path: Path to created CSV file.
-        :type output_file_path: str
+        The buildings go into the project's building list like an import (asking before existing
+        buildings are replaced); they used to stay in ``Gebäudedaten/OSM_building_data.csv`` and had
+        to be copied by hand (BACKLOG UT-K5).
+
+        :param summary: Report of ``geojson_to_building_csv`` (``path`` = the converted CSV).
+        :type summary: dict
         """
+        import pandas as pd
+
         self.view.progressBar.setRange(0, 1)
         self.view.progressBar.setValue(1)
         self.view.statusLabel.setText("Konvertierung abgeschlossen")
-        self.load_csv(output_file_path)
-        self.view.show_message("Erfolg", f"CSV-Datei wurde erfolgreich erstellt:\n{output_file_path}")
+        report = format_building_csv_summary(summary)
+        buildings = pd.read_csv(summary["path"], sep=";", encoding="utf-8-sig", dtype=str, keep_default_na=False)
+        if not self._store_imported_buildings(buildings, self._building_csv_path(), details=report):
+            self.load_csv(summary["path"])
+            self.view.show_message("Konvertierung abgeschlossen", f"{report}\n\nGespeichert unter:\n{summary['path']}")
 
     def on_geojson_conversion_error(self, error_message):
         """
@@ -797,6 +832,9 @@ class ProjectTabView(QWidget):
     """
     View component for project tab UI with file browser and CSV editor.
     """
+
+    #: Name of a variant the user double-clicked in the project tree (UT-H8).
+    variantRequested = pyqtSignal(str)
 
     def __init__(self, presenter=None, parent=None):
         """

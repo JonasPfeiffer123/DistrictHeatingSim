@@ -18,6 +18,8 @@ import osmnx as ox
 import pandas as pd
 from shapely.geometry import LineString, Point
 
+from districtheatingsim.utilities.web_services import ServiceUnavailableError, osmnx_with_retries
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -79,15 +81,18 @@ def download_street_graph(
 
     # Download street graph. truncate_by_edge keeps streets that cross the polygon boundary
     # (otherwise an edge with one endpoint outside the polygon is dropped, losing boundary streets).
+    # Busy Overpass servers and dropped connections are retried (UT-H3).
     if custom_filter:
         logger.info(f"Using custom filter: {custom_filter}")
-        street_graph = ox.graph_from_polygon(
-            area_polygon, custom_filter=custom_filter, simplify=True, truncate_by_edge=True
+        street_graph = osmnx_with_retries(
+            lambda: ox.graph_from_polygon(
+                area_polygon, custom_filter=custom_filter, simplify=True, truncate_by_edge=True
+            )
         )
     else:
         logger.info(f"Using network_type: {network_type}")
-        street_graph = ox.graph_from_polygon(
-            area_polygon, network_type=network_type, simplify=True, truncate_by_edge=True
+        street_graph = osmnx_with_retries(
+            lambda: ox.graph_from_polygon(area_polygon, network_type=network_type, simplify=True, truncate_by_edge=True)
         )
 
     # Project to target CRS
@@ -897,6 +902,8 @@ def generate_and_export_osmnx_layers(
         error_msg = f"Failed to download OSM data: {e}"
         logger.error(error_msg)
         raise ConnectionError(error_msg) from e
+    except ServiceUnavailableError:
+        raise  # its message is meant for the user as it is
     except Exception as e:
         error_msg = f"Network generation failed: {e}"
         logger.error(error_msg)

@@ -32,7 +32,9 @@ from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog,
 from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
 from districtheatingsim.net_generation.flow_network_rebuild import rebuild_network_from_flow
 from districtheatingsim.net_generation.network_connectivity import (
+    building_connection_features,
     check_geojson_connectivity,
+    connection_label,
     snap_geojson_endpoints,
 )
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
@@ -551,6 +553,7 @@ class VisualizationPresenter(QObject):
             QMessageBox.information(self.view, "Konnektivität prüfen", body + note)
             return
 
+        self._mark_unconnected_connections(geojson, report)
         if report.near_miss_clusters:
             reply = QMessageBox.question(
                 self.view,
@@ -564,6 +567,32 @@ class VisualizationPresenter(QObject):
                 self._auto_snap_network(path, geojson)
         else:
             QMessageBox.warning(self.view, "Konnektivität prüfen", body + note)
+
+    #: Map layer that marks the buildings whose connection is not attached (UT-H4)
+    UNCONNECTED_LAYER = "Nicht angebundene Hausanschlüsse"
+
+    def _mark_unconnected_connections(self, geojson, report):
+        """Show the buildings whose house connection is not attached as a point layer on the map."""
+        features = building_connection_features(geojson)
+        points = []
+        for index in report.floating_consumers:
+            if index < len(features):
+                x, y = features[index]["geometry"]["coordinates"][0][:2]
+                points.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [x, y]},
+                        "properties": {"Adresse": connection_label(features[index], index)},
+                    }
+                )
+        if not points:
+            return
+        layer = {"type": "FeatureCollection", "features": points}
+        if geojson.get("crs"):
+            layer["crs"] = geojson["crs"]
+        self.view.web_view.page().runJavaScript(
+            f"window.importGeoJSON({json.dumps(layer)}, '{self.UNCONNECTED_LAYER}');"
+        )
 
     def _auto_snap_network(self, path, geojson):
         """Snap near-coincident endpoints in *geojson*, write back to *path*, reload the map."""
@@ -585,6 +614,7 @@ class VisualizationPresenter(QObject):
                 f"{n_snapped} Endpunkt(e) zusammengeführt. Das Netz ist jetzt vollständig verbunden.",
             )
         else:
+            self._mark_unconnected_connections(snapped, report)
             rest = "\n".join(f"• {m}" for m in report.messages)
             QMessageBox.warning(
                 self.view,

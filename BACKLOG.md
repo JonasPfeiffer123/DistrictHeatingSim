@@ -1933,10 +1933,90 @@ IDs below are the report's IDs with a `UT-` prefix.
   9 → 3 layer entries, the whole network in view. Tests: `tests/test_map_reload.py`. (Old layers on
   re-generation: still open, cf. report M3.)
 
-**Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
-default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H5/H6
-(import + geocoding quality), UT-H8 (project-tree double click), UT-H9 (climate data/location),
-UT-H10 (stale results), UT-M1…M17, UT-N.
+**Stage 2 – the most frequent breaks on first contact (branch `fix/anwendertest-stufe2`):**
+- UT-H8 — a double click on any non-variant folder in the project tree made it the project folder
+  (TRY/COP reset, CRS default, sub-folder in "Zuletzt geöffnet"); a variant switched without asking
+  to save and without loading its results. **Fixed 2026-10-09:** only another variant folder of the
+  open project reacts; the tree emits `ProjectTabView.variantRequested` and the main window switches
+  through the same path as "Variante öffnen" (`_confirm_leaving_variant`, then results). Other folders
+  just expand. Verified in `scenario_robustness.py tree_double_click`. Tests: `tests/test_project_tree.py`.
+- UT-H5 — real tables: an Excel export (Windows-1252) broke the import with a UnicodeDecodeError;
+  decimal commas passed the import and broke the heat demand; street + house number could not be
+  combined; "Nutzung"/"Anteil WW" were not recognised; empty cells became the text "nan"; the WW
+  share had no default. **Fixed 2026-10-09:** `csv_import_dialog.read_source_table` (UTF-8, else
+  cp1252; empty cells stay empty) feeds both import paths; `prepare_buildings` turns decimal commas
+  (and German thousands dots in kWh/kW) into dot decimals; `validate_buildings` lists what the heat
+  demand would reject (line + field: missing/non-numeric numbers, WW share outside 0–1, unknown or
+  mixed building types) and the user decides before anything is saved. The mapping dialog has a
+  "+ Spalte" column (house number appended to the street automatically), more aliases, WW default
+  0.2, and short source names ("Typ") no longer match by substring. Verified with the Freiburg Excel
+  export in `scenario_p3_freiburg.py import_excel geocode_default_crs` (12/12 geocoded with house
+  numbers, heat demand computed). Tests: `tests/test_csv_import_dialog.py`, `TestImportExcelTables`.
+- UT-H3 — Overpass/Nominatim without an error strategy: one Overpass endpoint, no retry, raw
+  tracebacks; geopy's `RateLimiter` swallowed Nominatim failures, so a blocked or unreachable
+  Nominatim looked like "address not found". **Fixed 2026-10-09:** `utilities/web_services.py` —
+  `call_with_retries` asks every server per round (`OVERPASS_SERVERS`: overpass-api.de, then the
+  public instance overpass.private.coffee) and pauses 15 s / 45 s between three rounds;
+  `is_transient` separates busy/unreachable servers from bad queries and empty areas; a final
+  failure is a `ServiceUnavailableError` with a German message, shown without traceback by the
+  download, net-generation and geocoding threads and the producer geocoding. Used by the building
+  download (overpy), the street download and the OSMnx net generation (`osmnx_with_retries`, which
+  points OSMnx at the next server per attempt). Nominatim: `swallow_exceptions=False`; geocoding stops
+  with the message and leaves the CSV unchanged. Verified with `scenario_robustness.py
+  osm_server_down` (unreachable server simulated) and against the real servers on 2026-10-09, when
+  overpass-api.de answered 504 "Server load too high" to every query and private.coffee 500: three
+  rounds, then the message after ~90 s. Tests: `tests/test_web_services.py`.
+  Open: a local response cache for the building query (OSMnx caches already).
+- UT-H1 — the detailed time series was the default (1.5–3 h for a year, 15 buildings), showed an
+  endless busy bar, could not be cancelled, and closing the app during a run froze it (`stop()`
+  requested an interruption `run()` never checked). **Fixed 2026-10-09:** the dialog defaults to the
+  simplified run (worker count stays 1 for the detailed one, G2 keeps parallel opt-in);
+  `thermohydraulic_time_series_net(progress=…)` reports every step through pandapower's
+  `progress_function` hook and stops between two steps on `TimeSeriesCancelled` — in parallel runs
+  through a manager queue, cancelling terminates the pool (`multiprocessing.Pool` instead of
+  `ProcessPoolExecutor`). `NetCalculationThread` runs on a deep copy (a cancelled or failed run leaves
+  the tab's net untouched), emits `progress`/`calculation_cancelled`, and `stop()` cancels. The tab
+  shows "Zeitschritt n von N – noch ca. X min" and an "Abbrechen" button. Verified with
+  `scenario_robustness.py cancel_time_series` (Zittau: cancel in 1.5 s, 32 controllers before and
+  after). Tests: `tests/test_time_series_progress.py`.
+  Open from the report: calibrating the simplified method against the detailed one (summer losses).
+- UT-K5 — OSM → building CSV: unthrottled reverse geocoding (Nominatim 429), every failure fell back
+  to the dialog's address of the first building (212 of 239 at "Spanntigstraße 5"), OSM `addr:*`
+  ignored, every building 30 MWh/a and HMF (church and garages too), result outside the project,
+  GeoJSON read without encoding. **Fixed 2026-10-09:** `geocoding/building_csv.py` skips outbuildings
+  (`OUTBUILDING_TAGS`: garage, shed, roof, …) and small buildings without address
+  (`min_footprint_m2`, dialog default 30 m²); takes the address from `addr:street`/`addr:housenumber`
+  and reverse-geocodes only the rest through geopy's `RateLimiter` (1 request/s, errors not swallowed;
+  a failed lookup stays empty and is listed by CSV line; after three consecutive Nominatim service
+  failures it stops asking and reports it); estimates the demand as footprint × storeys
+  (`building:levels`, else a default) × a specific value (dialog default 100 kWh/(m²·a), area via
+  `make_valid` — relations with their inner ring first had a negative area); suggests HEF/HMF (EFH/MFH
+  for a VDI default) for houses and apartment blocks. The dialog drops the shared "Adresse" field;
+  the conversion returns a summary (`format_building_csv_summary`), and the buildings go into the
+  project's `Quartier IST.csv` like an import (asking before replacing buildings). Verified with
+  `scenario_p2_ostritz.py convert_example_subset` (139 OSM buildings around the Zittau market from
+  `examples/data`, as Overpass answered 504 that day): 125 taken, 3 outbuildings and 11 huts skipped,
+  82 addresses from OSM and 43 from Nominatim in 42 s (the report's run: ~20 min), no empty address,
+  demand 5.8–349 MWh/a. 70 buildings share an address — mostly rear buildings that Nominatim gives
+  the nearest (front) address; the report says so. Tests: `tests/test_building_csv.py`.
+- UT-H4 — connectivity: MST/Advanced MST left every house connection and the producer unconnected
+  (Freiburg: 12 of 12; after auto-snap 1), the message named no building, a connected OSMnx net was
+  reported with "74 fast-zusammenfallende Endpunkt-Gruppen – wahrscheinliche Ursache der Trennung",
+  and "Advanced MST" without a street file failed with a traceback. **Fixed 2026-10-09:** root cause
+  of the floating connections: `generate_connection_lines` shifted the connection end by a fixed
+  vector (`offset_angle`, east) while the return lines are offset perpendicular to each supply line
+  (`build_offset_map`, whose docstring already promised the shared vector) — it now takes the same
+  `offset_map`, so every connection ends on its return junction. The near-miss note only appears when
+  the net is actually split; unconnected connections are named by address (`connection_label`) and
+  marked on the map as layer "Nicht angebundene Hausanschlüsse"; the generation dialog names missing
+  inputs (`missing_generation_inputs`: street file for MST modes, building file, producer) instead of
+  starting. Verified with `scenario_p3_freiburg.py networks mst_hydraulics`: MST, Advanced MST and
+  OSMnx "vollständig verbunden" without auto-snap; the MST net initialises in pandapipes (12
+  consumers, 479.5 kW). Tests: `test_every_house_connection_ends_on_a_return_junction`,
+  `TestUserTestH4`, `TestGenerationInputs`, `test_unconnected_buildings_are_marked_on_the_map`.
+
+**Later stages (see the report, section 6):** UT-H6 (geocoding quality), UT-H9 (climate
+data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
