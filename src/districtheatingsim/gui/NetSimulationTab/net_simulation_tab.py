@@ -14,6 +14,7 @@ import csv
 import json
 import logging
 import os
+import time
 import traceback
 
 import matplotlib.pyplot as plt
@@ -26,6 +27,7 @@ from PyQt6.QtWidgets import (
     QMenuBar,
     QMessageBox,
     QProgressBar,
+    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -35,6 +37,7 @@ from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import (
     NetCalculationThread,
     NetInitializationThread,
     NetRecalculationThread,
+    format_time_series_progress,
 )
 from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
 from districtheatingsim.gui.NetSimulationTab.network_info_panel import NetworkInfoPanel
@@ -91,6 +94,7 @@ class NetSimulationTab(QWidget):
         self._init_thread = None
         self._calc_thread = None
         self._time_series_workers = 1  # parallel processes for the detailed time series (G2)
+        self._first_step_at = None  # monotonic time of the first reported time step (UT-H1)
         self._recalc_thread = None
 
         self._init_ui()
@@ -212,7 +216,15 @@ class NetSimulationTab(QWidget):
                 border-radius: 3px;
             }
         """)
-        right_layout.addWidget(self._progress_bar)
+        progress_row = QHBoxLayout()
+        progress_row.addWidget(self._progress_bar, 1)
+        # Cancels the detailed time series between two time steps (UT-H1)
+        self._cancel_btn = QPushButton("Abbrechen")
+        self._cancel_btn.setToolTip("Zeitreihenberechnung nach dem laufenden Zeitschritt abbrechen")
+        self._cancel_btn.setVisible(False)
+        self._cancel_btn.clicked.connect(self.cancel_time_series)
+        progress_row.addWidget(self._cancel_btn)
+        right_layout.addLayout(progress_row)
 
         top_row.addWidget(right_container, 3)
         vbox.addLayout(top_row)
@@ -311,13 +323,50 @@ class NetSimulationTab(QWidget):
             )
             self._calc_thread.calculation_done.connect(self._on_time_series_done)
             self._calc_thread.calculation_error.connect(self._on_simulation_error)
+            self._calc_thread.progress.connect(self._on_time_series_progress)
+            self._calc_thread.calculation_cancelled.connect(self._on_time_series_cancelled)
+            self._first_step_at = None
             self._calc_thread.start()
             self._progress_bar.setRange(0, 0)
+            self._cancel_btn.setText("Abbrechen")
+            self._cancel_btn.setEnabled(True)
+            self._cancel_btn.setVisible(True)
         except ValueError as e:
             QMessageBox.warning(self, "Ungültige Eingabe", str(e))
 
-    def _on_time_series_done(self, network_data):
+    def _on_time_series_progress(self, done: int, total: int) -> None:
+        """Show the time step and the remaining time of the detailed calculation (UT-H1)."""
+        now = time.monotonic()
+        if self._first_step_at is None:
+            self._first_step_at = now
+        self._progress_bar.setRange(0, max(total, 1))
+        self._progress_bar.setValue(done)
+        if self._cancel_btn.isEnabled():
+            self._progress_bar.setFormat(format_time_series_progress(done, total, now - self._first_step_at))
+
+    def cancel_time_series(self) -> None:
+        """Stop the running time series before its next time step; the net stays as it was."""
+        if self._calc_thread is not None and self._calc_thread.isRunning():
+            self._calc_thread.cancel()
+            self._cancel_btn.setEnabled(False)
+            self._cancel_btn.setText("Wird abgebrochen …")
+            self._progress_bar.setFormat("Wird nach dem laufenden Zeitschritt abgebrochen …")
+
+    def _on_time_series_cancelled(self) -> None:
+        self._end_time_series_progress()
+        QMessageBox.information(
+            self,
+            "Zeitreihenberechnung abgebrochen",
+            "Die Zeitreihenberechnung wurde abgebrochen. Das Netz und die bisherigen Ergebnisse sind unverändert.",
+        )
+
+    def _end_time_series_progress(self) -> None:
+        self._cancel_btn.setVisible(False)
+        self._progress_bar.setFormat("%p%")
         self._progress_bar.setRange(0, 1)
+
+    def _on_time_series_done(self, network_data):
+        self._end_time_series_progress()
         self.NetworkGenerationData = network_data
         self._refresh_all_widgets()
 
@@ -337,7 +386,7 @@ class NetSimulationTab(QWidget):
 
     def _on_simulation_error(self, error_message):
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
-        self._progress_bar.setRange(0, 1)
+        self._end_time_series_progress()
 
     # ------------------------------------------------------------------
     # Widget refresh

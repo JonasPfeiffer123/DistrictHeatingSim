@@ -1967,10 +1967,22 @@ IDs below are the report's IDs with a `UT-` prefix.
   overpass-api.de answered 504 "Server load too high" to every query and private.coffee 500: three
   rounds, then the message after ~90 s. Tests: `tests/test_web_services.py`.
   Open: a local response cache for the building query (OSMnx caches already).
+- UT-H1 — the detailed time series was the default (1.5–3 h for a year, 15 buildings), showed an
+  endless busy bar, could not be cancelled, and closing the app during a run froze it (`stop()`
+  requested an interruption `run()` never checked). **Fixed 2026-10-09:** the dialog defaults to the
+  simplified run (worker count stays 1 for the detailed one, G2 keeps parallel opt-in);
+  `thermohydraulic_time_series_net(progress=…)` reports every step through pandapower's
+  `progress_function` hook and stops between two steps on `TimeSeriesCancelled` — in parallel runs
+  through a manager queue, cancelling terminates the pool (`multiprocessing.Pool` instead of
+  `ProcessPoolExecutor`). `NetCalculationThread` runs on a deep copy (a cancelled or failed run leaves
+  the tab's net untouched), emits `progress`/`calculation_cancelled`, and `stop()` cancels. The tab
+  shows "Zeitschritt n von N – noch ca. X min" and an "Abbrechen" button. Verified with
+  `scenario_robustness.py cancel_time_series` (Zittau: cancel in 1.5 s, 32 controllers before and
+  after). Tests: `tests/test_time_series_progress.py`.
+  Open from the report: calibrating the simplified method against the detailed one (summer losses).
 
-**Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
-default/progress/cancel), UT-H4 (connectivity), UT-H6
-(geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
+**Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H4 (connectivity),
+UT-H6 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

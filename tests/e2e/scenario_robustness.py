@@ -6,7 +6,7 @@ Typical slips of a first-time user, run against the Zittau project of scenario P
 first), plus the read-only installation folder case.
 
 Reproduces (ANWENDERTEST_2026-10-08.md): M5 (cancel "Projekt öffnen"), H8 (double click on a
-sub folder in the project tree), H3 (Overpass unreachable), M17 (existing project name), M8 (energy system without a load
+sub folder in the project tree), H3 (Overpass unreachable), H1 (cancel the time series), M17 (existing project name), M8 (energy system without a load
 profile / invalid input), M6 (save on close), K6 (read-only recent-projects file → projects do
 not open, silently).
 
@@ -138,6 +138,7 @@ def save_while_calculating():
     tab = H.VIEW.calcTab
 
     def one_week_detailed(dialog):
+        dialog.detailedCalcRadio.setChecked(True)  # the default is the simplified run (UT-H1)
         dialog.EndTimeStepInput.setText("168")
         dialog.onAccept()
         return dialog.result()
@@ -150,6 +151,42 @@ def save_while_calculating():
     tab.saveNet(show_dialog=True)
     H.wait_until(H.thread_finished(tab, "_calc_thread"), 900, "time series (one week)")
     H.log("STATE", "running calculations after the run", H.VIEW.running_calculations())
+
+
+def cancel_time_series():
+    """H1: default method; a detailed year shows time step + remaining time and can be cancelled."""
+    import time
+
+    H.MSGBOX_ANSWERS.append("Ohne Speichern")
+    H.open_project(ZITTAU, variant="Variante 1")
+    tab = H.VIEW.calcTab
+    controllers_before = len(tab.NetworkGenerationData.net.controller)
+
+    def detailed_year(dialog):
+        default = "vereinfacht" if dialog.simplifiedCalcRadio.isChecked() else "detailliert"
+        H.log("CHECK H1", "default method", default)
+        dialog.detailedCalcRadio.setChecked(True)
+        dialog.onAccept()
+        return dialog.result()
+
+    H.DIALOG_HANDLERS["TimeSeriesCalculationDialog"] = [detailed_year]
+    tab.opencalculateNetDialog()
+    H.wait_until(lambda: tab._progress_bar.value() >= 10, 600, "first time steps")
+    H.log("CHECK H1", "progress text", tab._progress_bar.text())
+    H.VIEW.tabWidget.setCurrentIndex(3)
+    H.pump(1)
+    H.shot(H.VIEW, "h1_progress")
+    started = time.time()
+    tab.cancel_time_series()
+    H.log("STATE", "while cancelling", tab._progress_bar.text())
+    H.wait_until(H.thread_finished(tab, "_calc_thread"), 120, "cancel")
+    H.log("CHECK H1", "cancel took", f"{time.time() - started:.1f}s")
+    H.log(
+        "CHECK H1",
+        "controllers before / after",
+        (controllers_before, len(tab.NetworkGenerationData.net.controller)),
+    )
+    H.log("STATE", "cancel button visible", tab._cancel_btn.isVisible())
 
 
 def read_only_recent_list():
@@ -179,6 +216,7 @@ if __name__ == "__main__":
             "energy_without_data": energy_without_data,
             "close_with_save": close_with_save,
             "save_while_calculating": save_while_calculating,
+            "cancel_time_series": cancel_time_series,
             "read_only_recent_list": read_only_recent_list,
         }
     )
