@@ -1999,8 +1999,23 @@ IDs below are the report's IDs with a `UT-` prefix.
   82 addresses from OSM and 43 from Nominatim in 42 s (the report's run: ~20 min), no empty address,
   demand 5.8–349 MWh/a. 70 buildings share an address — mostly rear buildings that Nominatim gives
   the nearest (front) address; the report says so. Tests: `tests/test_building_csv.py`.
+- UT-H4 — connectivity: MST/Advanced MST left every house connection and the producer unconnected
+  (Freiburg: 12 of 12; after auto-snap 1), the message named no building, a connected OSMnx net was
+  reported with "74 fast-zusammenfallende Endpunkt-Gruppen – wahrscheinliche Ursache der Trennung",
+  and "Advanced MST" without a street file failed with a traceback. **Fixed 2026-10-09:** root cause
+  of the floating connections: `generate_connection_lines` shifted the connection end by a fixed
+  vector (`offset_angle`, east) while the return lines are offset perpendicular to each supply line
+  (`build_offset_map`, whose docstring already promised the shared vector) — it now takes the same
+  `offset_map`, so every connection ends on its return junction. The near-miss note only appears when
+  the net is actually split; unconnected connections are named by address (`connection_label`) and
+  marked on the map as layer "Nicht angebundene Hausanschlüsse"; the generation dialog names missing
+  inputs (`missing_generation_inputs`: street file for MST modes, building file, producer) instead of
+  starting. Verified with `scenario_p3_freiburg.py networks mst_hydraulics`: MST, Advanced MST and
+  OSMnx "vollständig verbunden" without auto-snap; the MST net initialises in pandapipes (12
+  consumers, 479.5 kW). Tests: `test_every_house_connection_ends_on_a_return_junction`,
+  `TestUserTestH4`, `TestGenerationInputs`, `test_unconnected_buildings_are_marked_on_the_map`.
 
-**Later stages (see the report, section 6):** UT-H4 (connectivity), UT-H6 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
+**Later stages (see the report, section 6):** UT-H6 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

@@ -277,7 +277,11 @@ def generate_network(
 
 
 def generate_connection_lines(
-    layer: gpd.GeoDataFrame, offset_distance: float, offset_angle: float, df: pd.DataFrame | None = None
+    layer: gpd.GeoDataFrame,
+    offset_distance: float,
+    offset_angle: float,
+    df: pd.DataFrame | None = None,
+    offset_map: dict[tuple, tuple] | None = None,
 ) -> gpd.GeoDataFrame:
     """
     Generate connection lines with building attributes.
@@ -290,6 +294,11 @@ def generate_connection_lines(
     :type offset_angle: float
     :param df: Building attributes with UTM_X, UTM_Y columns (optional)
     :type df: Optional[pd.DataFrame]
+    :param offset_map: Per-vertex offsets of the return network (:func:`build_offset_map` of the
+        supply lines). With it a connection ends exactly on the return junction; the fixed
+        ``offset_angle`` shift missed it whenever the supply line was not running north-south,
+        so every house connection of an MST network floated (BACKLOG UT-H4).
+    :type offset_map: dict, optional
     :return: Connection LineStrings with building attributes
     :rtype: gpd.GeoDataFrame
 
@@ -355,7 +364,11 @@ def generate_connection_lines(
         # Create connection line geometry.
         # If the source point carries a Z-coordinate (elevation), preserve it
         # in the offset end-point so that the full connection line is 3-D.
-        offset_point = create_offset_points(point, offset_distance, offset_angle)
+        offset = offset_map.get((point.x, point.y)) if offset_map else None
+        if offset is not None:
+            offset_point = Point(point.x + offset[0], point.y + offset[1])
+        else:
+            offset_point = create_offset_points(point, offset_distance, offset_angle)
         if point.has_z:
             z = point.z
             start = (point.x, point.y, z)
