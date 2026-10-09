@@ -1940,11 +1940,22 @@ IDs below are the report's IDs with a `UT-` prefix.
   open project reacts; the tree emits `ProjectTabView.variantRequested` and the main window switches
   through the same path as "Variante öffnen" (`_confirm_leaving_variant`, then results). Other folders
   just expand. Verified in `scenario_robustness.py tree_double_click`. Tests: `tests/test_project_tree.py`.
+- UT-H5 — real tables: an Excel export (Windows-1252) broke the import with a UnicodeDecodeError;
+  decimal commas passed the import and broke the heat demand; street + house number could not be
+  combined; "Nutzung"/"Anteil WW" were not recognised; empty cells became the text "nan"; the WW
+  share had no default. **Fixed 2026-10-09:** `csv_import_dialog.read_source_table` (UTF-8, else
+  cp1252; empty cells stay empty) feeds both import paths; `prepare_buildings` turns decimal commas
+  (and German thousands dots in kWh/kW) into dot decimals; `validate_buildings` lists what the heat
+  demand would reject (line + field: missing/non-numeric numbers, WW share outside 0–1, unknown or
+  mixed building types) and the user decides before anything is saved. The mapping dialog has a
+  "+ Spalte" column (house number appended to the street automatically), more aliases, WW default
+  0.2, and short source names ("Typ") no longer match by substring. Verified with the Freiburg Excel
+  export in `scenario_p3_freiburg.py import_excel geocode_default_crs` (12/12 geocoded with house
+  numbers, heat demand computed). Tests: `tests/test_csv_import_dialog.py`, `TestImportExcelTables`.
 
 **Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
-default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H5/H6
-(import + geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17,
-UT-N.
+default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H6
+(geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

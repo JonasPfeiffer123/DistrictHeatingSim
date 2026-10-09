@@ -158,3 +158,42 @@ class TestImportIntoProject:
         p.import_csv()
         assert p.model.current_file_path == target and events["info"] == []
         assert os.path.exists(target)
+
+
+class TestImportExcelTables:
+    """UT-H5: Excel exports reach the project normalised, problems are shown before saving."""
+
+    def test_windows_1252_with_decimal_commas(self, presenter, tmp_path, monkeypatch):
+        p, target, events = presenter
+        source = str(tmp_path / "excel.csv")
+        row = ROW.replace("Markt 1", "Bautzner Straße 1").replace(";0.1;", ";0,1;").replace(";1.5;", ";1,5;")
+        open(source, "w", encoding="cp1252").write(HEADER + "\n" + row + "\n")
+        _choose_file(monkeypatch, source)
+        p.import_csv()
+        frame = pd.read_csv(target, sep=";", encoding="utf-8-sig", dtype=str)
+        assert frame["Adresse"].tolist() == ["Bautzner Straße 1"]
+        assert (frame["WW_Anteil"].tolist(), frame["Steigung_Heizkurve"].tolist()) == (["0.1"], ["1.5"])
+        assert events["question"] == []
+
+    def test_invalid_values_are_shown_before_anything_is_saved(self, presenter, tmp_path, monkeypatch):
+        from PyQt6.QtWidgets import QMessageBox
+
+        p, target, events = presenter
+        source = str(tmp_path / "fehler.csv")
+        open(source, "w", encoding="utf-8").write(HEADER + "\n" + ROW.replace(";GKO;", ";Büro;") + "\n")
+        _choose_file(monkeypatch, source)
+        _answer_question(monkeypatch, events, QMessageBox.StandardButton.No)
+        p.import_csv()
+        assert len(events["question"]) == 1 and "Zeile 2: Gebäudetyp „BÜRO“ ist unbekannt." in events["question"][0]
+        assert not os.path.exists(target)
+
+    def test_unreadable_file_is_reported(self, presenter, tmp_path, monkeypatch):
+        from PyQt6.QtWidgets import QMessageBox
+
+        p, target, events = presenter
+        warnings = []
+        monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warnings.append(a[2])))
+        _choose_file(monkeypatch, str(tmp_path / "gibt_es_nicht.csv"))
+        p.import_csv()
+        assert len(warnings) == 1 and "konnte nicht gelesen werden" in warnings[0]
+        assert not os.path.exists(target)

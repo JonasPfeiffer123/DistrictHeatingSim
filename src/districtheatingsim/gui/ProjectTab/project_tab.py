@@ -417,24 +417,29 @@ class ProjectPresenter:
             self.load_csv(target_path)  # the project's own file: nothing to import
             return
 
-        import pandas as pd
+        from districtheatingsim.gui.ProjectTab.csv_import_dialog import (
+            TARGET_COLUMNS,
+            confirm_import_with_problems,
+            prepare_buildings,
+            read_source_table,
+            validate_buildings,
+        )
 
-        from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, _detect_delimiter
-
-        # A file that already uses the internal column schema is taken over as it is; otherwise
-        # the mapping dialog assigns the columns.
-        df = None
+        # Excel exports (Windows-1252, decimal commas) are read and normalised the same way on both
+        # paths (UT-H5). A file that already uses the internal column schema is taken over as it is;
+        # otherwise the mapping dialog assigns the columns.
         try:
-            delim = _detect_delimiter(fname)
-            probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
-            required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
-            if required_cols.issubset(set(probe.columns)):
-                df = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", dtype=str, keep_default_na=False)
+            source, _delimiter, _encoding = read_source_table(fname)
         except Exception as e:
-            # Best-effort fast path; fall through to the mapping dialog on any error.
-            logger.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
+            QMessageBox.warning(self.view, "CSV importieren", f"Die Datei konnte nicht gelesen werden:\n{fname}\n\n{e}")
+            return
 
-        if df is None:
+        required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
+        if required_cols.issubset(set(source.columns)):
+            df = prepare_buildings(source)
+            if not confirm_import_with_problems(self.view, validate_buildings(df)):
+                return
+        else:
             dialog = CsvImportDialog(fname, parent=self.view)
             if dialog.exec() != CsvImportDialog.DialogCode.Accepted:
                 return

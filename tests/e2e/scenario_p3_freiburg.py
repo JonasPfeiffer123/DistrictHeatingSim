@@ -45,19 +45,11 @@ def _map_columns(dialog):
 
     keys = [column[0] for column in TARGET_COLUMNS]
     automatic = {keys[row]: dialog.table.cellWidget(row, dialog._COL_SOURCE).currentText() for row in range(len(keys))}
-    H.log("STATE", "automatic mapping (H5)", automatic)
-    # The best a user can do: there is no way to combine 'Straße' and 'Hausnr.' (H5).
-    wanted = {
-        "Stadt": "Ort",
-        "Adresse": "Straße",
-        "Wärmebedarf": "Jahreswärmebedarf [kWh]",
-        "Gebäudetyp": "Nutzung",
-        "WW_Anteil": "Anteil WW",
-    }
-    for key, source in wanted.items():
-        combo = dialog.table.cellWidget(keys.index(key), dialog._COL_SOURCE)
-        combo.setCurrentIndex(combo.findText(source))
-    dialog.table.cellWidget(keys.index("Bundesland"), 2).setText("Baden-Württemberg")
+    H.log("CHECK H5", "automatic mapping", automatic)
+    addition = dialog.table.cellWidget(keys.index("Adresse"), dialog._COL_ADDITION).currentText()
+    H.log("CHECK H5", "appended to the address", addition)
+    # Only the federal state is not in the file.
+    dialog.table.cellWidget(keys.index("Bundesland"), dialog._COL_DEFAULT).setText("Baden-Württemberg")
     H.shot(dialog, "p3_mapping")
     dialog._on_import()
     return dialog.result()
