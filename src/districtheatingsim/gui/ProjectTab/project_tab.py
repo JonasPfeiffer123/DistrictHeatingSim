@@ -11,7 +11,7 @@ import json
 import logging
 import os
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import (
 from districtheatingsim.geocoding.building_csv import centroid_of, geojson_to_building_csv
 from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
-from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
+from districtheatingsim.gui.MainTab.project_structure import discover_variants
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
@@ -278,16 +278,31 @@ class ProjectPresenter:
         :param index: Tree view index.
         :type index: QModelIndex
         """
-        """Handle tree view double-click events."""
         file_path = self.view.get_selected_file_path(index)
 
         if os.path.isdir(file_path):
-            if VARIANT_PREFIX in os.path.basename(file_path):
-                self.folder_manager.set_variant_folder(file_path)
-            else:
-                self.folder_manager.set_project_folder(file_path)
+            # Only a variant folder of the open project switches the variant - through the main
+            # window, which asks to save and loads the variant's results. Any other folder just
+            # expands; making it the project folder dropped TRY/COP/CRS (UT-H8).
+            variant = self._variant_of_folder(file_path)
+            if variant:
+                self.view.variantRequested.emit(variant)
         elif file_path.endswith(".csv"):
             self.load_csv(file_path)
+
+    def _variant_of_folder(self, folder: str) -> str | None:
+        """Name of the variant ``folder`` is, if it is another variant of the open project."""
+        project = self.folder_manager.project_folder
+        if not project:
+            return None
+        folder = os.path.normcase(os.path.normpath(folder))
+        if os.path.dirname(folder) != os.path.normcase(os.path.normpath(project)):
+            return None
+        current = self.folder_manager.variant_folder
+        if current and folder == os.path.normcase(os.path.normpath(current)):
+            return None
+        names = {os.path.normcase(name): name for name in discover_variants(project)}
+        return names.get(os.path.basename(folder))
 
     def _building_csv_path(self) -> str:
         """Path of the project's building CSV (``Quartier IST.csv``), normalised."""
@@ -797,6 +812,9 @@ class ProjectTabView(QWidget):
     """
     View component for project tab UI with file browser and CSV editor.
     """
+
+    #: Name of a variant the user double-clicked in the project tree (UT-H8).
+    variantRequested = pyqtSignal(str)
 
     def __init__(self, presenter=None, parent=None):
         """
