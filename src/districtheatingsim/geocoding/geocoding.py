@@ -97,8 +97,10 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     failed_addresses = []
 
     try:
+        # utf-8-sig on both sides: reading the BOM-prefixed file as plain utf-8 kept the BOM in the
+        # first header and prepended another one on every run (BACKLOG UT-H7).
         with (
-            open(input_csv, encoding="utf-8") as infile,
+            open(input_csv, encoding="utf-8-sig") as infile,
             open(temp_path, mode="w", newline="", encoding="utf-8-sig") as outfile,
         ):
             reader = csv.reader(infile, delimiter=";")

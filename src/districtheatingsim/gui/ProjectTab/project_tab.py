@@ -78,10 +78,15 @@ class ProjectModel:
         :return: Headers and data lists.
         :rtype: tuple
         """
-        with open(file_path, encoding="utf-8") as file:
+        # utf-8-sig: the files are written with a BOM. Reading them as plain utf-8 kept the BOM in
+        # the first header, and every save added another one (BACKLOG UT-H7); lstrip repairs
+        # files that already collected several.
+        with open(file_path, encoding="utf-8-sig") as file:
             reader = csv.reader(file, delimiter=";")
             headers = next(reader)
             data = [row for row in reader]
+        if headers:
+            headers[0] = headers[0].lstrip("\ufeff")
         return headers, data
 
     def save_csv(self, file_path, headers, data):
@@ -386,51 +391,72 @@ class ProjectPresenter:
         the user can assign source columns to target fields and supply default
         values for missing ones.
         """
-        standard_path = os.path.join(
-            self.folder_manager.get_variant_folder(),
-            self.config_manager.get_relative_path("current_building_data_path"),
-        )
+        target_path = self._building_csv_path()
         fname, _ = QFileDialog.getOpenFileName(
-            self.view, "CSV importieren", standard_path, "CSV Files (*.csv);;All Files (*)"
+            self.view, "CSV importieren", target_path, "CSV Files (*.csv);;All Files (*)"
         )
         if not fname or not fname.strip():
             return
+        if _same_file(fname, target_path):
+            self.load_csv(target_path)  # the project's own file: nothing to import
+            return
 
-        # Check whether the file already matches the internal schema
+        import pandas as pd
+
+        from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, _detect_delimiter
+
+        # A file that already uses the internal column schema is taken over as it is; otherwise
+        # the mapping dialog assigns the columns.
+        df = None
         try:
-            import pandas as pd
-
-            from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, _detect_delimiter
-
             delim = _detect_delimiter(fname)
             probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
             required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
             if required_cols.issubset(set(probe.columns)):
-                # Already in the right format – load directly
-                self.load_csv(fname)
-                return
+                df = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", dtype=str, keep_default_na=False)
         except Exception as e:
             # Best-effort fast path; fall through to the mapping dialog on any error.
             logger.debug("Direktes CSV-Laden nicht möglich, nutze Mapping-Dialog: %s", e)
 
-        # Show column-mapping dialog
-        dialog = CsvImportDialog(fname, parent=self.view)
-        if dialog.exec() != CsvImportDialog.DialogCode.Accepted:
-            return
-
-        df = dialog.get_result()
         if df is None:
-            return
+            dialog = CsvImportDialog(fname, parent=self.view)
+            if dialog.exec() != CsvImportDialog.DialogCode.Accepted:
+                return
+            df = dialog.get_result()
+            if df is None:
+                return
 
-        # Save the mapped result to the standard project path and load it
-        target_path = os.path.join(
-            self.folder_manager.get_variant_folder(),
-            self.config_manager.get_relative_path("current_building_data_path"),
-        )
+        self._store_imported_buildings(df, target_path)
+
+    def _store_imported_buildings(self, df, target_path: str) -> None:
+        """
+        Write imported buildings to the project's building CSV and show them.
+
+        The import always lands in the project file: the fast path used to load the source file
+        itself, so the project file stayed empty and "CSV speichern" / geocoding wrote into the
+        user's original outside the project (BACKLOG UT-K3). Existing buildings are only replaced
+        after a confirmation.
+
+        :param df: Imported buildings in the internal column schema.
+        :param target_path: The project's ``Quartier IST.csv``.
+        """
+        existing = self._count_buildings(target_path)
+        if existing:
+            reply = QMessageBox.question(
+                self.view,
+                "Gebäudeliste ersetzen",
+                f"Die Gebäudeliste des Projekts enthält bereits {existing} Gebäude.\n\n"
+                f"Sollen sie durch die {len(df)} importierten Gebäude ersetzt werden?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
         try:
             df.to_csv(target_path, sep=";", index=False, encoding="utf-8-sig")
             self.load_csv(target_path)
+            self.update_progress_tracker()
             QMessageBox.information(
                 self.view,
                 "Import erfolgreich",
@@ -438,6 +464,16 @@ class ProjectPresenter:
             )
         except Exception as e:
             QMessageBox.critical(self.view, "Fehler beim Speichern", str(e))
+
+    def _count_buildings(self, csv_path: str) -> int:
+        """Number of non-empty building rows in a building CSV (0 if it does not exist)."""
+        if not os.path.exists(csv_path):
+            return 0
+        try:
+            _headers, rows = self.model.load_csv(csv_path)
+        except (OSError, UnicodeDecodeError, StopIteration):
+            return 0
+        return sum(1 for row in rows if any(cell.strip() for cell in row))
 
     def load_csv(self, file_path):
         """
