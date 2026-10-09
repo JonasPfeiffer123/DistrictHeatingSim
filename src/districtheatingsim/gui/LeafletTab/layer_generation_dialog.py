@@ -499,9 +499,13 @@ class LayerGenerationDialog(QDialog):
         """
         address = self.addressInput.text()
         if address:
-            x, y = get_coordinates(address)
+            # In the project CRS: the default target was EPSG:25833, which put the producer of a
+            # UTM-32 project ~450 km off (BACKLOG UT-K2).
+            x, y = get_coordinates(address, to_crs=self.project_crs)
             if x and y:
                 self.insertRowInTable(str(x), str(y))
+            else:
+                QMessageBox.warning(self, "Adresse nicht gefunden", f"Die Adresse wurde nicht gefunden: {address}")
 
     def importCoordsFromCSV(self):
         """

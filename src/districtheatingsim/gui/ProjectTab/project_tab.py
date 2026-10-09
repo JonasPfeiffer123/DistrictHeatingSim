@@ -11,7 +11,6 @@ import json
 import logging
 import os
 
-from pyproj import Transformer
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtWidgets import (
@@ -36,14 +35,28 @@ from PyQt6.QtWidgets import (
 )
 
 from districtheatingsim.geocoding.building_csv import centroid_of, geojson_to_building_csv
+from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
-from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
+from districtheatingsim.utilities.crs_utils import (
+    COMMON_CRS_OPTIONS,
+    outside_crs_area,
+    read_building_coordinates,
+    reproject_building_csv,
+    suggest_crs_for_coordinates,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _same_file(path_a, path_b) -> bool:
+    """True if both paths name the same file (case- and ``..``-insensitive)."""
+    if not path_a or not path_b:
+        return False
+    return os.path.normcase(os.path.abspath(str(path_a))) == os.path.normcase(os.path.abspath(str(path_b)))
 
 
 class ProjectModel:
@@ -270,33 +283,98 @@ class ProjectPresenter:
         elif file_path.endswith(".csv"):
             self.load_csv(file_path)
 
+    def _building_csv_path(self) -> str:
+        """Path of the project's building CSV (``Quartier IST.csv``), normalised."""
+        return os.path.normpath(
+            os.path.join(
+                self.folder_manager.get_variant_folder(),
+                self.config_manager.get_relative_path("current_building_data_path"),
+            )
+        )
+
     def _on_crs_combo_changed(self, label: str):
-        """Save CRS when the user selects a different entry in the combo box."""
+        """Change the project CRS when the user selects a different entry in the combo box."""
         # The combo displays labels like "EPSG:25833 – ETRS89 …", extract code prefix
         code = label.split(" ")[0] if label else ""
         if code.upper().startswith("EPSG:"):
-            self.folder_manager.set_project_crs(code)
+            self.change_project_crs(code)
+
+    def change_project_crs(self, new_crs: str, reason: str = "") -> bool:
+        """
+        Switch the project CRS and convert the building coordinates along with it.
+
+        The building CSV stores bare ``UTM_X``/``UTM_Y`` numbers that are read in the project CRS;
+        switching the CRS without converting them moved every building by hundreds of kilometres
+        (BACKLOG UT-K2). The user is asked first; "Abbrechen" keeps the old CRS.
+
+        :param new_crs: Target CRS, e.g. ``"EPSG:25832"``.
+        :param reason: Optional explanation shown above the question.
+        :return: True if the CRS was changed.
+        """
+        old_crs = self.folder_manager.project_crs
+        if not new_crs or new_crs == old_crs:
+            return False
+        csv_path = self._building_csv_path()
+        xs, _ys = read_building_coordinates(csv_path)
+        convert = False
+        if len(xs):
+            reply = QMessageBox.question(
+                self.view,
+                "Koordinatensystem ändern",
+                f"{reason}Die {len(xs)} Gebäudekoordinaten in '{os.path.basename(csv_path)}' liegen in {old_crs}.\n\n"
+                f"Sollen sie beim Wechsel nach {new_crs} umgerechnet werden? (empfohlen)\n\n"
+                "Bereits erzeugte Straßen-, Gebäude- und Netzdateien behalten ihr Koordinatensystem; "
+                "erzeugen Sie diese nach dem Wechsel neu.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Yes,
+            )
+            if reply == QMessageBox.StandardButton.Cancel:
+                self.view.set_crs(old_crs)
+                return False
+            convert = reply == QMessageBox.StandardButton.Yes
+        if convert:
+            reproject_building_csv(csv_path, old_crs, new_crs)
+            logger.info("Building coordinates converted %s -> %s (%s)", old_crs, new_crs, csv_path)
+        self.folder_manager.set_project_crs(new_crs)
+        self.view.set_crs(new_crs)
+        if convert and _same_file(self.model.current_file_path, csv_path):
+            self.load_csv(csv_path)
+        return True
 
     def _suggest_crs(self):
-        """Auto-detect and suggest CRS based on first building coordinate in CSV."""
-        if not (hasattr(self.model, "current_file_path") and self.model.current_file_path):
+        """Suggest the CRS that fits the building coordinates and offer to switch to it."""
+        xs, ys = read_building_coordinates(self._building_csv_path())
+        if not len(xs):
+            self.view.show_message(
+                "Koordinatensystem vorschlagen",
+                "Die Gebäude-CSV enthält noch keine Koordinaten. Berechnen Sie zuerst die Geokoordinaten.",
+            )
             return
+        current = self.folder_manager.project_crs
         try:
-            headers, data = self.model.load_csv(self.model.current_file_path)
-            utm_x_idx = headers.index("UTM_X") if "UTM_X" in headers else None
-            utm_y_idx = headers.index("UTM_Y") if "UTM_Y" in headers else None
-            if utm_x_idx is None or not data:
-                return
-            x = float(data[0][utm_x_idx])
-            y = float(data[0][utm_y_idx])
-            # Convert from current project CRS to WGS84 for suggestion
-            transformer = Transformer.from_crs(self.folder_manager.project_crs, "epsg:4326", always_xy=True)
-            lon, lat = transformer.transform(x, y)
-            suggested = suggest_crs_from_location(lon, lat)
-            self.folder_manager.set_project_crs(suggested)
-            self.view.set_crs(suggested)
+            suggested = suggest_crs_for_coordinates(xs, ys, current)
         except Exception as e:
             logger.warning("CRS-Vorschlag aus den Koordinaten fehlgeschlagen: %s", e)
+            return
+        if suggested == current:
+            self.view.show_message("Koordinatensystem vorschlagen", f"{current} passt bereits zu den Gebäuden.")
+        else:
+            self.change_project_crs(suggested, reason=f"Für den Ort der Gebäude passt {suggested}.\n\n")
+
+    def _check_coordinates_fit_crs(self):
+        """After geocoding: offer a fitting CRS if the coordinates lie outside the project CRS's area."""
+        xs, ys = read_building_coordinates(self._building_csv_path())
+        if not len(xs):
+            return
+        current = self.folder_manager.project_crs
+        outside = int(outside_crs_area(xs, ys, current).sum())
+        if outside:
+            suggested = suggest_crs_for_coordinates(xs, ys, current)
+            self.change_project_crs(
+                suggested,
+                reason=f"{outside} von {len(xs)} Gebäuden liegen außerhalb des Gültigkeitsbereichs von {current}. "
+                f"Für diesen Ort passt {suggested}.\n\n",
+            )
 
     def import_csv(self):
         """
@@ -623,14 +701,20 @@ class ProjectPresenter:
         """
         self.view.progressBar.setRange(0, 1)
 
-        fname, _summary = result
+        fname, summary = result
 
         # Automatically reload the updated CSV file to show the new coordinates
         if fname and os.path.exists(fname):
             self.load_csv(fname)
             # Update the progress tracker to refresh CSV status (should now show "mit Koordinaten")
             self.update_progress_tracker()
-            self.view.show_message("Erfolg", "Geocoding abgeschlossen. CSV-Datei wurde automatisch aktualisiert.")
+            all_found, message = format_geocoding_summary(summary)
+            if all_found:
+                self.view.show_message("Geocoding erfolgreich", message)
+            else:
+                QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", message)
+            if _same_file(fname, self._building_csv_path()):
+                self._check_coordinates_fit_crs()
 
     def on_geocode_error(self, error_message):
         """
