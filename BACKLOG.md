@@ -1863,7 +1863,7 @@ Zittau (address CSV), Ostritz (OSM buildings), Freiburg (Excel export, UTM 32). 
 reproduce them are in `tests/e2e/` (`CHECK <id>` / `WORKAROUND <id>` markers in `events.log`).
 IDs below are the report's IDs with a `UT-` prefix.
 
-**Stage 1 – correctness (in progress, branch `fix/anwendertest-stufe1`):**
+**Stage 1 – correctness (done 2026-10-09, branch `fix/anwendertest-stufe1`):**
 - UT-K1 — pipe heat losses 2–4× too high: the diameter sizing never updates `outer_diameter_mm`.
   **Fixed 2026-10-08:** `pipe_std_types.apply_pipe_std_type` takes over every type-dependent column
   (std_type, inner/outer diameter, u, k) and is used by `init_diameter_types`,
@@ -1919,12 +1919,19 @@ IDs below are the report's IDs with a `UT-` prefix.
   (`project_structure.working_copy_of_example`). Verified in `scenario_p0_example.py
   open_bundled_example` and `scenario_robustness.py read_only_recent_list`. Tests:
   `tests/test_user_settings.py`.
-- UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. *Open.*
+- UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. **Fixed 2026-10-09:** basemaps
+  OpenStreetMap (default), OpenStreetMap Deutschland (FOSSGIS) and OpenTopoMap, all without a key;
+  after repeated tile errors the map switches to the next one; the web view identifies the app in its
+  User-Agent (OSM tile usage policy). Plotly's `carto-positron` (vector tiles) still works and stays.
 - UT-H7 — project-tab CSV round trip prepends a BOM per save. **Fixed 2026-10-09:** `ProjectModel.load_csv`
   and `geocoding.process_data` read with `utf-8-sig` and strip accumulated BOMs from the first header.
   Tests: `TestBomRoundTrip`.
 - UT-M3 — map: network layers loaded once per folder-change signal (3×), `fitBounds` ends on the
-  single producer point. *Open.*
+  single producer point. **Fixed 2026-10-09:** `_reload_map_then` keeps one pending callback and runs it
+  on the first successful load (aborted loads keep it pending); imports fit the map to all layers
+  (`fitMapToAllLayers`, maxZoom 18); the per-feature console log on import is gone. Görlitz example:
+  9 → 3 layer entries, the whole network in view. Tests: `tests/test_map_reload.py`. (Old layers on
+  re-generation: still open, cf. report M3.)
 
 **Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H1 (time-series
 default/progress/cancel), UT-H3 (Overpass/Nominatim retries), UT-H4 (connectivity), UT-H5/H6
