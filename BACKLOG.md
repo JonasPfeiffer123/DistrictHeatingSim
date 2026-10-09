@@ -1904,7 +1904,12 @@ IDs below are the report's IDs with a `UT-` prefix.
   `Quartier IST.csv` (`;`, UTF-8 BOM, values as text) via `_store_imported_buildings`, asking before
   existing buildings are replaced; choosing the project file itself just loads it. The building CSV
   path is normalised (no more `…\Variante 1\..\…` in messages). Tests: `tests/test_project_tab_import.py`.
-- UT-K4 — saving while a net thread runs stores an intermediate net that never converges again. *Open.*
+- UT-K4 — saving while a net thread runs stores an intermediate net that never converges again.
+  **Fixed 2026-10-09:** every calculating tab has `is_busy()`; `save_all_project_results` (also behind
+  "Speichern und schließen" and project/variant switches) lists the running calculations and saves
+  nothing; `saveNet`, the GeoJSON export and the energy-system save refuse on their own too. Verified in
+  `scenario_robustness.py save_while_calculating`. Tests: `tests/test_save_while_busy.py`. (Closing with
+  "Ohne Speichern" during a run still waits for the worker — UT-H1.)
 - UT-K6 — recent-projects file in the package folder; read-only install → projects open silently
   not at all; example project opened (and overwritten) in the package folder. *Open.*
 - UT-H2 — default basemap CARTO returns "API KEY REQUIRED" tiles. *Open.*

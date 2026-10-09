@@ -41,6 +41,7 @@ from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
+from districtheatingsim.gui.utilities import any_thread_running
 from districtheatingsim.utilities.crs_utils import (
     COMMON_CRS_OPTIONS,
     outside_crs_area,
@@ -1165,3 +1166,10 @@ class ProjectTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
+
+    def is_busy(self) -> bool:
+        """True while geocoding or the OSM conversion writes the building CSV (UT-K4)."""
+        presenter = self.presenter
+        return any_thread_running(
+            getattr(presenter, "geocodingThread", None), getattr(presenter, "geojson_conversion_thread", None)
+        )

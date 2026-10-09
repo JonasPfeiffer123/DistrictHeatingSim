@@ -44,7 +44,7 @@ from districtheatingsim.gui.EnergySystemTab.config_naming import (
     config_name_to_filename,
     discover_configs,
 )
-from districtheatingsim.gui.utilities import stop_qthreads
+from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
@@ -622,6 +622,10 @@ class EnergySystemTab(QWidget):
         """Stop the running calculation thread (called from the main window on close)."""
         stop_qthreads(getattr(self, "calculationThread", None))
 
+    def is_busy(self) -> bool:
+        """True while a calculation/optimisation runs (the main window then refuses to save, UT-K4)."""
+        return any_thread_running(getattr(self, "calculationThread", None))
+
     def process_data(self):
         # Update economic parameters with saved parameters from energy system class
         self.economicParametersDialog.updateValues(self.energy_system.economic_parameters)
@@ -839,6 +843,14 @@ class EnergySystemTab(QWidget):
                     "Keine Daten vorhanden",
                     "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.",
                 )
+            return
+        if self.is_busy():
+            # The worker mutates energy_system while it runs; saving now would store a half
+            # calculated state (BACKLOG UT-K4).
+            message = "Die Erzeugerberechnung läuft noch. Die Ergebnisse werden erst nach ihrem Abschluss gespeichert."
+            if not show_dialog:
+                raise RuntimeError(message)
+            QMessageBox.information(self, "Berechnung läuft", message)
             return
 
         try:
