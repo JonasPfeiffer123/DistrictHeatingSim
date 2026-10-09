@@ -42,3 +42,40 @@ def test_missing_street_layer_raises(tmp_path):
 
     with pytest.raises(Exception, match="streets_missing"):
         generate_and_export_layers(str(tmp_path / "streets_missing.geojson"), str(csv), [(50, 10)], str(tmp_path))
+
+
+@pytest.mark.parametrize("algorithm", ["MST", "Advanced MST"])
+def test_every_house_connection_ends_on_a_return_junction(tmp_path, monkeypatch, algorithm):
+    """
+    UT-H4: the connections were shifted by a fixed vector (east), the return lines perpendicular to
+    each supply line - along streets that do not run north-south every connection missed its return
+    junction (Freiburg: 12 of 12 houses and the producer unconnected).
+    """
+    import json
+
+    from districtheatingsim.net_generation import import_and_create_layers as layers
+    from districtheatingsim.net_generation.network_connectivity import check_geojson_connectivity
+
+    monkeypatch.setattr(
+        layers, "build_elevation_lookup", lambda points, dem_path, crs_utm=None: dict.fromkeys(points, 0.0)
+    )
+    streets = tmp_path / "streets.geojson"
+    gpd.GeoDataFrame(
+        geometry=[LineString([(0, 0), (100, 60)]), LineString([(100, 60), (180, 20)])], crs="EPSG:25832"
+    ).to_file(streets, driver="GeoJSON")
+    csv = tmp_path / "buildings.csv"
+    pd.DataFrame(
+        {
+            "Adresse": ["A 1", "A 2", "B 1", "B 2"],
+            "UTM_X": [20.0, 70.0, 120.0, 160.0],
+            "UTM_Y": [30.0, 30.0, 70.0, 10.0],
+        }
+    ).to_csv(csv, sep=";", index=False)
+
+    generate_and_export_layers(
+        str(streets), str(csv), [(5.0, 15.0)], str(tmp_path), algorithm=algorithm, crs="EPSG:25832"
+    )
+
+    report = check_geojson_connectivity(json.load(open(tmp_path / "Wärmenetz" / "Wärmenetz.geojson", encoding="utf-8")))
+    assert report.floating_consumers == [] and report.floating_generators == []
+    assert report.ok, report.messages

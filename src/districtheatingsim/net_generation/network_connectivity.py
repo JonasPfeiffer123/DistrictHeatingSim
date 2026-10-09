@@ -187,6 +187,7 @@ def check_network_connectivity(
     generator_connections,
     *,
     tolerance: float = DEFAULT_TOLERANCE_M,
+    consumer_labels: list[str] | None = None,
 ) -> ConnectivityReport:
     """
     Analyse the unified network's connectivity the way pandapipes will see it.
@@ -197,6 +198,8 @@ def check_network_connectivity(
     near-miss endpoint clusters that explain a split and that
     :func:`snap_network_endpoints` can repair.
 
+    :param consumer_labels: Name of each building connection (its address), aligned with
+        ``building_connections``; the message names the unconnected buildings with it.
     :return: A :class:`ConnectivityReport`.
     """
     flow_nodes = set()
@@ -231,23 +234,6 @@ def check_network_connectivity(
     ]
     near_miss_clusters.sort(key=lambda c: c.representative)
 
-    messages: list[str] = []
-    if flow_components > 1:
-        messages.append(f"Vorlaufnetz ist in {flow_components} getrennte Teile zerfallen (erwartet: 1).")
-    if return_components > 1:
-        messages.append(f"Rücklaufnetz ist in {return_components} getrennte Teile zerfallen (erwartet: 1).")
-    if floating_consumers:
-        messages.append(f"{len(floating_consumers)} Hausanschluss(e) sind nicht an Vor- und Rücklauf angebunden.")
-    if floating_generators:
-        messages.append(f"{len(floating_generators)} Erzeugeranschluss(e) sind nicht an Vor- und Rücklauf angebunden.")
-    if not has_generator:
-        messages.append("Kein Erzeugerstandort im Netz vorhanden.")
-    if near_miss_clusters:
-        messages.append(
-            f"{len(near_miss_clusters)} fast-zusammenfallende Endpunkt-Gruppe(n) gefunden "
-            f"(< {tolerance:g} m, aber nicht exakt gleich) — wahrscheinliche Ursache der Trennung."
-        )
-
     ok = (
         flow_components == 1
         and return_components == 1
@@ -255,7 +241,30 @@ def check_network_connectivity(
         and not floating_generators
         and has_generator
     )
-    if ok and not messages:
+
+    messages: list[str] = []
+    if flow_components > 1:
+        messages.append(f"Vorlaufnetz ist in {flow_components} getrennte Teile zerfallen (erwartet: 1).")
+    if return_components > 1:
+        messages.append(f"Rücklaufnetz ist in {return_components} getrennte Teile zerfallen (erwartet: 1).")
+    if floating_consumers:
+        labels = [consumer_labels[i] for i in floating_consumers if consumer_labels and i < len(consumer_labels)]
+        named = f": {', '.join(labels[:10])}{' …' if len(labels) > 10 else ''}" if labels else ""
+        messages.append(
+            f"{len(floating_consumers)} Hausanschluss(e) sind nicht an Vor- und Rücklauf angebunden{named}."
+        )
+    if floating_generators:
+        messages.append(f"{len(floating_generators)} Erzeugeranschluss(e) sind nicht an Vor- und Rücklauf angebunden.")
+    if not has_generator:
+        messages.append("Kein Erzeugerstandort im Netz vorhanden.")
+    # Near-coincident endpoints only matter when the net is split; in a connected net (every
+    # OSMnx net has dozens) calling them "the likely cause of the split" was a false alarm (UT-H4).
+    if near_miss_clusters and not ok:
+        messages.append(
+            f"{len(near_miss_clusters)} fast-zusammenfallende Endpunkt-Gruppe(n) gefunden "
+            f"(< {tolerance:g} m, aber nicht exakt gleich) — wahrscheinliche Ursache der Trennung."
+        )
+    if ok:
         messages.append("Netz ist vollständig verbunden (Vorlauf, Rücklauf, HAST und Erzeuger).")
 
     return ConnectivityReport(
@@ -336,6 +345,18 @@ _GEOJSON_FEATURE_GROUP = {
 }
 
 
+def _group_features(geojson: dict):
+    """Yield ``(group, coords, feature)`` for every usable network LineString of a unified GeoJSON."""
+    for feature in geojson.get("features", []):
+        group = _GEOJSON_FEATURE_GROUP.get((feature.get("properties") or {}).get("feature_type"))
+        geometry = feature.get("geometry") or {}
+        if group is None or geometry.get("type") != "LineString":
+            continue
+        coords = [(c[0], c[1]) for c in geometry.get("coordinates", [])]
+        if len(coords) >= 2:
+            yield group, coords, feature
+
+
 def feature_groups_from_geojson(geojson: dict):
     """
     Extract the four coordinate-sequence groups from a unified network GeoJSON dict.
@@ -347,20 +368,36 @@ def feature_groups_from_geojson(geojson: dict):
     :return: ``(flow_lines, return_lines, building_connections, generator_connections)``.
     """
     groups: dict[str, list] = {"flow": [], "return": [], "building": [], "generator": []}
-    for feature in geojson.get("features", []):
-        group = _GEOJSON_FEATURE_GROUP.get((feature.get("properties") or {}).get("feature_type"))
-        geometry = feature.get("geometry") or {}
-        if group is None or geometry.get("type") != "LineString":
-            continue
-        coords = [(c[0], c[1]) for c in geometry.get("coordinates", [])]
-        if len(coords) >= 2:
-            groups[group].append(coords)
+    for group, coords, _feature in _group_features(geojson):
+        groups[group].append(coords)
     return groups["flow"], groups["return"], groups["building"], groups["generator"]
 
 
+def building_connection_features(geojson: dict) -> list[dict]:
+    """The building-connection features, in the order of ``feature_groups_from_geojson(...)[2]``."""
+    return [feature for group, _coords, feature in _group_features(geojson) if group == "building"]
+
+
+def connection_label(feature: dict, index: int) -> str:
+    """Address of a building connection (``building_data.Adresse``), else "Hausanschluss <n>"."""
+    data = (feature.get("properties") or {}).get("building_data")
+    if isinstance(data, str):  # older saves store the dict as its repr
+        import ast
+
+        try:
+            data = ast.literal_eval(data)
+        except (ValueError, SyntaxError):
+            data = None
+    address = data.get("Adresse") if isinstance(data, dict) else None
+    return str(address) if address else f"Hausanschluss {index + 1}"
+
+
 def check_geojson_connectivity(geojson: dict, *, tolerance: float = DEFAULT_TOLERANCE_M) -> ConnectivityReport:
-    """Run :func:`check_network_connectivity` on a unified network GeoJSON dict."""
-    return check_network_connectivity(*feature_groups_from_geojson(geojson), tolerance=tolerance)
+    """Run :func:`check_network_connectivity` on a unified network GeoJSON dict (names the buildings)."""
+    labels = [connection_label(feature, i) for i, feature in enumerate(building_connection_features(geojson))]
+    return check_network_connectivity(
+        *feature_groups_from_geojson(geojson), tolerance=tolerance, consumer_labels=labels
+    )
 
 
 def snap_geojson_endpoints(geojson: dict, *, tolerance: float = DEFAULT_TOLERANCE_M) -> tuple[dict, int]:

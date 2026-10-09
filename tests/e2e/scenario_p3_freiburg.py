@@ -194,6 +194,38 @@ def networks():
         H.pump(1)
 
 
+def mst_hydraulics():
+    """H4: an MST network (house connections now on the return junctions) through pandapipes."""
+    ensure_open()
+    view = H.VIEW
+    view.tabWidget.setCurrentIndex(2)
+    H.pump(2)
+    presenter = view.visTab2.presenter
+    presenter.open_layer_generation_dialog()
+    H.pump(1)
+    dialog = H.find_top("LayerGenerationDialog")
+    dialog.coordSystemComboBox.setCurrentText("WGS84")
+    dialog.coordInput.setText(PRODUCER_WGS84)
+    dialog.addCoordFromInput()
+    dialog.generationModeComboBox.setCurrentText("MST")
+    dialog.onAccept()
+    H.wait_until(H.thread_finished(presenter, "netgenerationThread"), 900, "network MST")
+    H.pump(2)
+    tab = view.calcTab
+    H.DIALOG_HANDLERS["NetGenerationDialog"] = [lambda d: d.generateNetwork() or d.result()]
+    tab.openNetGenerationDialog()
+    H.wait_until(H.thread_finished(tab, "_init_thread"), 900, "net initialisation (MST)")
+    net = tab.NetworkGenerationData.net if tab.NetworkGenerationData else None
+    if net is not None and hasattr(net, "res_heat_consumer"):
+        H.log(
+            "CHECK H4",
+            "MST net in pandapipes",
+            f"pipes={len(net.pipe)} consumers={len(net.heat_consumer)} "
+            f"consumer load={net.res_heat_consumer.qext_w.sum() / 1000:.1f} kW "
+            f"pump={net.res_circ_pump_pressure.qext_w.sum() / 1000:.1f} kW",
+        )
+
+
 if __name__ == "__main__":
     H.start_app()
     H.run_steps(
@@ -203,5 +235,6 @@ if __name__ == "__main__":
             "corrected_data": corrected_data,
             "producer_geocoding": producer_geocoding,
             "networks": networks,
+            "mst_hydraulics": mst_hydraulics,
         }
     )
