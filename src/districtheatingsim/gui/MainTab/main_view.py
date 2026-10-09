@@ -1017,6 +1017,25 @@ class HeatSystemDesignGUI(QMainWindow):
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
 
+    #: Tab attribute → label of the calculations it runs (for the "still running" message).
+    _BUSY_LABELS = {
+        "projectTab": "Projektdefinition: Geocoding / OSM-Import",
+        "buildingTab": "Wärmebedarf Gebäude",
+        "visTab2": "Kartenansicht: Geocoding / Netzgenerierung",
+        "calcTab": "Wärmenetzberechnung",
+        "energySystemTab": "Erzeugerauslegung",
+    }
+
+    def running_calculations(self) -> list[str]:
+        """Labels of the tabs that have a worker in flight (``is_busy()``)."""
+        running = []
+        for attribute, label in self._BUSY_LABELS.items():
+            tab = getattr(self, attribute, None)
+            is_busy = getattr(tab, "is_busy", None)
+            if callable(is_busy) and is_busy():
+                running.append(label)
+        return running
+
     def save_all_project_results(self) -> bool:
         """
         Zentrale Speicherlogik für alle Projektergebnisse.
@@ -1030,6 +1049,19 @@ class HeatSystemDesignGUI(QMainWindow):
         bool
             True wenn erfolgreich gespeichert, False wenn abgebrochen
         """
+        # Saving while a worker runs stored intermediate states (a net that never converged
+        # again, BACKLOG UT-K4); the caller (close, project/variant switch) is cancelled instead.
+        running = self.running_calculations()
+        if running:
+            details = "\n".join(f"  • {name}" for name in running)
+            QMessageBox.information(
+                self,
+                "Berechnung läuft",
+                f"Gespeichert werden kann erst, wenn diese Berechnungen abgeschlossen sind:\n{details}\n\n"
+                "Es wurde nichts gespeichert.",
+            )
+            return False
+
         reply = QMessageBox.warning(
             self,
             "Achtung: Daten werden überschrieben!",

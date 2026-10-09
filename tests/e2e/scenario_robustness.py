@@ -79,6 +79,27 @@ def close_with_save():
     H.log("STATE", "close accepted", event.isAccepted())
 
 
+def save_while_calculating():
+    """UT-K4: try to save while a detailed time series runs (one week)."""
+    H.MSGBOX_ANSWERS.append("Ohne Speichern")
+    H.open_project(ZITTAU, variant="Variante 1")
+    tab = H.VIEW.calcTab
+
+    def one_week_detailed(dialog):
+        dialog.EndTimeStepInput.setText("168")
+        dialog.onAccept()
+        return dialog.result()
+
+    H.DIALOG_HANDLERS["TimeSeriesCalculationDialog"] = [one_week_detailed]
+    tab.opencalculateNetDialog()
+    H.pump(2)
+    H.log("STATE", "running calculations", H.VIEW.running_calculations())
+    H.log("CHECK K4", "central save during the run", H.VIEW.save_all_project_results())
+    tab.saveNet(show_dialog=True)
+    H.wait_until(H.thread_finished(tab, "_calc_thread"), 900, "time series (one week)")
+    H.log("STATE", "running calculations after the run", H.VIEW.running_calculations())
+
+
 def read_only_recent_list():
     """K6: the recent-projects file cannot be written (installation under C:\\Program Files)."""
     path = os.path.join(H.WORK, "readonly_recent_projects.json")
@@ -104,6 +125,7 @@ if __name__ == "__main__":
             "existing_name": existing_name,
             "energy_without_data": energy_without_data,
             "close_with_save": close_with_save,
+            "save_while_calculating": save_while_calculating,
             "read_only_recent_list": read_only_recent_list,
         }
     )

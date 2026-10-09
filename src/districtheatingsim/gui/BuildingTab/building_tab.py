@@ -908,6 +908,10 @@ class BuildingTab(QWidget):
         """Stop running worker threads (called from the main window on close)."""
         self.presenter.stop_threads()
 
+    def is_busy(self) -> bool:
+        """True while the heat demand is calculated (the main window then refuses to save, UT-K4)."""
+        return any_thread_running(self.presenter._calc_thread)
+
 
 if __name__ == "__main__":
     import sys

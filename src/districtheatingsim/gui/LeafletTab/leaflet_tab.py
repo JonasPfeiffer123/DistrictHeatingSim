@@ -29,7 +29,7 @@ from districtheatingsim.geocoding.geocoding import format_geocoding_summary
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
-from districtheatingsim.gui.utilities import stop_qthreads
+from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
 from districtheatingsim.net_generation.flow_network_rebuild import rebuild_network_from_flow
 from districtheatingsim.net_generation.network_connectivity import (
     check_geojson_connectivity,
@@ -1140,6 +1140,13 @@ class VisualizationTabLeaflet(QWidget):
     def stop_threads(self):
         """Stop running worker threads (called from the main window on close)."""
         self.presenter.stop_threads()
+
+    def is_busy(self) -> bool:
+        """True while geocoding or a network generation writes project files (UT-K4)."""
+        presenter = self.presenter
+        return any_thread_running(
+            getattr(presenter, "geocodingThread", None), getattr(presenter, "netgenerationThread", None)
+        )
 
     def update_base_path(self, base_path):
         """Update base path in model and view.
