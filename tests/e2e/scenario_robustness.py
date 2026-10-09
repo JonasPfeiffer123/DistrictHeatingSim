@@ -6,7 +6,7 @@ Typical slips of a first-time user, run against the Zittau project of scenario P
 first), plus the read-only installation folder case.
 
 Reproduces (ANWENDERTEST_2026-10-08.md): M5 (cancel "Projekt öffnen"), H8 (double click on a
-sub folder in the project tree), M17 (existing project name), M8 (energy system without a load
+sub folder in the project tree), H3 (Overpass unreachable), M17 (existing project name), M8 (energy system without a load
 profile / invalid input), M6 (save on close), K6 (read-only recent-projects file → projects do
 not open, silently).
 
@@ -52,6 +52,48 @@ def tree_double_click():
     tab.presenter.on_tree_view_double_clicked(index)
     H.pump(2)
     H.log("CHECK H8", "variant after double click", folder_manager.variant_folder)
+
+
+def osm_server_down():
+    """H3: street and building download while Overpass is unreachable (simulated: a closed local port)."""
+    import osmnx as ox
+
+    from districtheatingsim.osm import import_osm_data_geojson as osm_import
+    from districtheatingsim.utilities import web_services
+
+    H.open_project(ZITTAU, variant="Variante 1")
+    H.VIEW.tabWidget.setCurrentIndex(2)
+    H.pump(2)
+    saved = (web_services.OVERPASS_SERVERS, web_services.RETRY_WAITS_S, osm_import.OVERPASS_ENDPOINTS)
+    saved_ox = (ox.settings.use_cache, ox.settings.overpass_rate_limit)
+    web_services.OVERPASS_SERVERS = ("http://127.0.0.1:9/api", "http://127.0.0.1:9/api2")
+    web_services.RETRY_WAITS_S = (0.5, 0.5)
+    osm_import.OVERPASS_ENDPOINTS = tuple(f"{server}/interpreter" for server in web_services.OVERPASS_SERVERS)
+    ox.settings.use_cache, ox.settings.overpass_rate_limit = False, False
+    try:
+        presenter = H.VIEW.visTab2.presenter
+        presenter.open_osm_data_dialog()
+        H.pump(1)
+        dialog = H.find_top("DownloadOSMDataDialog")
+        dialog.areaTypeComboBox.setCurrentIndex(1)  # Bereich um Gebäude aus CSV
+        dialog.bufferLineEdit.setText("150")
+        dialog.startQuery()
+        H.wait_until(lambda: not dialog.download_thread.isRunning(), 120, "streets (server down)")
+        H.pump(1)
+        dialog.close()
+
+        presenter.open_osm_building_query_dialog()
+        H.pump(1)
+        dialog = H.find_top("OSMBuildingQueryDialog")
+        dialog.areaTypeComboBox.setCurrentText("Bereich um Gebäude aus CSV")
+        dialog.csvLineEdit.setText(os.path.join(ZITTAU, "Definition Quartier IST", "Quartier IST.csv"))
+        dialog.startQuery()
+        H.wait_until(lambda: not dialog.download_thread.isRunning(), 120, "buildings (server down)")
+        H.pump(1)
+        dialog.close()
+    finally:
+        web_services.OVERPASS_SERVERS, web_services.RETRY_WAITS_S, osm_import.OVERPASS_ENDPOINTS = saved
+        ox.settings.use_cache, ox.settings.overpass_rate_limit = saved_ox
 
 
 def existing_name():
@@ -132,6 +174,7 @@ if __name__ == "__main__":
         {
             "cancel_open": cancel_open,
             "tree_double_click": tree_double_click,
+            "osm_server_down": osm_server_down,
             "existing_name": existing_name,
             "energy_without_data": energy_without_data,
             "close_with_save": close_with_save,
