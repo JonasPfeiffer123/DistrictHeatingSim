@@ -95,12 +95,12 @@ class OSMImportDialog(QDialog):
         self.sample_utm_coords = sample_utm_coords
         self.project_crs = project_crs
 
-        # Define the default values for the fields
+        # Define the default values for the fields. No "Adresse": one address for every building was
+        # never right - each building gets its own from OSM or Nominatim (UT-K5).
         self.default_values = {
             "Land": "Deutschland",
             "Bundesland": "",
             "Stadt": "",
-            "Adresse": "",
             "Wärmebedarf": "30000",
             "Gebäudetyp": "HMF",
             "Subtyp": "05",
@@ -131,6 +131,46 @@ class OSMImportDialog(QDialog):
             self.layout.addWidget(lineEdit, i + row_offset, 1)
             self.fields[header] = lineEdit
 
+        self.fields["Wärmebedarf"].setToolTip("Für alle Gebäude, wenn der Wärmebedarf nicht geschätzt wird [kWh/a]")
+
+        # Heat demand estimate and filters (UT-K5): every building used to get the same demand
+        row = len(self.default_values) + row_offset
+        self.estimate_checkbox = QCheckBox("Wärmebedarf aus Grundfläche × Geschosse × Kennwert schätzen")
+        self.estimate_checkbox.setChecked(True)
+        self.layout.addWidget(self.estimate_checkbox, row, 0, 1, 2)
+        self.option_fields = {}
+        options = [
+            (
+                "specific_demand_kwh_m2",
+                "Kennwert Wärmebedarf [kWh/(m²·a)]",
+                "100",
+                "Jahreswärmebedarf (Heizung + Warmwasser) je m² Geschossfläche (Grundfläche × Geschosse)",
+            ),
+            ("default_storeys", "Geschosse ohne OSM-Angabe", "2", "Für Gebäude ohne 'building:levels' in OSM"),
+            (
+                "min_footprint_m2",
+                "Mindestgrundfläche ohne Adresse [m²]",
+                "30",
+                "Kleinere Gebäude ohne Adresse (Schuppen, Lauben) werden übersprungen",
+            ),
+        ]
+        for offset, (key, label, value, tooltip) in enumerate(options, start=1):
+            edit = QLineEdit(value)
+            edit.setToolTip(tooltip)
+            self.layout.addWidget(QLabel(label), row + offset, 0)
+            self.layout.addWidget(edit, row + offset, 1)
+            self.option_fields[key] = edit
+        self.estimate_checkbox.toggled.connect(self.option_fields["specific_demand_kwh_m2"].setEnabled)
+        self.estimate_checkbox.toggled.connect(self.option_fields["default_storeys"].setEnabled)
+        self.estimate_checkbox.toggled.connect(lambda on: self.fields["Wärmebedarf"].setEnabled(not on))
+        self.fields["Wärmebedarf"].setEnabled(False)
+        note = QLabel(
+            "Garagen, Schuppen und andere Nebengebäude werden übersprungen. Adressen kommen aus OpenStreetMap, "
+            "fehlende werden über Nominatim ergänzt (1 Anfrage pro Sekunde)."
+        )
+        note.setWordWrap(True)
+        self.layout.addWidget(note, row + len(options) + 1, 0, 1, 2)
+
         # Auto-fill address fields if coordinates provided
         if sample_utm_coords and self.auto_fill_checkbox.isChecked():
             self._reverse_geocode_and_fill()
@@ -139,7 +179,7 @@ class OSMImportDialog(QDialog):
         buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(buttonBox, len(self.default_values) + row_offset, 0, 1, 2)
+        self.layout.addWidget(buttonBox, row + len(options) + 2, 0, 1, 2)
 
     def _on_auto_fill_changed(self, state):
         """
@@ -155,7 +195,6 @@ class OSMImportDialog(QDialog):
             self.fields["Land"].setText("Deutschland")
             self.fields["Bundesland"].setText("")
             self.fields["Stadt"].setText("")
-            self.fields["Adresse"].setText("")
 
     def _reverse_geocode_and_fill(self):
         """
@@ -196,16 +235,6 @@ class OSMImportDialog(QDialog):
                 if city:
                     self.fields["Stadt"].setText(city)
 
-                # Build street address
-                street_parts = []
-                if "road" in address:
-                    street_parts.append(address["road"])
-                if "house_number" in address:
-                    street_parts.append(address["house_number"])
-
-                if street_parts:
-                    self.fields["Adresse"].setText(" ".join(street_parts))
-
         except Exception:
             pass
 
@@ -217,6 +246,23 @@ class OSMImportDialog(QDialog):
         :rtype: dict
         """
         return {header: field.text() for header, field in self.fields.items()}
+
+    def get_options(self) -> dict:
+        """
+        Keyword options of ``geojson_to_building_csv``: demand estimate and filters (UT-K5).
+
+        An unreadable number falls back to the field's default.
+        """
+        defaults = {"specific_demand_kwh_m2": 100.0, "default_storeys": 2.0, "min_footprint_m2": 30.0}
+        options = {}
+        for key, default in defaults.items():
+            try:
+                options[key] = float(self.option_fields[key].text().replace(",", "."))
+            except ValueError:
+                options[key] = default
+        if not self.estimate_checkbox.isChecked():
+            options["specific_demand_kwh_m2"] = None
+        return options
 
 
 class ProcessDetailsDialog(QDialog):

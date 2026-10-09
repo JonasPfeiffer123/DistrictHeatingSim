@@ -1980,9 +1980,27 @@ IDs below are the report's IDs with a `UT-` prefix.
   `scenario_robustness.py cancel_time_series` (Zittau: cancel in 1.5 s, 32 controllers before and
   after). Tests: `tests/test_time_series_progress.py`.
   Open from the report: calibrating the simplified method against the detailed one (summer losses).
+- UT-K5 — OSM → building CSV: unthrottled reverse geocoding (Nominatim 429), every failure fell back
+  to the dialog's address of the first building (212 of 239 at "Spanntigstraße 5"), OSM `addr:*`
+  ignored, every building 30 MWh/a and HMF (church and garages too), result outside the project,
+  GeoJSON read without encoding. **Fixed 2026-10-09:** `geocoding/building_csv.py` skips outbuildings
+  (`OUTBUILDING_TAGS`: garage, shed, roof, …) and small buildings without address
+  (`min_footprint_m2`, dialog default 30 m²); takes the address from `addr:street`/`addr:housenumber`
+  and reverse-geocodes only the rest through geopy's `RateLimiter` (1 request/s, errors not swallowed;
+  a failed lookup stays empty and is listed by CSV line; after three consecutive Nominatim service
+  failures it stops asking and reports it); estimates the demand as footprint × storeys
+  (`building:levels`, else a default) × a specific value (dialog default 100 kWh/(m²·a), area via
+  `make_valid` — relations with their inner ring first had a negative area); suggests HEF/HMF (EFH/MFH
+  for a VDI default) for houses and apartment blocks. The dialog drops the shared "Adresse" field;
+  the conversion returns a summary (`format_building_csv_summary`), and the buildings go into the
+  project's `Quartier IST.csv` like an import (asking before replacing buildings). Verified with
+  `scenario_p2_ostritz.py convert_example_subset` (139 OSM buildings around the Zittau market from
+  `examples/data`, as Overpass answered 504 that day): 125 taken, 3 outbuildings and 11 huts skipped,
+  82 addresses from OSM and 43 from Nominatim in 42 s (the report's run: ~20 min), no empty address,
+  demand 5.8–349 MWh/a. 70 buildings share an address — mostly rear buildings that Nominatim gives
+  the nearest (front) address; the report says so. Tests: `tests/test_building_csv.py`.
 
-**Later stages (see the report, section 6):** UT-K5 (OSM → building CSV), UT-H4 (connectivity),
-UT-H6 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
+**Later stages (see the report, section 6):** UT-H4 (connectivity), UT-H6 (geocoding quality), UT-H9 (climate data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

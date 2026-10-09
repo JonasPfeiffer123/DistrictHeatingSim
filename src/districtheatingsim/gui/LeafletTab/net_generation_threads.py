@@ -307,10 +307,18 @@ class GeoJSONToCSVThread(QThread):
     """
 
     progress_update = pyqtSignal(int, int, str)  # current, total, message
-    calculation_done = pyqtSignal(str)  # output_file_path
+    calculation_done = pyqtSignal(object)  # summary dict of geojson_to_building_csv (incl. "path")
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, geojson_file_path, output_file_path, default_values, model, project_crs: str = "EPSG:25833"):
+    def __init__(
+        self,
+        geojson_file_path,
+        output_file_path,
+        default_values,
+        model,
+        project_crs: str = "EPSG:25833",
+        options: dict | None = None,
+    ):
         """
         Initialize GeoJSON to CSV conversion thread.
 
@@ -327,6 +335,8 @@ class GeoJSONToCSVThread(QThread):
         :type model: ProjectModel
         :param project_crs: Projected CRS of the input coordinates
         :type project_crs: str
+        :param options: Keyword options of ``geojson_to_building_csv`` (demand estimate, filters)
+        :type options: dict
         """
         super().__init__()
         self.geojson_file_path = geojson_file_path
@@ -334,6 +344,7 @@ class GeoJSONToCSVThread(QThread):
         self.default_values = default_values
         self.model = model
         self.project_crs = project_crs
+        self.options = options or {}
 
     def run(self):
         """
@@ -345,15 +356,16 @@ class GeoJSONToCSVThread(QThread):
         from districtheatingsim.geocoding.building_csv import geojson_to_building_csv
 
         try:
-            geojson_to_building_csv(
+            summary = geojson_to_building_csv(
                 self.geojson_file_path,
                 self.output_file_path,
                 self.default_values,
                 self.project_crs,
                 progress=lambda done, total, message: self.progress_update.emit(done, total, message),
                 should_stop=self.isInterruptionRequested,
+                **self.options,
             )
-            self.calculation_done.emit(self.output_file_path)
+            self.calculation_done.emit(summary)
         except InterruptedError:
             self.calculation_error.emit("Konvertierung abgebrochen")
         except Exception as e:
