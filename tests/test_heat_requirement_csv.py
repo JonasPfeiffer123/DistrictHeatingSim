@@ -107,12 +107,12 @@ class TestResolveCalculationMethod:
         assert resolve_calculation_method(["EFH"], "BDEW") == "BDEW"
 
     def test_mixed_types_name_both_groups(self):
-        with pytest.raises(ValueError, match=r"VDI 4655 types \(EFH, MFH\) with BDEW types \(GHA, HMF\)"):
+        with pytest.raises(ValueError, match=r"VDI-4655-Typen \(EFH, MFH\) mit BDEW-Typen \(GHA, HMF\)"):
             resolve_calculation_method(["EFH", "HMF", "MFH", "GHA"], "Datensatz")
 
     def test_unknown_types_are_rejected(self):
         # They silently fell back to VDI 4655 and failed later inside pyslpheat.
-        with pytest.raises(ValueError, match="Unknown building types: XYZ, nan"):
+        with pytest.raises(ValueError, match="Unbekannte Gebäudetypen: XYZ, nan"):
             resolve_calculation_method(["HMF", "XYZ", float("nan")], "Datensatz")
 
 

@@ -2120,8 +2120,22 @@ IDs below are the report's IDs with a `UT-` prefix.
 - UT-H10 (open item) — pipe edits after the initialisation ("Neu berechnen") now give the net a new
   stamp, so a time series computed before shows as outdated.
   Tests: `tests/test_main_window_flows.py`; robustness scenario `cancel_open close_with_save`.
+- UT-M1 — raw, often English tracebacks ("Unknown building types: nan", "unsupported operand …
+  'NoneType'", "No optimization parameters available", "could not convert string to float").
+  **Fixed 2026-10-12:** `utilities/error_messages.py` — `report_error` logs the traceback and returns
+  "<Schritt> ist fehlgeschlagen" with cause and hint (missing/locked file, non-converged hydraulics →
+  connectivity check, missing value, …) and the log file (`logging_setup.current_log_file`); used by
+  the heat demand, net (init/recalc/time series) and generator threads; the domain messages for
+  building types and the optimisation are German; the scale factor is checked with a German message.
+- UT-M8 — the time series could be started after a failed initialisation; a missing load profile
+  in the generator tab ended in an unhandled FileNotFoundError. **Fixed 2026-10-12:** the net tab
+  starts a time series only with an initialised or loaded net; the generator tab says which load
+  profile is missing and where it comes from, other preparation errors go through `report_error`.
+- UT-M9 — "Ergebnisse als CSV exportieren…" opened no dialog and always wrote
+  `calculated_heat_generation.csv`. **Fixed 2026-10-12:** save dialog, default name with the config
+  (`calculated_heat_generation_<Konfiguration>.csv`). Tests: `tests/test_error_messages.py`.
 
-**Later stages (see the report, section 6):** UT-M1…M3, M7–M12, M15, M16, UT-N.
+**Later stages (see the report, section 6):** UT-M2, M3, M7, M10–M12, M15, M16, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

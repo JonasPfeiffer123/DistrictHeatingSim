@@ -8,7 +8,6 @@ Threaded network initialization and calculation functionality.
 
 import copy
 import threading
-import traceback
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -20,6 +19,7 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
     time_series_preprocessing,
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types, recalculate_net
+from districtheatingsim.utilities.error_messages import report_error
 
 
 def format_time_series_progress(done: int, total: int, elapsed_s: float) -> str:
@@ -81,7 +81,7 @@ class NetInitializationThread(QThread):
             self.calculation_done.emit(self.NetworkGenerationData)
 
         except Exception as e:
-            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
+            self.calculation_error.emit(report_error(e, "Die Netzinitialisierung"))
 
     def stop(self):
         """Stop thread execution."""
@@ -115,7 +115,7 @@ class NetRecalculationThread(QThread):
             self.NetworkGenerationData.calculate_results()
             self.calculation_done.emit(self.NetworkGenerationData)
         except Exception as e:
-            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
+            self.calculation_error.emit(report_error(e, "Die Neuberechnung des Netzes"))
 
     def stop(self):
         """Stop thread execution."""
@@ -189,7 +189,7 @@ class NetCalculationThread(QThread):
         except TimeSeriesCancelled:
             self.calculation_cancelled.emit()
         except Exception as e:
-            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
+            self.calculation_error.emit(report_error(e, "Die Berechnung der Jahreszeitreihe"))
 
     def stop(self):
         """Cancel the calculation and wait (closing the app no longer waits for the whole run)."""

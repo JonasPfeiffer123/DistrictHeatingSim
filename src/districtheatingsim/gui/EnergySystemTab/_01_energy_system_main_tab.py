@@ -16,6 +16,7 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
+    QFileDialog,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -56,6 +57,7 @@ from districtheatingsim.utilities.calculation_state import (
     record,
     stamp_id,
 )
+from districtheatingsim.utilities.error_messages import report_error
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 
@@ -459,13 +461,20 @@ class EnergySystemTab(QWidget):
         :return: True if inputs are valid, False otherwise.
         :rtype: bool
         """
+        text = self.techTab.load_scale_factorInput.text().strip()
         try:
-            load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-            if load_scale_factor <= 0:
-                raise ValueError("Der Skalierungsfaktor muss größer als 0 sein.")
-        except ValueError as e:
-            QMessageBox.warning(self, "Ungültige Eingabe", str(e))
+            load_scale_factor = float(text.replace(",", "."))
+        except ValueError:
+            load_scale_factor = None
+        if load_scale_factor is None or load_scale_factor <= 0:
+            # Was Python's "could not convert string to float: 'abc'" (UT-M1)
+            QMessageBox.warning(
+                self,
+                "Ungültige Eingabe",
+                f"Der Lastgang-Skalierungsfaktor „{text}“ ist keine Zahl größer als 0 (z. B. 1 oder 1,1).",
+            )
             return False
+        self.techTab.load_scale_factorInput.setText(format(load_scale_factor, "g"))
         return True
 
     def preprocessData(self):
@@ -574,6 +583,24 @@ class EnergySystemTab(QWidget):
                 self.preprocessData()
             except (ValueError, KeyError) as e:
                 QMessageBox.warning(self, "Ungültige Eingabedaten", str(e))
+                return
+            except FileNotFoundError as e:
+                # Was an unhandled traceback (UT-M8)
+                if os.path.normcase(os.path.abspath(str(e.filename or ""))) == os.path.normcase(
+                    os.path.abspath(self.techTab.FilenameInput.text())
+                ):
+                    QMessageBox.warning(
+                        self,
+                        "Lastgang fehlt",
+                        f"Der Lastgang des Wärmenetzes fehlt:\n{e.filename}\n\nBerechnen Sie zuerst im Tab "
+                        "„Wärmenetzberechnung“ die Zeitreihe, oder wählen Sie unter „Erzeugerdefinition“ eine "
+                        "andere Lastgang-Datei.",
+                    )
+                else:
+                    QMessageBox.warning(self, "Datei fehlt", report_error(e, "Das Vorbereiten der Berechnung"))
+                return
+            except Exception as e:
+                QMessageBox.critical(self, "Fehler", report_error(e, "Das Vorbereiten der Berechnung"))
                 return
 
             self.calculationThread = CalculateEnergySystemThread(self.energy_system, self.optimize, weights)
@@ -813,10 +840,22 @@ class EnergySystemTab(QWidget):
                 )
             return
 
-        try:
-            csv_filename = os.path.join(
-                self.base_path, self.config_manager.get_relative_path("calculated_heat_generation_path")
+        csv_filename = os.path.join(
+            self.base_path, self.config_manager.get_relative_path("calculated_heat_generation_path")
+        )
+        if self._active_config_name != DEFAULT_CONFIG_NAME:
+            stem, extension = os.path.splitext(csv_filename)
+            safe_name = "".join("-" if c in '\\/:*?"<>|' else c for c in self._active_config_name)
+            csv_filename = f"{stem}_{safe_name}{extension}"
+        if show_dialog:
+            # It always wrote calculated_heat_generation.csv, whatever the config (UT-M9)
+            csv_filename, _ = QFileDialog.getSaveFileName(
+                self, "Ergebnisse als CSV exportieren", csv_filename, "CSV-Dateien (*.csv)"
             )
+            if not csv_filename:
+                return
+        try:
+            os.makedirs(os.path.dirname(csv_filename) or ".", exist_ok=True)
             self.energy_system.save_to_csv(csv_filename)
             if show_dialog:
                 QMessageBox.information(
