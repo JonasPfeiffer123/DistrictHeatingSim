@@ -116,7 +116,7 @@ _DEFAULTS = {
             "Typ": "Vakuumröhrenkollektor",
             "Tsmax": 90.0,
             "Longitude": -14.4222,
-            "STD_Longitude": 15,
+            "STD_Longitude": -15,  # was +15 against -14.42 (UT-M4)
             "Latitude": 51.1676,
             "East_West_collector_azimuth_angle": 0.0,
             "Collector_tilt_angle": 36.0,

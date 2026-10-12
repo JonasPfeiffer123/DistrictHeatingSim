@@ -75,6 +75,38 @@ def match_precision(raw: dict) -> str:
     return PRECISION_TOWN
 
 
+def _lookup(address):
+    """
+    The Nominatim result for ``address``, or None if it was not found.
+
+    :raises ServiceUnavailableError: If Nominatim is blocked, overloaded or unreachable
+    """
+    try:
+        location = _geocode(address)
+    except Exception as e:
+        if _is_service_failure(e):
+            raise ServiceUnavailableError(describe_service_error("Nominatim", e, attempts=4)) from e
+        logger.warning("Geocoding of %s failed: %s", address, e)
+        return None
+    if not location:
+        logger.warning("Could not geocode the address %s", address)
+    return location
+
+
+def find_place(query: str) -> tuple[float, float, str] | None:
+    """
+    Look up a town or address for the project location (new-project assistant, UT-H9).
+
+    :param query: What the user typed, e.g. "Freiburg im Breisgau" or "Vaubanallee 2, Freiburg".
+    :return: ``(lat, lon, display_name)`` in WGS84, or None if nothing was found.
+    :raises ServiceUnavailableError: If Nominatim is blocked, overloaded or unreachable
+    """
+    location = _lookup(query) if query and query.strip() else None
+    if not location:
+        return None
+    return float(location.latitude), float(location.longitude), location.address
+
+
 def locate_address(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     """
     Geocode an address, transform it to the target CRS and say how precise the match is.
@@ -93,15 +125,8 @@ def locate_address(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     :rtype: tuple
     :raises ServiceUnavailableError: If Nominatim is blocked, overloaded or unreachable
     """
-    try:
-        location = _geocode(address)
-    except Exception as e:
-        if _is_service_failure(e):
-            raise ServiceUnavailableError(describe_service_error("Nominatim", e, attempts=4)) from e
-        logger.warning("Geocoding of %s failed: %s", address, e)
-        return (None, None, None)
+    location = _lookup(address)
     if not location:
-        logger.warning("Could not geocode the address %s", address)
         return (None, None, None)
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
     utm_x, utm_y = transformer.transform(location.longitude, location.latitude)

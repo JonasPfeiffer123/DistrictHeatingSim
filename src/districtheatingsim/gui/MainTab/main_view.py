@@ -554,7 +554,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
         # Data Menu - External data configuration
         dataMenu = self.menubar.addMenu("Datenbasis")
-        chooseTemperatureDataAction = QAction("Temperaturdaten festlegen", self)
+        chooseTemperatureDataAction = QAction("Klimadaten (TRY) festlegen", self)
         createCOPDataAction = QAction("COP-Kennfeld festlegen", self)
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
@@ -1199,6 +1199,7 @@ class HeatSystemDesignGUI(QMainWindow):
         Displays dialog for TRY (Test Reference Year) selection and triggers
         system-wide temperature data update.
         """
+        self.temperatureDataDialog.set_project_location(self.presenter.folder_manager.project_location())
         if self.temperatureDataDialog.exec():
             self.updateTemperatureData()
 
