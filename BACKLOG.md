@@ -2093,6 +2093,16 @@ IDs below are the report's IDs with a `UT-` prefix.
   import's `TARGET_COLUMNS` (incl. the optional BDEW columns). Verified: the changed building
   survives a project save. Tests: `TestOneBuildingEditor`.
 
+- Welcome screen at 125–150 % display scaling (reported 2026-10-12, an old problem): a maximised
+  window has only ~650–800 logical pixels of height there, the screen needed ~920 (scroll list
+  minimum 400 px, a six-line intro, a row for the theme switcher, 40 px margins) and Qt squeezed the
+  sections below their minimum size — buttons cut off inside their frames, overlapping link buttons;
+  fine at 100 %. **Fixed 2026-10-12:** the page sits in a scroll area, the layout fits at 125 % on
+  1080p without scrolling (smaller margins, list minimum 180 px, intro two to three lines, theme
+  switcher in the title row), project cards size to their content and shorten the path in the
+  middle (`ElidedLabel`, full path as tooltip); the footer labels no longer show as bands. Tests:
+  `tests/test_welcome_screen.py` (no squeezed widget at 100/125/150 %).
+
 **Later stages (see the report, section 6):** UT-M1…M12, M15–M17 (M4, M17 partly done above), UT-N.
 
 ## Suggested order
