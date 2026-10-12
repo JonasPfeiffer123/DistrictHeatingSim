@@ -2184,8 +2184,16 @@ IDs below are the report's IDs with a `UT-` prefix.
   Netz" is ever compared; saved nets keep working); the project tree's name column takes the free
   width; the progress percentage is in the label, not on the blue bar; README no longer promises a
   PDF report (the `gui_framework.rst` reference was already fixed). Tests: `tests/test_german_texts.py`.
+- UT-M3 (rest) — old layers stayed on a re-generation (every generation added another "Vorlauf/
+  HAST/Erzeugeranlagen"), and an empty "Neuer Layer (0)" sat in the list from the start.
+  **Fixed 2026-10-12:** `importGeoJSON` replaces layers of the same name (`removeLayersByName`; also
+  the building points and the "Geocoding prüfen"/"Nicht angebundene Hausanschlüsse" markers); the
+  drawing layer is created on first use as "Gezeichnete Objekte" (`ensureDrawingLayer`) instead of
+  an empty default layer, and drawing without an active layer no longer ends in an alert. Verified in
+  the map: generating the Zittau network twice gives one set of layers; drawing without an active
+  layer creates the drawing layer once.
 
-**Later stages (see the report, section 6):** UT-M3 (old layers on re-generation), M11, M15.
+**Later stages (see the report, section 6):** UT-M11 (infrastructure costs), M15 (PEF/CO₂ method).
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
