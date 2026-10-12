@@ -238,10 +238,11 @@ class EnergySystemTab(QWidget):
         self.costTab = CostTab(self.folder_manager, self.config_manager, self)
         self.resultTab = ResultsTab(self.folder_manager, self)
         self.sensitivityTab = SensitivityTab(self.folder_manager, self)
+        self.sensitivityTab.set_base_prices(self.economic_parameters)
         self.tabWidget.addTab(self.techTab, "Erzeugerdefinition")
         self.tabWidget.addTab(self.costTab, "Kostenübersicht")
         self.tabWidget.addTab(self.resultTab, "Ergebnisse")
-        self.tabWidget.addTab(self.sensitivityTab, "Sensivitätsuntersuchung")
+        self.tabWidget.addTab(self.sensitivityTab, "Sensitivitätsuntersuchung")
         self.mainLayout.addWidget(self.tabWidget)
 
     def createProgressBar(self):
@@ -444,6 +445,8 @@ class EnergySystemTab(QWidget):
         """
 
         self.economic_parameters = self.economicParametersDialog.getValues()
+        if hasattr(self, "sensitivityTab"):
+            self.sensitivityTab.set_base_prices(self.economic_parameters)
 
     ### Dialogs ###
     def openEconomicParametersDialog(self):
