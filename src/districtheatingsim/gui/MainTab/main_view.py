@@ -663,6 +663,9 @@ class HeatSystemDesignGUI(QMainWindow):
             self.buildingTab.presenter.refresh_buildings()
         elif self._current_tab is self.projectTab:
             self.projectTab.presenter.update_progress_tracker()
+        elif self._current_tab is self.comparisonTab:
+            # Results saved since show without "Projekte aktualisieren" (UT-M7)
+            self.comparisonTab.project_explorer.discover_projects()
 
     def initLogo(self) -> None:
         """

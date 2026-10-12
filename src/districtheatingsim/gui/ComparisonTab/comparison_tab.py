@@ -39,6 +39,7 @@ from districtheatingsim.gui.ComparisonTab.comparison_data import (
     format_kpi_range,
     load_network_kpis,
     process_variant_results,
+    technology_color,
     variant_has_results,
 )
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
@@ -541,78 +542,70 @@ class ComparisonDashboard(QWidget):
         self.cost_canvas.draw()
 
     def update_energy_chart(self):
-        """Update energy mix comparison chart."""
+        """
+        Update energy mix comparison chart.
+
+        One pie per variant with the shares written in it and a single legend for all of them below:
+        a legend per pie squeezed the pies to dots, and colours came from the results (Power-to-Heat
+        was brown like the gas boiler) (UT-M7).
+        """
         self.energy_figure.clear()
         if not self.variant_data:
             return
 
-        n_variants = len(self.variant_data)
-        if n_variants == 0:
-            return
-
         fig = self.energy_figure
+        n_variants = len(self.variant_data)
+        cols = min(4, n_variants)
+        rows = (n_variants + cols - 1) // cols
 
-        # Adjust subplot layout based on number of variants
-        if n_variants == 1:
-            cols = 1
-        elif n_variants == 2:
-            cols = 2
-        else:
-            cols = min(3, n_variants)  # Max 3 columns
-
-        rows = (n_variants + cols - 1) // cols  # Calculate required rows
-
+        legend = {}  # technology -> wedge, in the order they first appear
         for i, variant in enumerate(self.variant_data):
             ax = fig.add_subplot(rows, cols, i + 1)
             techs = variant.get("techs", [])
-            anteile = variant.get("Anteile", [])
-            colors = variant.get("colors", plt.cm.Set3.colors[: len(techs)])
-
-            if techs and anteile:
-                filtered_data = [
-                    (tech, anteil, color)
-                    for tech, anteil, color in zip(techs, anteile, colors, strict=False)
-                    if anteil > 1.0
-                ]
-                if filtered_data:
-                    techs_filtered, anteile_filtered, colors_filtered = zip(*filtered_data, strict=False)
-                else:
-                    techs_filtered, anteile_filtered, colors_filtered = techs, anteile, colors
-                wedges, texts = ax.pie(
-                    anteile_filtered, labels=None, colors=colors_filtered, autopct=None, startangle=90
+            shares = variant.get("Anteile", [])
+            stored = variant.get("colors", [])
+            shown = [
+                (tech, share, technology_color(tech, stored[j] if j < len(stored) else None))
+                for j, (tech, share) in enumerate(zip(techs, shares, strict=False))
+                if share and share > 0.05
+            ]
+            if shown:
+                names, values, colours = zip(*shown, strict=False)
+                wedges, _texts, autotexts = ax.pie(
+                    values,
+                    colors=colours,
+                    startangle=90,
+                    counterclock=False,
+                    autopct=lambda pct: f"{pct:.0f} %" if pct >= 5 else "",
+                    pctdistance=0.72,
+                    wedgeprops=dict(edgecolor="white", linewidth=1),
+                    textprops=dict(fontsize=9),
                 )
-                legend_labels = [
-                    f"{tech}: {anteil:.1f}%" for tech, anteil in zip(techs_filtered, anteile_filtered, strict=False)
-                ]
-                # Always show legend, right for 1-2, below for more
-                if cols == 1 or (cols == 2 and n_variants <= 2):
-                    ax.legend(
-                        wedges,
-                        legend_labels,
-                        loc="center left",
-                        bbox_to_anchor=(1.1, 0.5),
-                        fontsize=9,
-                        frameon=True,
-                        fancybox=True,
-                        shadow=True,
-                    )
-                else:
-                    ax.legend(
-                        wedges,
-                        legend_labels,
-                        loc="upper center",
-                        bbox_to_anchor=(0.5, -0.1),
-                        ncol=2,
-                        fontsize=8,
-                        frameon=True,
-                        fancybox=True,
-                        shadow=True,
-                    )
-            clean_name = clean_variant_name(variant.get("name", f"Variante {i + 1}"))
-            ax.set_title(clean_name, fontsize=10, fontweight="bold", pad=10)
+                for text, colour in zip(autotexts, colours, strict=False):
+                    text.set_color("black" if colour in ("gold", "yellowgreen", "lightblue", "yellow") else "white")
+                for name, wedge in zip(names, wedges, strict=False):
+                    legend.setdefault(name, wedge)
+            else:
+                ax.text(0.5, 0.5, "keine Daten", ha="center", va="center", color="#999", transform=ax.transAxes)
+                ax.set_axis_off()
+            ax.set_aspect("equal")
+            ax.set_title(clean_variant_name(variant.get("name", f"Variante {i + 1}")), fontsize=10, fontweight="bold")
 
-        fig.suptitle("Energiemix Vergleich", fontsize=12, fontweight="bold", y=0.98)
-        fig.tight_layout(rect=[0, 0, 1, 0.97])
+        fig.suptitle("Energiemix Vergleich (Anteil an der Wärmeerzeugung)", fontsize=12, fontweight="bold")
+        legend_rows = 0
+        if legend:
+            ncol = min(6, len(legend))
+            legend_rows = (len(legend) + ncol - 1) // ncol
+            fig.legend(
+                list(legend.values()),
+                list(legend),
+                loc="lower center",
+                ncol=ncol,
+                fontsize=9,
+                frameon=False,
+            )
+        bottom = min(0.3, 0.06 * legend_rows + 0.02)
+        fig.tight_layout(rect=[0, bottom, 1, 0.95])
         self.energy_canvas.draw()
 
     def update_co2_chart(self):
@@ -891,12 +884,13 @@ class ComparisonTab(QWidget):
 
         self.variant_data = []
 
-        self.initUI()
-
-        # Clear the comparison dashboard on a project change so no previous-project variants linger
-        # (the explorer's tree is reset separately via its own set_base_path handler).
+        # Clear the comparison dashboard on a project change so no previous-project variants linger.
+        # Connected before the explorer (initUI) connects its reload: the other way round the
+        # dashboard was filled and then cleared, and showed "--" until "Projekte aktualisieren" (UT-M7).
         if hasattr(self.folder_manager, "project_folder_changed"):
             self.folder_manager.project_folder_changed.connect(self._reset_on_project_change)
+
+        self.initUI()
 
     def _reset_on_project_change(self, _path=None):
         """Clear the comparison dashboard (variants, KPIs, charts) on a project change."""

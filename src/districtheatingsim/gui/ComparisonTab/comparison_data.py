@@ -23,6 +23,34 @@ from districtheatingsim.gui.EnergySystemTab.config_naming import discover_config
 
 logger = logging.getLogger(__name__)
 
+#: One colour per technology type for the comparison charts. Saved results carry the colour of the
+#: technology class, and Power-to-Heat had the gas boiler's, the AqvaHeat pump the river heat pump's
+#: (UT-M7); the type decides here, so results saved before are shown consistently too.
+TECH_COLORS = {
+    "Solarthermie": "red",
+    "Gaskessel": "saddlebrown",
+    "Power-to-Heat": "mediumpurple",
+    "BHKW": "gold",
+    "Holzgas-BHKW": "yellowgreen",
+    "Biomassekessel": "green",
+    "Geothermie": "darkorange",
+    "Abwärmepumpe": "grey",
+    "Flusswärmepumpe": "blue",
+    "AqvaHeat": "teal",
+    "Thermischer Netzspeicher": "lightblue",
+}
+
+
+def technology_color(tech_name: str, stored: str | None = None) -> str:
+    """
+    Colour of a technology in the comparison charts.
+
+    :param tech_name: Name of the technology instance, e.g. ``"Gaskessel_2"``.
+    :param stored: The colour saved with the results (used for unknown types).
+    """
+    base = tech_name.rsplit("_", 1)[0] if "_" in tech_name else tech_name
+    return TECH_COLORS.get(base) or stored or "lightgrey"
+
 
 def format_kpi_range(variant_data: list[dict], key: str, fmt: str, *, empty: str = "--") -> str:
     """

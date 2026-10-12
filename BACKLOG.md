@@ -2134,8 +2134,25 @@ IDs below are the report's IDs with a `UT-` prefix.
 - UT-M9 — "Ergebnisse als CSV exportieren…" opened no dialog and always wrote
   `calculated_heat_generation.csv`. **Fixed 2026-10-12:** save dialog, default name with the config
   (`calculated_heat_generation_<Konfiguration>.csv`). Tests: `tests/test_error_messages.py`.
+- UT-M7 — variant comparison: KPIs "--" until "Projekte aktualisieren" (the reset slot ran after the
+  explorer's reload on a project change and cleared the dashboard again); the energy-mix pies
+  collapsed next to a legend per pie; Power-to-Heat had the gas boiler's colour (AqvaHeat the river
+  heat pump's). **Fixed 2026-10-12:** reset connected first; the comparison reloads when its tab is
+  opened; one legend below all pies, shares written in them; `comparison_data.TECH_COLORS` /
+  `technology_color` (one colour per type, also for results saved before); PtH and AqvaHeat got
+  their own colours.
+- UT-M10 — year chart: y axis from the smallest value (a 150 kW CHP running all year was almost
+  invisible); the variable list showed internal keys ("BHKW_1_betrieb_mask"). **Fixed 2026-10-12:**
+  y axis from 0 (or the storage charging below), up to the stacked maximum; boolean masks are no
+  plot variables; readable names (`EnergySystem.plot_labels`, "BHKW 1: elektrische Leistung (kW)")
+  in the list and the legend; "Second y-Axis" → "Zweite y-Achse für Linien" (part of M2).
+- UT-M16 — sensitivity: the default gas range 30–60 €/MWh (electricity 60–120) did not contain the
+  base price 70 (150); the legend covered the 3D surfaces. **Fixed 2026-10-12:** ranges 60–140 % of
+  the base prices of the economic parameters (`price_range`, kept when the user edited them for the
+  same prices), the base price in the label; one legend below the plot. UT-N: tab name
+  "Sensivitätsuntersuchung" → "Sensitivitätsuntersuchung". Tests: `tests/test_result_charts.py`.
 
-**Later stages (see the report, section 6):** UT-M2, M3, M7, M10–M12, M15, M16, UT-N.
+**Later stages (see the report, section 6):** UT-M2, M3, M11, M12, M15, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
