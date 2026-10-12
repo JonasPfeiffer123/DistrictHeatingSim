@@ -2192,8 +2192,18 @@ IDs below are the report's IDs with a `UT-` prefix.
   an empty default layer, and drawing without an active layer no longer ends in an alert. Verified in
   the map: generating the Zittau network twice gives one set of layers; drawing without an active
   layer creates the drawing layer once.
+- UT-M11 — infrastructure costs were flat placeholders (network 2 Mio. €, planning 0.5 Mio. €) in
+  every generator calculation unless "Kosten aus geoJSON berechnen" was clicked; "T_N, F_inst,
+  F_w_insp" were not explained. **Fixed 2026-10-12:** `gui/EnergySystemTab/infrastructure_costs.py`
+  estimates the network (flow route × 1000 €/m incl. civil works) and, once the network is
+  calculated, the house stations (Σ max. heat demand × 250 €/kW); `CostTab.prefill_from_network`
+  replaces only values that still equal the placeholder (on a variant change and before every
+  generator calculation), a note below the table names the estimates and the remaining flat values,
+  the column headers explain T_N/F_inst/F_w_insp/Bedienaufwand (VDI 2067). Verified in the Zittau
+  cost tab (3,074 m route → 3.07 Mio. €). Tests: `tests/test_infrastructure_costs.py`.
 
-**Later stages (see the report, section 6):** UT-M11 (infrastructure costs), M15 (PEF/CO₂ method).
+**Later stages (see the report, section 6):** UT-M15 (PEF/CO₂ method, optimizer plausibility,
+storage costs) — needs decisions.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
