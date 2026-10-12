@@ -56,7 +56,7 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
     import_results_csv,
     save_results_csv,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson, initialisation_summary
 from districtheatingsim.utilities.calculation_state import (
     BUILDING_PROFILES,
     NETWORK_CALCULATION,
@@ -335,6 +335,20 @@ class NetSimulationTab(QWidget):
         self.unsaved_changes = True
         self._net_ready = True
         self._refresh_all_widgets()
+        # The pump lift changed silently (1.5 -> 3.3 bar); say how it was designed and why (UT-M12)
+        try:
+            summary = initialisation_summary(
+                network_data.net,
+                getattr(network_data, "lift_pressure_pump", None),
+                getattr(network_data, "max_velocity_pipe", None)
+                if getattr(network_data, "diameter_optimization_pipe_checked", False)
+                else None,
+            )
+        except Exception:
+            logger.exception("Zusammenfassung der Netzinitialisierung nicht möglich")
+            summary = ""
+        if summary:
+            QMessageBox.information(self, "Netz initialisiert", summary)
 
     # ------------------------------------------------------------------
     # Time series simulation

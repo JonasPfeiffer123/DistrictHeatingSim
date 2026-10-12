@@ -2151,8 +2151,24 @@ IDs below are the report's IDs with a `UT-` prefix.
   the base prices of the economic parameters (`price_range`, kept when the user edited them for the
   same prices), the base price in the label; one legend below the plot. UT-N: tab name
   "Sensivitätsuntersuchung" → "Sensitivitätsuntersuchung". Tests: `tests/test_result_charts.py`.
+- UT-M12 — the pump lift given as 1.5 bar silently became 3.3 bar; v_max = 1 m/s also for the DN20
+  house connections. **Found while fixing (2026-10-12):** the bad-point controller kept the worst
+  point it found when it was created; `run_control` after the diameter sizing therefore regulated a
+  station that was no longer the worst — in Zittau station 11 ended at **−1.09 bar** (supply 3.56 <
+  return 4.65 bar, its control valve "pumping" 0.29 kg/s against the return), the shown 3.2 bar
+  lift was not enough. **Fixed 2026-10-12:** `BadPointPressureLiftController.is_converged` takes the
+  worst point from the current results on every iteration; Zittau now needs 5.44 bar for 1.14 bar at
+  station 11 (Görlitz golden master unchanged). After the initialisation a message says the pump
+  lift (vs. the given value), why the bad-point control changed it, the differential pressure at the
+  worst station and the highest velocity with the sizing limit (`utilities.initialisation_summary`);
+  the v_max field has its unit and says it applies to all pipes. Tests:
+  `tests/test_initialisation_summary.py`.
+  **Open – needs a decision:** the 5.4 bar come from ~2 bar loss each way at 1 m/s in small pipes.
+  Sizing by velocity only (1 m/s for DN20 house connections as for mains) gives high specific
+  pressure losses in small DN; a DN-dependent limit or a pressure-loss criterion (Pa/m) would change
+  the results of every project.
 
-**Later stages (see the report, section 6):** UT-M2, M3, M11, M12, M15, UT-N.
+**Later stages (see the report, section 6):** UT-M2, M3, M11, M15, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
