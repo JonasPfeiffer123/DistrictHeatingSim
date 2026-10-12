@@ -123,7 +123,7 @@ Start DistrictHeatingSim with the `districtheatingsim` command (installed by `pi
 1. **Define Parameters**: Set up economic parameters and cost factors.
 2. **Generator Configuration**: Configure different types of heat generators and their capacities.
 3. **Simulation**: Simulate the performance and cost of different heating scenarios.
-4. **Report Generation**: Generate a PDF report with the simulation results, economic analysis, and recommendations.
+4. **Results and Export**: Save each generator configuration, export the heat generation time series as CSV and compare variants and configurations in the comparison tab (there is no PDF report).
 
 ![Heat Generator Definition](images/heat_generator_definition.png)
 

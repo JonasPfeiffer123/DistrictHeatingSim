@@ -322,11 +322,11 @@ class NetworkPlotWidget(QWidget):
             available = plotter._get_available_parameters()
 
             component_labels = {
-                "junction": "Junction",
-                "pipe": "Pipe",
-                "heat_consumer": "Heat Consumer",
-                "pump": "Pump",
-                "flow_control": "Flow Control",
+                "junction": "Knoten",
+                "pipe": "Leitung",
+                "heat_consumer": "Hausanschluss",
+                "pump": "Pumpe",
+                "flow_control": "Durchflussregler",
             }
             for comp, label in component_labels.items():
                 if comp in available and available[comp]:

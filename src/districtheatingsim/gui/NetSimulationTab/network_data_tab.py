@@ -59,10 +59,10 @@ class NetworkDataTab(QWidget):
         importGroup = QGroupBox("Import Netzdaten und Wärmebedarfsrechnung")
         importGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")
         importLayout = QVBoxLayout()
-        importLayout.addWidget(QLabel("Importtyp Netz:"))
+        # Only one import type exists; the combo stays (its value is read) but is not shown (UT-N)
         self.importTypeComboBox = QComboBox()
         self.importTypeComboBox.addItems(["GeoJSON"])
-        importLayout.addWidget(self.importTypeComboBox)
+        self.importTypeComboBox.setVisible(False)
         self.importTypeComboBox.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
         self.geojsonInputs = self.createGeojsonInputs()
@@ -278,14 +278,14 @@ class NetworkDataTab(QWidget):
             self.figure1.canvas.mpl_connect("motion_notify_event", on_move)
 
             ax.set_title("Visualisierung der GeoJSON-Netz-Daten")
-            ax.set_xlabel("Longitude")
-            ax.set_ylabel("Latitude")
+            ax.set_xlabel("Rechtswert in m")
+            ax.set_ylabel("Hochwert in m")
 
         except FileNotFoundError as e:
             # Fehlermeldung anzeigen, wenn Dateien fehlen
             self.figure1.clear()
             ax = self.figure1.add_subplot(111)
-            ax.text(0.5, 0.5, "No data available", fontsize=20, ha="center")
+            ax.text(0.5, 0.5, "Keine Daten vorhanden", fontsize=20, ha="center")
             self.canvas1.draw()
 
             msg = QMessageBox()

@@ -177,32 +177,38 @@ class NetworkConfigTab(QWidget):
         std = self.dialog_config["standardwerte"][netconfig]
 
         self.max_supply_temp_row = self.createParameterRow(
-            "Maximale Vorlauftemperatur Heizzentrale:", str(std["max_supply_temp"])
+            "Maximale Vorlauftemperatur Heizzentrale in °C:", str(std["max_supply_temp"])
         )
         self.parameter_rows_net.append(self.max_supply_temp_row)
         layout.addLayout(self.max_supply_temp_row)
 
         self.min_supply_temp_row = self.createParameterRow(
-            "Minimale Vorlauftemperatur Heizzentrale:", str(std["min_supply_temp"])
+            "Minimale Vorlauftemperatur Heizzentrale in °C:", str(std["min_supply_temp"])
         )
         self.parameter_rows_net.append(self.min_supply_temp_row)
         layout.addLayout(self.min_supply_temp_row)
 
-        self.max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", str(std["max_air_temp"]))
+        self.max_air_temp_row = self.createParameterRow(
+            "Obere Grenze der Lufttemperatur in °C:", str(std["max_air_temp"])
+        )
         self.parameter_rows_net.append(self.max_air_temp_row)
         layout.addLayout(self.max_air_temp_row)
 
-        self.min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", str(std["min_air_temp"]))
+        self.min_air_temp_row = self.createParameterRow(
+            "Untere Grenze der Lufttemperatur in °C:", str(std["min_air_temp"])
+        )
         self.parameter_rows_net.append(self.min_air_temp_row)
         layout.addLayout(self.min_air_temp_row)
 
         layout.addWidget(QLabel("Druckregelung Heizzentrale:"))
 
-        self.flow_pressure_row = self.createParameterRow("Vorlaufdruck:", str(std["flow_pressure"]))
+        self.flow_pressure_row = self.createParameterRow("Vorlaufdruck in bar:", str(std["flow_pressure"]))
         self.parameter_rows_net.append(self.flow_pressure_row)
         layout.addLayout(self.flow_pressure_row)
 
-        self.lift_pressure_row = self.createParameterRow("Druckdifferenz Vorlauf/Rücklauf:", str(std["lift_pressure"]))
+        self.lift_pressure_row = self.createParameterRow(
+            "Druckdifferenz Vorlauf/Rücklauf in bar (Startwert):", str(std["lift_pressure"])
+        )
         self.parameter_rows_net.append(self.lift_pressure_row)
         layout.addLayout(self.lift_pressure_row)
 
@@ -227,16 +233,16 @@ class NetworkConfigTab(QWidget):
         std = self.dialog_config["standardwerte"][netconfig]
 
         self.min_supply_temperature_building_row = self.createParameterRow(
-            "Minimale Vorlauftemperatur Gebäude:", str(std["min_supply_temp_building"])
+            "Minimale Vorlauftemperatur Gebäude in °C:", str(std["min_supply_temp_building"])
         )
         self.parameter_rows_heat_consumer.append(self.min_supply_temperature_building_row)
         layout.addLayout(self.min_supply_temperature_building_row)
 
-        self.return_temp_row = self.createParameterRow("Soll-Rücklauftemperatur HAST:", str(std["return_temp"]))
+        self.return_temp_row = self.createParameterRow("Soll-Rücklauftemperatur HAST in °C:", str(std["return_temp"]))
         self.parameter_rows_heat_consumer.append(self.return_temp_row)
         layout.addLayout(self.return_temp_row)
 
-        self.dT_RL_row = self.createParameterRow("Temperaturdifferenz Netz/HAST:", str(std["dT_RL"]))
+        self.dT_RL_row = self.createParameterRow("Temperaturdifferenz Netz/HAST in K:", str(std["dT_RL"]))
         self.parameter_rows_heat_consumer.append(self.dT_RL_row)
         layout.addLayout(self.dT_RL_row)
 

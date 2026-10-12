@@ -2167,8 +2167,25 @@ IDs below are the report's IDs with a `UT-` prefix.
   Sizing by velocity only (1 m/s for DN20 house connections as for mains) gives high specific
   pressure losses in small DN; a DN-dependent limit or a pressure-loss criterion (Pa/m) would change
   the results of every project.
+- UT-M2 — missing units and English leftovers. **Fixed 2026-10-12:** Qt's German translation is
+  installed at start (`gui/qt_translation.py`: "OK/Abbrechen/Ja/Nein", file dialogs, file tree
+  "Name/Größe/Typ/Änderungsdatum"; the e2e harness does the same); the thermal storage dialog is
+  German (labels and choices; the model keys stay the item data); units in the network
+  configuration (°C, bar, K; the pump pressure marked "Startwert") and the generator dialogs (kW,
+  €/kW, m³, °C, K, shares 0–1 — only where the code documents the unit); network plot legend and
+  parameter list German; new nets name their pipes "Vorlauf/Rücklauf/Hausanschluss n", the pipe
+  table shows older English names in German (`pipe_display_name`); map help text German.
+  Still English: the type column of the file tree ("File Folder") comes from Windows itself.
+  **To check in the next exe build:** that PyInstaller bundles `qtbase_de.qm` (otherwise the log says
+  "Deutsche Qt-Übersetzung nicht gefunden" and the buttons stay English).
+- UT-N — **fixed 2026-10-12:** "Erzeugerstandort 162" → numbered 1, 2, … as on the map; the
+  one-option combo "Importtyp" is hidden; the network preview labels UTM metres as "Rechtswert/
+  Hochwert in m"; the 85/70 °C preset is "Warmes Netz" instead of "Niedertemperaturnetz" (only "kaltes
+  Netz" is ever compared; saved nets keep working); the project tree's name column takes the free
+  width; the progress percentage is in the label, not on the blue bar; README no longer promises a
+  PDF report (the `gui_framework.rst` reference was already fixed). Tests: `tests/test_german_texts.py`.
 
-**Later stages (see the report, section 6):** UT-M2, M3, M11, M15, UT-N.
+**Later stages (see the report, section 6):** UT-M3 (old layers on re-generation), M11, M15.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
