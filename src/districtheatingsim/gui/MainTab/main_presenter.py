@@ -274,7 +274,12 @@ class HeatSystemPresenter:
 
         try:
             # Create complete copy of current variant directory
-            shutil.copytree(self.folder_manager.get_variant_folder(), new_variant_path)
+            source_variant = self.folder_manager.get_variant_folder()
+            shutil.copytree(source_variant, new_variant_path)
+            # The copy continues with the same generator config (no question which one, UT-M17)
+            self.folder_manager.set_active_energy_config(
+                new_variant_path, self.folder_manager.get_active_energy_config(source_variant)
+            )
 
             # Activate newly created variant copy
             self.folder_manager.set_variant_folder(new_variant_name)
