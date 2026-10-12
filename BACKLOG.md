@@ -2202,8 +2202,24 @@ IDs below are the report's IDs with a `UT-` prefix.
   the column headers explain T_N/F_inst/F_w_insp/Bedienaufwand (VDI 2067). Verified in the Zittau
   cost tab (3,074 m route → 3.07 Mio. €). Tests: `tests/test_infrastructure_costs.py`.
 
-**Later stages (see the report, section 6):** UT-M15 (PEF/CO₂ method, optimizer plausibility,
-storage costs) — needs decisions.
+- UT-M15 — plausibility of the generator results. **Done 2026-10-12:** the weighting dialog explains
+  the objective. **Analysed, needs decisions (no code changed):**
+  1. *PEF rises with a CHP while CO₂ falls:* `CHP.calculate_environmental_impact` credits the
+     generated electricity for CO₂ (`co2_savings = Strommenge × co2_factor_electricity`) but not for
+     primary energy (`primärenergie = Brennstoffbedarf × primärenergiefaktor`). Consistent would be a
+     credit in both (Stromgutschrift, e.g. AGFW FW 309-1 / GEG with a displacement factor) or in
+     neither; which method and factor is a decision.
+  2. *Optimizer weights are unscaled:* the objective is `w·WGK + w·CO₂ + w·PEF` with WGK ≈ 100 €/MWh,
+     CO₂ ≈ 0.2 t/MWh, PEF ≈ 1 — equal weights optimise practically the costs only (now explained in
+     the dialog). Normalising (e.g. by the start values) would change every optimisation.
+  3. *773 m² collector with 16 m³ storage:* ~21 l/m², far below the usual 50–100 l/m² for daily
+     storage; a plausibility check (storage per m² collector, full-load hours, loss share, heat
+     density — report stage 4 "Plausibilitätsampel") or tighter optimisation bounds.
+  4. *Storage costs:* the thermal network storage defaults to 50 €/m³ (a large pit storage value) at
+     1000 m³, the generator buffer storages to 750 €/m³ — size-dependent defaults would fit both.
+
+**Later stages (see the report, section 6):** stage 4 plausibility indicators; stage 5 e2e as
+`pytest -m e2e` with mocked services, user handbook.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
