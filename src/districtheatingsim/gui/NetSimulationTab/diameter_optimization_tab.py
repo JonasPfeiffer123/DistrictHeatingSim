@@ -69,8 +69,15 @@ class DiameterOptimizationTab(QWidget):
         layout.addWidget(QLabel("Eingaben zur Durchmesseroptimierung der Rohrleitungen:"))
 
         row_layout = QHBoxLayout()
-        self.v_max_pipelabel = QLabel("Maximale Strömungsgeschwindigkeit Leitungen:")
+        self.v_max_pipelabel = QLabel("Maximale Strömungsgeschwindigkeit Leitungen in m/s:")
         self.v_max_pipeInput = QLineEdit(str(self.dialog_config["diameter_optimization"]["v_max_pipe"]))
+        hint = (
+            "Die Grenze gilt für alle Leitungen, auch für die Hausanschlüsse (DN 20 …).\n"
+            "Die Pumpe wird danach so ausgelegt, dass am ungünstigsten Hausanschluss\n"
+            "mindestens 1 bar Differenzdruck anliegen."
+        )
+        self.v_max_pipelabel.setToolTip(hint)
+        self.v_max_pipeInput.setToolTip(hint)
         row_layout.addWidget(self.v_max_pipelabel)
         row_layout.addWidget(self.v_max_pipeInput)
         layout.addLayout(row_layout)

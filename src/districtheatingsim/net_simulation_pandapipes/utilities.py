@@ -941,3 +941,52 @@ def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
         "building": len(building_features),
         "generator": len(generator_features),
     }
+
+
+def _de(value: float, digits: int) -> str:
+    """A number with a German decimal comma."""
+    return f"{value:.{digits}f}".replace(".", ",")
+
+
+def initialisation_summary(net, given_lift_bar: float | None, v_max: float | None = None) -> str:
+    """
+    German summary of an initialised net: how the pump was designed and why (UT-M12).
+
+    The bad-point controller raises the pump lift until the worst house station has its minimum
+    differential pressure; the given value (1.5 bar) silently became 3.3 bar.
+
+    :param net: The initialised pandapipes net.
+    :param given_lift_bar: The pump lift entered in the dialog [bar].
+    :param v_max: The velocity limit of the diameter sizing [m/s], if it was used.
+    """
+    from districtheatingsim.net_simulation_pandapipes.controllers import BadPointPressureLiftController
+
+    lines = []
+    pumps = getattr(net, "circ_pump_pressure", None)
+    if pumps is not None and len(pumps):
+        lift = float(pumps["plift_bar"].iloc[0])
+        changed = given_lift_bar is not None and abs(lift - given_lift_bar) > 0.05
+        given = f" (vorgegeben {_de(given_lift_bar, 2)} bar)" if changed else ""
+        lines.append(f"Pumpe: Förderhöhe {_de(lift, 2)} bar{given}.")
+        controllers = net.controller["object"] if len(getattr(net, "controller", [])) else []
+        targets = [c.target_dp_min_bar for c in controllers if isinstance(c, BadPointPressureLiftController)]
+        consumers = getattr(net, "res_heat_consumer", None)
+        if targets and consumers is not None and len(consumers):
+            dp = [
+                float(p_from - p_to)
+                for qext, p_from, p_to in zip(
+                    net.heat_consumer["qext_w"], consumers["p_from_bar"], consumers["p_to_bar"], strict=False
+                )
+                if qext != 0
+            ]
+            if dp:
+                action = "hat sie angepasst" if changed else "hält sie"
+                lines.append(
+                    f"Die Differenzdruckregelung im Schlechtpunkt {action}, damit am ungünstigsten "
+                    f"Hausanschluss mindestens {_de(targets[0], 1)} bar anliegen (jetzt {_de(min(dp), 2)} bar)."
+                )
+    if hasattr(net, "res_pipe") and len(net.res_pipe):
+        v_peak = float(np.nanmax(np.abs(net.res_pipe["v_mean_m_per_s"].to_numpy(dtype=float))))
+        limit = f" (Grenze der Durchmesserauslegung {_de(v_max, 1)} m/s, gilt für alle Leitungen)" if v_max else ""
+        lines.append(f"Höchste Strömungsgeschwindigkeit: {_de(v_peak, 2)} m/s{limit}.")
+    return "\n".join(lines)
