@@ -57,6 +57,15 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
     save_results_csv,
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+from districtheatingsim.utilities.calculation_state import (
+    BUILDING_PROFILES,
+    NETWORK_CALCULATION,
+    TIME_SERIES,
+    new_stamp,
+    read_state,
+    record,
+    stamp_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +124,7 @@ class NetSimulationTab(QWidget):
     def _reset_network_view(self):
         """Clear the displayed network state (data + pipe table + plot + time series)."""
         self.NetworkGenerationData = None
+        self._net_stamp = None  # the calculation state of the previous variant's net (UT-H10)
         self._pipe_table.clear()
         self._net_plot.clear()
         self._ts_widget.clear()
@@ -292,6 +302,9 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData.COP_filename = self.folder_manager.cop_filename
         self.NetworkGenerationData.TRY_filename = self.folder_manager.try_filename
 
+        # The load profiles the net is initialised with, for the "veraltet" check (UT-H10)
+        profiles = read_state(self.base_path).get(BUILDING_PROFILES)
+        self._init_inputs = {BUILDING_PROFILES: stamp_id(profiles)}
         self._init_thread = NetInitializationThread(self.NetworkGenerationData)
         self._init_thread.calculation_done.connect(self._on_initialization_done)
         self._init_thread.calculation_error.connect(self._on_simulation_error)
@@ -301,6 +314,8 @@ class NetSimulationTab(QWidget):
     def _on_initialization_done(self, network_data):
         self._progress_bar.setRange(0, 1)
         self.NetworkGenerationData = network_data
+        # Recorded when the net is saved; a time series refers to it from now on
+        self._net_stamp = new_stamp(getattr(self, "_init_inputs", {}))
         self._refresh_all_widgets()
 
     # ------------------------------------------------------------------
@@ -382,6 +397,15 @@ class NetSimulationTab(QWidget):
             ],
             self.NetworkGenerationData.pump_results,
             self.NetworkGenerationData.results_csv_filename,
+        )
+        net_stamp = getattr(self, "_net_stamp", None)
+        record(
+            self.base_path,
+            TIME_SERIES,
+            new_stamp(
+                {NETWORK_CALCULATION: stamp_id(net_stamp)},
+                datei=os.path.relpath(self.NetworkGenerationData.results_csv_filename, self.base_path),
+            ),
         )
 
     def _on_simulation_error(self, error_message):
@@ -536,6 +560,8 @@ class NetSimulationTab(QWidget):
                 nd.TRY_filename = os.path.relpath(nd.TRY_filename, self.base_path)
 
             save_net(nd.net, net_path)
+            if getattr(self, "_net_stamp", None):
+                record(self.base_path, NETWORK_CALCULATION, self._net_stamp)
 
             waerme_data = np.column_stack([nd.waerme_hast_ges_W[i] for i in range(nd.waerme_hast_ges_W.shape[0])])
             waerme_df = pd.DataFrame(
@@ -627,6 +653,7 @@ class NetSimulationTab(QWidget):
                 meta = json.load(jf)
 
             nd = NetworkGenerationData.from_dict(meta)
+            self._net_stamp = read_state(self.base_path).get(NETWORK_CALCULATION)
 
             if nd.COP_filename and not os.path.isabs(nd.COP_filename):
                 nd.COP_filename = os.path.normpath(os.path.join(self.base_path, nd.COP_filename))

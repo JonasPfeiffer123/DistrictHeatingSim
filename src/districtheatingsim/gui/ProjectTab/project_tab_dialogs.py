@@ -329,6 +329,12 @@ class ProcessDetailsDialog(QDialog):
                 geocoding_label.setStyleSheet(f"color: {geocoding_status_color}; font-weight: bold;")
                 step_layout.addWidget(geocoding_label)
 
+            if step.get("outdated"):
+                outdated_label = QLabel(f"⚠ Veraltet: {step['outdated']}")
+                outdated_label.setWordWrap(True)
+                outdated_label.setStyleSheet("color: #e65100; font-weight: bold;")
+                step_layout.addWidget(outdated_label)
+
             # Show missing files if any
             if len(step.get("missing_files", [])) > 0:
                 for missing_file in step["missing_files"]:
@@ -374,9 +380,13 @@ class ProcessDetailsDialog(QDialog):
         :return: Completion percentage (0-100).
         :rtype: float
         """
+        if step.get("completed"):
+            return 100.0
         total_files = len(step["required_files"])
+        if not total_files:  # a step judged by a check of its own (e.g. any saved generator config)
+            return 0.0
         missing_files = len(step.get("missing_files", []))
-        return ((total_files - missing_files) / total_files) * 100
+        return max(0.0, (total_files - missing_files) / total_files * 100)
 
     def get_status_text(self, status):
         """

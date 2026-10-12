@@ -15,7 +15,7 @@ import seaborn as sns
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QBrush, QColor, QFont
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -42,6 +42,7 @@ from districtheatingsim.gui.ComparisonTab.comparison_data import (
     variant_has_results,
 )
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
+from districtheatingsim.gui.ProjectTab.project_progress import variant_outdated
 from districtheatingsim.utilities import array_store
 
 logger = logging.getLogger(__name__)
@@ -190,9 +191,16 @@ class ProjectExplorer(QWidget):
                 variant_item.setCheckState(0, Qt.CheckState.Checked)
                 self.project_tree.addTopLevelItem(variant_item)
 
+                # Results computed from data that has changed since (a variant copy takes them
+                # over unchanged) are marked instead of compared as if current (UT-H10)
+                outdated = variant_outdated(variant_path)["configs"]
                 for config_name, config_file in configs:
-                    display = config_name
+                    reason = outdated.get(config_name)
+                    display = f"{config_name} (veraltet)" if reason else config_name
                     child = QTreeWidgetItem([display])
+                    if reason:
+                        child.setToolTip(0, f"Veraltet: {reason}\nBitte in der Variante neu berechnen.")
+                        child.setForeground(0, QBrush(QColor("#e65100")))
                     child.setCheckState(0, Qt.CheckState.Checked)
                     child.setData(
                         0,
@@ -202,7 +210,8 @@ class ProjectExplorer(QWidget):
                             "variant_name": variant_name,
                             "config_name": config_name,
                             "config_file": config_file,
-                            "display_name": f"{variant_name} · {config_name}",
+                            "display_name": f"{variant_name} · {display}",
+                            "outdated": reason,
                         },
                     )
                     variant_item.addChild(child)

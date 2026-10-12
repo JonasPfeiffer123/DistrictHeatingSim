@@ -634,6 +634,27 @@ class HeatSystemDesignGUI(QMainWindow):
         self.tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         self.tabWidget.addTab(self.energySystemTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         self.tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
+        self._current_tab = self.tabWidget.currentWidget()
+        self.tabWidget.currentChanged.connect(self._on_tab_changed)
+
+    def _on_tab_changed(self, index: int) -> None:
+        """
+        Keep the one building list consistent between the tabs (UT-M13).
+
+        Edits in the project tab's table are saved when the user leaves the tab, and the heat
+        demand tab shows the saved list whenever it is opened.
+        """
+        previous, self._current_tab = self._current_tab, self.tabWidget.widget(index)
+        if previous is self.projectTab:
+            try:
+                self.projectTab.presenter.save_if_modified()
+            except Exception as e:
+                logger.exception("Gebäudeliste konnte nicht gespeichert werden")
+                self.show_error_message(f"Die Gebäudeliste konnte nicht gespeichert werden:\n{e}")
+        if self._current_tab is self.buildingTab:
+            self.buildingTab.presenter.refresh_buildings()
+        elif self._current_tab is self.projectTab:
+            self.projectTab.presenter.update_progress_tracker()
 
     def initLogo(self) -> None:
         """
@@ -1137,11 +1158,6 @@ class HeatSystemDesignGUI(QMainWindow):
                     self.projectTab.presenter.save_csv(show_dialog=False)
                 except Exception as e:
                     errors.append(f"ProjektTab: {str(e)}")
-            if hasattr(self, "buildingTab") and hasattr(self.buildingTab.presenter, "save_csv"):
-                try:
-                    self.buildingTab.presenter.save_csv(show_dialog=False)
-                except Exception as e:
-                    errors.append(f"BuildingTab: {str(e)}")
             # Netzdaten speichern
             if hasattr(self, "calcTab") and hasattr(self.calcTab, "saveNet"):
                 try:

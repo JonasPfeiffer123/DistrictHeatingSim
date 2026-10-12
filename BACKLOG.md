@@ -2062,7 +2062,38 @@ IDs below are the report's IDs with a `UT-` prefix.
   `tests/test_new_project_wizard.py`. Open from the report's page 3: producer location by map click
   in the assistant, OSMnx as the default network mode.
 
-**Later stages (see the report, section 6):** UT-H10 (stale results), UT-M1…M17, UT-N.
+- UT-H10 — results went stale without notice: a variant copy took over every generator result, and
+  after the buildings, the load profiles or the network changed the comparison still showed the old
+  numbers. File times cannot tell: every project save rewrites the building CSV, the net files and
+  the generator results. **Fixed 2026-10-12:** `utilities/calculation_state.py` — each step records
+  a stamp when it *computes* in `<variant>/Berechnungsstand.json` (id + inputs): the load profiles
+  the fingerprint of the heat-demand columns (`building_data_fingerprint`; addresses/coordinates and
+  number formats do not count) and the climate settings, the net initialisation the profiles' id,
+  the time series the net's id and its file, each generator config the time series' id (only if it
+  read that file). `outdated_results` follows the chain; projects without stamps report nothing.
+  `project_progress.variant_outdated` adds the network check (one house connection per geocoded
+  building); the progress tracker shows "⚠ Veraltet: …" (outdated steps do not count) with the
+  reasons in the details, the comparison marks configs "(veraltet)" with the reason as tooltip.
+  Verified with `scenario_p1_zittau.py … outdated`: nothing after calculating and after "Projekt
+  speichern"; a changed building → steps 2, 4, 5 and all four configs; recomputed profiles → 4, 5.
+  Tests: `tests/test_calculation_state.py`. Open: a re-generated network or pipe edits after the
+  initialisation are not detected (the dimensioned export rewrites the network file).
+- UT-M14 — progress tracker: the street download was a required step although OSMnx loads the
+  streets itself, "Schritt 3" came twice, the texts named old tabs, the generator step only counted
+  after a CSV export (M9). **Fixed 2026-10-12:** `project_progress.default_process_steps` (five steps
+  with the app's tab names; streets mentioned for MST only; any saved generator config counts); the
+  details dialog no longer divides by zero for a step without required files.
+- UT-M13 — two building editors with different templates (project tab 13 columns, heat demand tab 18
+  with an "MFH" example); found while testing H10: "Projekt speichern" wrote the heat demand tab's
+  older table over the project tab's edits (a changed demand 462000 was back to 420000). **Fixed
+  2026-10-12:** the heat demand tab shows the project's building list read-only (no template, no
+  save; "Gebäudeliste neu laden"), reloads it when the file changed (`refresh_buildings`, on project
+  change and when the tab is opened) and is no longer saved by the project save; the project tab
+  saves its edited table when the user leaves it (`save_if_modified`); "CSV erstellen" uses the
+  import's `TARGET_COLUMNS` (incl. the optional BDEW columns). Verified: the changed building
+  survives a project save. Tests: `TestOneBuildingEditor`.
+
+**Later stages (see the report, section 6):** UT-M1…M12, M15–M17 (M4, M17 partly done above), UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
