@@ -108,6 +108,7 @@ if (document.getElementById('map')._leaflet_id) {
             // Add event listeners for Leaflet.Draw to prevent undefined listener errors
             map.on('draw:created', function(e) {
                 var layer = e.layer;
+                if (window.ensureDrawingLayer) window.ensureDrawingLayer();
                 
                 // Füge Layer nur zum aktiven Layer hinzu
                 if (window.activeLayer && !window.activeLayer.options.locked) {
@@ -368,7 +369,8 @@ if (document.getElementById('map')._leaflet_id) {
                 return; // Don't add to active layer
             }
 
-            // Normal drawing mode - add to active layer
+            // Normal drawing mode - add to the active layer (created on first use)
+            if (window.ensureDrawingLayer) window.ensureDrawingLayer();
             if (window.activeLayer && !window.activeLayer.options.locked) {
                 window.activeLayer.addLayer(layer);
                 // Setze Layer-Eigenschaften
