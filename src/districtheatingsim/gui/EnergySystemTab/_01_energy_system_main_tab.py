@@ -543,6 +543,7 @@ class EnergySystemTab(QWidget):
         self.energy_system.results["waerme_ges_kW"] = waerme_ges_kW
         self.energy_system.results["strom_wp_kW"] = strom_wp_kW
 
+        self.costTab.prefill_from_network()  # placeholders -> estimates from the network (UT-M11)
         self.costTab.updateInfrastructureTable()
         self.energy_system.results["infrastructure_cost"] = self.costTab.data
 

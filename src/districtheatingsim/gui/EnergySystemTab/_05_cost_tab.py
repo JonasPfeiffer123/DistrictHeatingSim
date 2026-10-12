@@ -7,6 +7,8 @@ Cost Tab Module
 Displaying and managing cost-related data for heat generation project components.
 """
 
+import os
+
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -30,6 +32,11 @@ from PyQt6.QtWidgets import (
 
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import KostenBerechnungDialog
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
+from districtheatingsim.gui.EnergySystemTab.infrastructure_costs import (
+    COLUMN_HINTS,
+    PLACEHOLDER_COSTS,
+    estimate_infrastructure_costs,
+)
 from districtheatingsim.heat_generators.annuity import infrastructure_annuity
 
 
@@ -77,6 +84,69 @@ class CostTab(QWidget):
         :type new_base_path: str
         """
         self.base_path = new_base_path
+        if hasattr(self, "infrastructureCostsTable"):
+            self.prefill_from_network()
+
+    def prefill_from_network(self) -> list[str]:
+        """
+        Replace the flat network and house-station costs by estimates from the network (UT-M11).
+
+        Only where the table still holds the placeholder - values the user entered or a saved
+        config brought stay. The hint below the table says which values are estimated and which
+        are still flat.
+
+        :return: The notes of the estimates used.
+        """
+        notes = []
+        if self.base_path:
+            path = os.path.join(self.base_path, "Wärmenetz", "Wärmenetz.geojson")
+            for component, (cost, note) in estimate_infrastructure_costs(path).items():
+                if component not in self.data.index:
+                    continue
+                try:
+                    current = float(self.data.at[component, "Kosten"])
+                except (TypeError, ValueError):
+                    continue
+                if current == PLACEHOLDER_COSTS[component]:
+                    row = self.data.loc[component]
+                    self.data.at[component, "Kosten"] = cost
+                    self.data.at[component, "Annuität"] = self.calc_annuität(
+                        cost, int(row["T_N"]), float(row["F_inst"]), float(row["F_w_insp"]), float(row["Bedienaufwand"])
+                    )
+                    notes.append(note)
+            if notes:
+                self.updateSummaryRow()
+                self.updateInfrastructureTable()
+        self._estimate_notes = notes or getattr(self, "_estimate_notes", [])
+        self._update_cost_hint()
+        return notes
+
+    def _update_cost_hint(self):
+        """Name the estimated and the still flat cost positions below the table."""
+        if not hasattr(self, "costHintLabel"):
+            return
+        flat = [
+            name
+            for name, value in PLACEHOLDER_COSTS.items()
+            if name in self.data.index
+            and self._is_number(self.data.at[name, "Kosten"])
+            and float(self.data.at[name, "Kosten"]) == value
+        ]
+        lines = []
+        if getattr(self, "_estimate_notes", []):
+            lines.append("Aus dem Netz geschätzt: " + "; ".join(self._estimate_notes) + ".")
+        if flat:
+            lines.append(f"Pauschalwerte, bitte an das Projekt anpassen: {', '.join(flat)}.")
+        self.costHintLabel.setText("\n".join(lines))
+        self.costHintLabel.setVisible(bool(lines))
+
+    @staticmethod
+    def _is_number(value) -> bool:
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return False
+        return True
 
     def initData(self):
         """
@@ -88,7 +158,7 @@ class CostTab(QWidget):
         # Create the initial DataFrame
         data = pd.DataFrame(
             {
-                "Kosten": [2000000, 100000, 20000, 40000, 15000, 500000],
+                "Kosten": list(PLACEHOLDER_COSTS.values()),
                 "T_N": [40, 20, 20, 40, 15, 20],
                 "F_inst": [1, 1, 1, 1, 1, 0],
                 "F_w_insp": [0, 1, 1, 0, 1, 0],
@@ -234,6 +304,12 @@ class CostTab(QWidget):
 
         self.infrastructure_layout.addWidget(self.infrastructureCostsTable)
 
+        self.costHintLabel = QLabel("")
+        self.costHintLabel.setWordWrap(True)
+        self.costHintLabel.setStyleSheet("color: #e65100;")
+        self.infrastructure_layout.addWidget(self.costHintLabel)
+        self._update_cost_hint()
+
         # Add buttons for row management
         buttonLayout = QHBoxLayout()
 
@@ -264,6 +340,11 @@ class CostTab(QWidget):
         self.infrastructureCostsTable.setColumnCount(len(self.data.columns))
         self.infrastructureCostsTable.setHorizontalHeaderLabels(self.data.columns.tolist())
         self.infrastructureCostsTable.setVerticalHeaderLabels(self.data.index.tolist())  # Update vertical headers
+        # "T_N, F_inst, F_w_insp" were not explained (UT-M11)
+        for column, name in enumerate(self.data.columns):
+            header = self.infrastructureCostsTable.horizontalHeaderItem(column)
+            if header is not None and name in COLUMN_HINTS:
+                header.setToolTip(COLUMN_HINTS[name])
 
         # Iterate over the DataFrame rows
         self.infrastructureCostsTable.blockSignals(True)
@@ -345,6 +426,7 @@ class CostTab(QWidget):
 
         # Refresh the table to include the updated summary row
         self.updateInfrastructureTable()
+        self._update_cost_hint()
 
     def addRow(self):
         """
