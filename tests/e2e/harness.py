@@ -374,6 +374,9 @@ def start_app(size=(1600, 1000)):
     configure_logging(log_dir=os.path.join(WORK, "applogs"))
     APP = QApplication.instance() or QApplication(sys.argv)
     APP.setStyle("Fusion")
+    from districtheatingsim.gui.qt_translation import install_german_qt_translation
+
+    install_german_qt_translation(APP)  # as DistrictHeatingSim.main does
     start = time.time()
     config_manager = main_data_manager.ProjectConfigManager()
     folder_manager = main_data_manager.ProjectFolderManager(config_manager)

@@ -352,7 +352,7 @@ class InteractiveNetworkPlot:
                 marker=marker,
                 text=data.hover_texts,
                 hovertemplate="%{text}<extra></extra>",
-                name="junction",
+                name="Knoten",
                 customdata=data.ids,
                 visible=show,
             )
@@ -422,7 +422,7 @@ class InteractiveNetworkPlot:
                     hovertemplate="%{text}<extra></extra>",
                     customdata=[[seg.idx, seg.name]] * 3,  # pipe index/name for click events
                     legendgroup="pipes",
-                    name="pipe",
+                    name="Leitungen",
                     showlegend=(i == 0),
                     visible=show,
                 )
@@ -491,7 +491,7 @@ class InteractiveNetworkPlot:
                     text=[seg.hover_text, seg.hover_text, seg.hover_text],
                     hovertemplate="%{text}<extra></extra>",
                     legendgroup="heat_consumers",
-                    name="heat_consumer",
+                    name="Hausanschlüsse",
                     showlegend=(i == 0),
                     visible=show,
                 )
@@ -560,7 +560,7 @@ class InteractiveNetworkPlot:
                     text=[seg.hover_text, seg.hover_text, seg.hover_text],
                     hovertemplate="%{text}<extra></extra>",
                     legendgroup="pumps",
-                    name="circ_pump",
+                    name="Heizzentrale",
                     showlegend=(i == 0),
                     visible=show,
                 )
@@ -629,7 +629,7 @@ class InteractiveNetworkPlot:
                     text=[seg.hover_text, seg.hover_text, seg.hover_text],
                     hovertemplate="%{text}<extra></extra>",
                     legendgroup="flow_controls",
-                    name="flow_control",
+                    name="Durchflussregler",
                     showlegend=(i == 0),
                     visible=show,
                 )

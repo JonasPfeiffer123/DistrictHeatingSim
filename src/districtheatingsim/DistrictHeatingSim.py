@@ -98,6 +98,11 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
 
+    # German "OK/Abbrechen/Ja/Nein", file dialogs and file tree headers (UT-M2)
+    from districtheatingsim.gui.qt_translation import install_german_qt_translation
+
+    install_german_qt_translation(app)
+
     # Configure Windows-specific taskbar integration for professional appearance
     try:
         import ctypes

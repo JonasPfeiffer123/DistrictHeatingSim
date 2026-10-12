@@ -210,7 +210,7 @@ if (document.getElementById('map')._leaflet_id) {
 
         const display = document.getElementById('coordinateDisplay');
         if (display) {
-            display.textContent = "Latitude: " + lat + ", Longitude: " + lng;
+            display.textContent = "Breite: " + lat + ", Länge: " + lng;
         }
 
         if (!clickMarker) {
@@ -261,7 +261,7 @@ if (document.getElementById('map')._leaflet_id) {
         // Reset display styling immediately
         const display = document.getElementById('coordinateDisplay');
         if (display) {
-            display.textContent = "Koordinate ausgewählt: Lat " + lat.toFixed(6) + ", Lon " + lng.toFixed(6);
+            display.textContent = "Koordinate ausgewählt: Breite " + lat.toFixed(6) + ", Länge " + lng.toFixed(6);
             display.style.backgroundColor = "#f8f9fa";
             display.style.fontWeight = "normal";
         }
