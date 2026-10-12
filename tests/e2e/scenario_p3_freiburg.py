@@ -99,6 +99,55 @@ def geocode_default_crs():
     H.wait_until(lambda: not building_tab.presenter._calc_thread.isRunning(), 300, "heat demand")
 
 
+ASSISTANT_NAME = "Freiburg_Assistent"
+
+
+def assistant():
+    """H9/K2: the new-project assistant with a real place search - CRS, climate data and zone from the place."""
+
+    def fill(wizard):
+        wizard.show()
+        wizard.restart()
+        wizard.project_page.folder_edit.setText(H.PROJECTS)
+        wizard.project_page.name_edit.setText("Freiburg_Vauban")  # exists: 'Weiter' stays disabled
+        H.log("CHECK M17", "existing name", (wizard.project_page.problem(), wizard.project_page.isComplete()))
+        H.shot(wizard, "p3_assistant_1_name_taken")
+        wizard.project_page.name_edit.setText(ASSISTANT_NAME)
+        wizard.next()
+        page = wizard.location_page
+        page.place_edit.setText("Freiburg im Breisgau")
+        page.search_place()
+        H.wait_until(lambda: not page._search_thread.isRunning(), 60, "place search")
+        H.log(
+            "CHECK H9",
+            "assistant: place / CRS / climate data",
+            {"place": page.place_label.text(), "crs": page.crs_combo.currentData(), "try": page.try_label.text()},
+        )
+        page.climate_zone_combo.setCurrentIndex(page.climate_zone_combo.findData("12"))
+        H.shot(wizard, "p3_assistant_2_location")
+        wizard.next()
+        wizard.buildings_page.buttons["manual"].setChecked(True)
+        H.shot(wizard, "p3_assistant_3_buildings")
+        wizard.hide()
+
+    H.fresh_project_slot(ASSISTANT_NAME)
+    H.DIALOG_HANDLERS["NewProjectWizard"] = [fill]
+    H.VIEW.welcome_screen.new_project_clicked()
+    H.pump(2)
+    folder_manager = H.VIEW.presenter.folder_manager
+    H.log(
+        "CHECK H9",
+        "project settings after the assistant",
+        {
+            "project": folder_manager.project_folder,
+            "crs": folder_manager.project_crs,
+            "location": folder_manager.location,
+            "climate_zone": folder_manager.climate_zone,
+            "project tab zone": H.VIEW.projectTab.presenter.view.climate_zone_combo.currentData(),
+        },
+    )
+
+
 def geocode_quality():
     """H6: streets without house numbers (as in the original run) - street-only points and 4× the same point."""
     ensure_open()
@@ -263,5 +312,6 @@ if __name__ == "__main__":
             "producer_geocoding": producer_geocoding,
             "networks": networks,
             "mst_hydraulics": mst_hydraulics,
+            "assistant": assistant,
         }
     )

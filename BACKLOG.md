@@ -2046,6 +2046,22 @@ IDs below are the report's IDs with a `UT-` prefix.
   and the street dialog's "Zittau" are gone (placeholders; the street dialog takes the project's
   place). Tests: `tests/test_project_location.py`.
 
+- Assistant "Neues Projekt" (report section 6, stage 2) — creating a project asked for a parent
+  folder and a name only; location, CRS, climate data and the building source had to be found in
+  four places, an existing name ended in "[WinError 183]" (UT-M17) and two success messages
+  appeared (UT-N). **Done 2026-10-12:** `gui/MainTab/new_project_wizard.py` — page 1 name + folder
+  (`project_name_problem`: empty, forbidden characters, existing folder; "Weiter" stays disabled),
+  page 2 place search (`geocoding.find_place` on a worker thread) → CRS suggestion, bundled-TRY
+  check with DWD link and own TRY file, climate zone, persons per household; page 3 buildings from
+  a table import, OpenStreetMap or by hand. `HeatSystemPresenter.create_new_project(…, choice)`
+  stores the answers, refuses an existing folder itself and creates the building CSV without a
+  second message; the main window shows one summary (`new_project_summary`) and continues with
+  the import, the map (OSM guide) or the empty table. Verified with `scenario_p3_freiburg.py
+  assistant` against Nominatim (Freiburg → EPSG:25832, TRY 590 km "passt nicht", zone 12 in the
+  project tab) and `import_excel geocode_default_crs` through the assistant. Tests:
+  `tests/test_new_project_wizard.py`. Open from the report's page 3: producer location by map click
+  in the assistant, OSMnx as the default network mode.
+
 **Later stages (see the report, section 6):** UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order

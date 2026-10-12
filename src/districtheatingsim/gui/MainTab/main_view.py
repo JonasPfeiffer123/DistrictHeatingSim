@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QAction, QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
+    QDialog,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -33,6 +34,12 @@ from PyQt6.QtWidgets import (
 # up (BACKLOG G8). QtWebEngineWidgets itself is imported by the entry point before the
 # QApplication exists, as Qt requires.
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
+from districtheatingsim.gui.MainTab.new_project_wizard import (
+    BUILDINGS_IMPORT,
+    BUILDINGS_OSM,
+    NewProjectWizard,
+    new_project_summary,
+)
 from districtheatingsim.gui.MainTab.project_structure import (
     discover_variants,
     resolve_new_project_start_dir,
@@ -727,39 +734,40 @@ class HeatSystemDesignGUI(QMainWindow):
                 return  # User cancelled save operation
         # If 'discard' or 'continue', proceed without saving
 
-        # Determine parent directory for new project
-        # If no project is loaded, use a sensible default or ask user
+        # Parent folder suggested in the assistant: next to the open project, else next to the most
+        # recent one, then ~/Documents, then home (resolved by the GUI-free helper).
         if self.base_path:
             folder_path = os.path.dirname(os.path.dirname(self.base_path))
         else:
-            # No project loaded - ask the user to select a parent folder, opening the
-            # picker at a sensible location (parent of the most recent project, then
-            # ~/Documents, then home — resolved by the GUI-free helper).
             recent_projects = []
             if hasattr(self, "presenter") and self.presenter and self.presenter.folder_manager:
                 try:
                     recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects() or []
                 except Exception:
                     recent_projects = []
+            folder_path = resolve_new_project_start_dir(recent_projects)
 
-            start_dir = resolve_new_project_start_dir(recent_projects)
-            folder_path = QFileDialog.getExistingDirectory(
-                self, "Übergeordneten Ordner für neues Projekt auswählen", start_dir
-            )
+        # Name, folder, location, climate data and the source of the buildings in one go (UT-H9)
+        wizard = NewProjectWizard(folder_path, self)
+        if wizard.exec() != QDialog.DialogCode.Accepted:
+            return
+        choice = wizard.choice()
+        if not self.presenter.create_new_project(choice.parent_folder, choice.name, choice):
+            return
+        self.restoreDataFilesFromProject()
+        self._continue_with_buildings(choice)
 
-        if folder_path:
-            # Collect project name from user
-            projectName, ok = QInputDialog.getText(
-                self, "Neues Projekt", "Projektnamen eingeben:", text="Neues Projekt"
-            )
-
-            # Process project creation if user confirmed
-            if ok and projectName:
-                success = self.presenter.create_new_project(folder_path, projectName)
-                if success:
-                    QMessageBox.information(
-                        self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt."
-                    )
+    def _continue_with_buildings(self, choice) -> None:
+        """Show the new project and take the user to where its buildings come from."""
+        summary = new_project_summary(choice)
+        if choice.building_source == BUILDINGS_OSM:
+            self.tabWidget.setCurrentWidget(self.visTab2)
+            QMessageBox.information(self, "Projekt angelegt", summary)
+            return
+        self.tabWidget.setCurrentWidget(self.projectTab)
+        QMessageBox.information(self, "Projekt angelegt", summary)
+        if choice.building_source == BUILDINGS_IMPORT:
+            self.projectTab.presenter.import_csv()
 
     def on_open_existing_project(self, folder_path: str | None = None) -> None:
         """
