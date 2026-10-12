@@ -88,6 +88,7 @@ def presenter(qapp, tmp_path, monkeypatch):
         csvTable=QTableWidget(),
         update_progress=lambda *a, **k: None,
         set_process_steps=lambda *a, **k: None,
+        set_outdated=lambda *a, **k: None,
         show_message=lambda *a: None,
     )
     p = ProjectPresenter(ProjectModel(), view, folder_manager, None, config_manager)

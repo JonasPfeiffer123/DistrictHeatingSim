@@ -38,10 +38,15 @@ from districtheatingsim.geocoding.building_csv import centroid_of, format_buildi
 from districtheatingsim.geocoding.geocoding import format_geocoding_summary, geocoding_row_notes
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
-from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
-from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
+from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, CsvImportDialog
+from districtheatingsim.gui.ProjectTab.project_progress import (
+    default_process_steps,
+    evaluate_process_steps,
+    outdated_summary,
+)
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.gui.utilities import any_thread_running
+from districtheatingsim.utilities.calculation_state import climate_settings
 from districtheatingsim.utilities.crs_utils import (
     COMMON_CRS_OPTIONS,
     outside_crs_area,
@@ -49,7 +54,7 @@ from districtheatingsim.utilities.crs_utils import (
     reproject_building_csv,
     suggest_crs_for_coordinates,
 )
-from districtheatingsim.utilities.project_location import CLIMATE_ZONES, climate_zone_label
+from districtheatingsim.utilities.project_location import CLIMATE_ZONES, DEFAULT_CLIMATE_ZONE, climate_zone_label
 
 logger = logging.getLogger(__name__)
 
@@ -177,52 +182,11 @@ class ProjectPresenter:
         self.data_manager = data_manager
         self.config_manager = config_manager
 
-        # Define process steps for project tracking
-        self.process_steps = [
-            {
-                "name": "Schritt 1: Gebäudedaten Quartier definieren",
-                "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'. Die CSV kann manuell erstellt, aus GeoJSON importiert oder durch Geocoding mit Koordinaten angereichert werden.",
-                "required_files": ["../Definition Quartier IST/Quartier IST.csv"],
-                "csv_creation_status": "not_checked",  # Will be updated dynamically
-                "geocoding_status": "not_checked",  # Will be updated dynamically
-            },
-            {
-                "name": "Schritt 2: Gebäude-Lastgang generieren",
-                "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
-                # Current Parquet file, or the JSON of projects saved before BACKLOG G7
-                "required_files": [["Lastgang/Gebäude Lastgang.parquet", "Lastgang/Gebäude Lastgang.json"]],
-            },
-            {
-                "name": "Schritt 3: Straßendaten herunterladen",
-                "description": "Führen Sie eine OSM-Straßenabfrage im Tab 'Wärmenetz generieren' durch.",
-                "required_files": ["../Eingangsdaten allgemein/Straßen.geojson"],
-            },
-            {
-                "name": "Schritt 3: Wärmenetz Daten erstellen",
-                "description": "Generieren Sie das Wärmenetz im Tab 'Wärmenetz generieren'.",
-                "required_files": ["Wärmenetz/Wärmenetz.geojson"],
-            },
-            {
-                "name": "Schritt 4: Thermohydraulische Berechnung",
-                "description": "Führen Sie die Thermohydraulische Berechnung mit den generierten Netzdaten durch.",
-                "required_files": [
-                    # Current JSON, or the pickle of projects saved before BACKLOG G7
-                    ["Wärmenetz/Ergebnisse Netzinitialisierung.json", "Wärmenetz/Ergebnisse Netzinitialisierung.p"],
-                    "Wärmenetz/Ergebnisse Netzinitialisierung.csv",
-                    "Wärmenetz/Konfiguration Netzinitialisierung.json",
-                    "Lastgang/Lastgang.csv",
-                ],
-                "check_dimensioned_network": True,  # Special check for dimensioned flag in Wärmenetz.geojson
-            },
-            {
-                "name": "Schritt 5: Erzeugermix auslegen und berechnen",
-                "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
-                "required_files": [
-                    "Ergebnisse/calculated_heat_generation.csv",
-                    ["Ergebnisse/Ergebnisse.parquet", "Ergebnisse/Ergebnisse.json"],
-                ],
-            },
-        ]
+        # Steps of the progress tracker (UT-M14: names, tabs, no street download step)
+        self.process_steps = default_process_steps()
+
+        # Edits in the building table not saved yet; saved when the user leaves the tab (UT-M13)
+        self.table_modified = False
 
         # Connect signals and initialize (only after view is set)
         self.folder_manager.project_folder_changed.connect(self.on_variant_folder_changed)
@@ -238,6 +202,10 @@ class ProjectPresenter:
         """
         if self.view:
             self.view.treeView.doubleClicked.connect(self.on_tree_view_double_clicked)
+            table = self.view.csvTable
+            table.itemChanged.connect(self._mark_table_modified)
+            table.model().rowsInserted.connect(self._mark_table_modified)
+            table.model().rowsRemoved.connect(self._mark_table_modified)
 
             # Synchronise CRS selector with current project CRS and listen for changes
             self.view.set_crs(self.folder_manager.project_crs)
@@ -261,6 +229,24 @@ class ProjectPresenter:
             if self.folder_manager.variant_folder:
                 self.on_variant_folder_changed(self.folder_manager.variant_folder)
             self.update_progress_tracker()
+
+    def _mark_table_modified(self, *_args):
+        self.table_modified = True
+
+    def save_if_modified(self) -> bool:
+        """
+        Save the building table if it was edited since it was loaded or saved.
+
+        Called when the user leaves the tab: the heat demand tab shows the saved list (UT-M13).
+
+        :return: True if something was saved.
+        """
+        if not self.table_modified or not self.model.current_file_path:
+            return False
+        self.save_csv(show_dialog=False)
+        self.view.statusLabel.setText(f"Gebäudeliste gespeichert: {os.path.basename(self.model.current_file_path)}")
+        self.update_progress_tracker()
+        return True
 
     def on_variant_folder_changed(self, path):
         """
@@ -539,6 +525,7 @@ class ProjectPresenter:
             for column, cell_value in enumerate(row_data):
                 item = QTableWidgetItem(cell_value)
                 self.view.csvTable.setItem(row, column, item)
+        self.table_modified = False
 
     def save_csv(self, show_dialog=True):
         """
@@ -565,6 +552,7 @@ class ProjectPresenter:
             self.model.current_file_path = file_path
         try:
             self.model.save_csv(file_path, headers, data)
+            self.table_modified = False
             if show_dialog:
                 self.view.show_message("Erfolg", f"CSV-Datei wurde in {file_path} gespeichert.")
         except Exception as e:
@@ -596,21 +584,8 @@ class ProjectPresenter:
         :param show_dialog: Show file dialog if True.
         :type show_dialog: bool
         """
-        headers = [
-            "Land",
-            "Bundesland",
-            "Stadt",
-            "Adresse",
-            "Wärmebedarf",
-            "Gebäudetyp",
-            "Subtyp",
-            "WW_Anteil",
-            "Typ_Heizflächen",
-            "VLT_max",
-            "Steigung_Heizkurve",
-            "RLT_max",
-            "Normaußentemperatur",
-        ]
+        # The one building template, also used by the import (UT-M13: the heat demand tab had its own)
+        headers = [name for name, *_ in TARGET_COLUMNS]
         default_data = [""] * len(headers)
         if not fname:
             fname = os.path.join(
@@ -864,9 +839,17 @@ class ProjectPresenter:
         if not self.view:  # Skip if view not available yet
             return
 
-        csv_status, overall_progress = evaluate_process_steps(self.model.base_path, self.process_steps)
+        fm = self.folder_manager
+        climate = climate_settings(
+            getattr(fm, "try_filename", None),
+            getattr(fm, "calculation_year", None),
+            getattr(fm, "climate_zone", DEFAULT_CLIMATE_ZONE),
+            getattr(fm, "persons_per_household", None),
+        )
+        csv_status, overall_progress = evaluate_process_steps(self.model.base_path, self.process_steps, climate)
 
         self.view.update_progress(overall_progress, csv_status=csv_status)
+        self.view.set_outdated(outdated_summary(self.process_steps))
         self.view.set_process_steps(self.process_steps)
 
 
@@ -922,6 +905,13 @@ class ProjectTabView(QWidget):
         self.progressLayout.addWidget(self.detailsButton)
 
         self.leftLayout.addLayout(self.progressLayout)
+
+        # Results that no longer fit their inputs (UT-H10)
+        self.outdated_label = QLabel("")
+        self.outdated_label.setWordWrap(True)
+        self.outdated_label.setStyleSheet("font-weight: bold; color: #e65100;")
+        self.outdated_label.setVisible(False)
+        self.leftLayout.addWidget(self.outdated_label)
 
         # CSV-Status oben
         self.csv_status_label = QLabel("❓ Quartier IST.csv: Status unbekannt")
@@ -1205,6 +1195,11 @@ class ProjectTabView(QWidget):
             config = status_config.get(csv_status, status_config["unbekannt"])
             self.csv_status_label.setText(config["text"])
             self.csv_status_label.setStyleSheet(config["style"])
+
+    def set_outdated(self, text: str):
+        """Show which steps are outdated (empty text hides the line)."""
+        self.outdated_label.setText(text)
+        self.outdated_label.setVisible(bool(text))
 
     def showDetailsDialog(self):
         """

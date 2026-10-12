@@ -48,6 +48,13 @@ from districtheatingsim.heat_requirement.building_profiles_io import (
     read_building_profiles,
     write_building_profiles,
 )
+from districtheatingsim.utilities.calculation_state import (
+    BUILDING_PROFILES,
+    building_data_fingerprint,
+    climate_settings,
+    new_stamp,
+    record,
+)
 from districtheatingsim.utilities.project_location import (
     DEFAULT_CLIMATE_ZONE,
     DEFAULT_PERSONS_PER_HOUSEHOLD,
@@ -182,15 +189,15 @@ class BuildingPresenter:
         self._calc_thread = None
         self._calc_base_path = None
         self._confirmed_climate_data = set()  # (project, TRY) the user calculates with despite the distance
+        self._calc_inputs = {}
+        self._loaded_csv = None  # (path, modification time) of the building list shown (UT-M13)
 
         # Connect signals
         self.folder_manager.project_folder_changed.connect(self.standard_path)
         if self.folder_manager.variant_folder:
             self.standard_path(self.folder_manager.variant_folder)
 
-        self.view.create_csv_template_signal.connect(self.create_csv_template)
         self.view.load_csv_signal.connect(self.load_csv)
-        self.view.save_csv_signal.connect(self.save_csv)
         self.view.load_json_signal.connect(self.load_json)
         self.view.save_json_signal.connect(self.save_json)
         self.view.calculate_heat_demand_signal.connect(self.calculate_heat_demand)
@@ -219,79 +226,24 @@ class BuildingPresenter:
             # Drop the previous project's building data so nothing lingers on a project change.
             self.model.data = None
             self.model.results = None
+            self._loaded_csv = None
             self.view.clear_display()
+            self.refresh_buildings()
 
-    # Column order must match what geocoding, heat-profile calc, and net generation expect.
-    # Heizgrenztemperatur / Heizexponent / P_max are optional BDEW parameters; leave blank to use defaults.
-    _TEMPLATE_COLUMNS = [
-        "Land",
-        "Bundesland",
-        "Stadt",
-        "Adresse",
-        "Wärmebedarf",
-        "Gebäudetyp",
-        "Subtyp",
-        "WW_Anteil",
-        "Typ_Heizflächen",
-        "VLT_max",
-        "Steigung_Heizkurve",
-        "RLT_max",
-        "Normaußentemperatur",
-        "Heizgrenztemperatur",
-        "Heizexponent",
-        "P_max",
-        "UTM_X",
-        "UTM_Y",
-    ]
-    _TEMPLATE_EXAMPLE = [
-        "Deutschland",
-        "Sachsen",
-        "Leipzig",
-        "Musterstraße 1",
-        "50000",
-        "MFH",
-        "",
-        "0.15",
-        "HK",
-        "70",
-        "1.5",
-        "50",
-        "-15",
-        "",
-        "",
-        "",
-        "",
-        "",
-    ]
+    def refresh_buildings(self):
+        """
+        Show the project's building list if it changed since it was loaded.
 
-    def create_csv_template(self):
+        The tab used to be a second editor with its own template and save; its table could
+        overwrite the project tab's edits on a project save (UT-M13). It now shows the list the
+        project tab edits, read-only, and reloads it when the file changed.
         """
-        Save an empty CSV template with the required column headers and one
-        example row. The user picks the save location via file dialog.
-        """
-        default_path = os.path.join(self.model.base_path or "", "Quartier.csv")
-        fname, _ = QFileDialog.getSaveFileName(self.view, "CSV-Vorlage speichern", default_path, "CSV Files (*.csv)")
-        if not fname:
+        path = self.model.csv_path
+        if not path or not os.path.exists(path):
             return
-        try:
-            template_df = pd.DataFrame([self._TEMPLATE_EXAMPLE], columns=self._TEMPLATE_COLUMNS)
-            template_df.to_csv(fname, index=False, sep=";", encoding="utf-8-sig")
-            self.view.populate_table(template_df)
-            self.model.csv_path = fname
-            self.model.data = template_df
-            self.view.show_message(
-                "Vorlage erstellt",
-                f"CSV-Vorlage wurde gespeichert und geladen:\n{fname}\n\n"
-                "Pflichtfelder: Land, Bundesland, Stadt, Adresse, Wärmebedarf, Gebäudetyp,\n"
-                "WW_Anteil, VLT_max, Steigung_Heizkurve, RLT_max, Normaußentemperatur.\n\n"
-                "Optionale BDEW-Felder (leer lassen = pyslpheat-Standard):\n"
-                "  Heizgrenztemperatur – Temperatur ab der geheizt wird (Standard ~15 °C)\n"
-                "  Heizexponent – Formparameter der Heizkurve (Standard 1.0)\n"
-                "  P_max – maximale Wärmeleistung in kW (begrenzt Lastspitzen)\n\n"
-                "UTM_X/UTM_Y werden beim Geocoding automatisch befüllt.",
-            )
-        except Exception as e:
-            self.view.show_error_message("Fehler", f"Vorlage konnte nicht gespeichert werden: {e}")
+        if self._loaded_csv == (path, os.path.getmtime(path)):
+            return
+        self.load_csv(path, show_dialog=False)
 
     def load_csv(self, fname=None, show_dialog=True):
         """
@@ -304,43 +256,16 @@ class BuildingPresenter:
         show_dialog : bool, optional
             Whether to show success/error dialogs. Default is True.
         """
-        if fname is None or fname == "":
-            fname, _ = QFileDialog.getOpenFileName(
-                self.view, "Select CSV File", self.model.csv_path, "CSV Files (*.csv);;All Files (*)"
-            )
+        if not fname:
+            fname = self.model.csv_path  # the project's building list (the only editor is the project tab)
         if fname:
             try:
                 self.model.csv_path = fname
                 self.model.load_csv()
+                self._loaded_csv = (fname, os.path.getmtime(fname))
                 self.view.populate_table(self.model.data)
                 if show_dialog:
                     self.view.show_message("Erfolg", f"CSV-Datei {fname} wurde geladen.")
-            except Exception as e:
-                if show_dialog:
-                    self.view.show_error_message("Fehler", str(e))
-
-    def save_csv(self, fname=None, show_dialog=True):
-        """
-        Save CSV file with file dialog.
-
-        Parameters
-        ----------
-        fname : str, optional
-            Filename to save.
-        """
-        if fname is None or fname == "":
-            if show_dialog:
-                fname, _ = QFileDialog.getSaveFileName(
-                    self.view, "Save CSV File", self.model.csv_path, "CSV Files (*.csv);;All Files (*)"
-                )
-            else:
-                fname = self.model.csv_path
-        if fname:
-            try:
-                self.model.csv_path = fname
-                self.model.save_csv()
-                if show_dialog:
-                    self.view.show_message("Erfolg", f"CSV-Datei wurde in {fname} gespeichert.")
             except Exception as e:
                 if show_dialog:
                     self.view.show_error_message("Fehler", str(e))
@@ -431,14 +356,21 @@ class BuildingPresenter:
         if not self._climate_data_confirmed(try_filename):
             return
         year = getattr(self.folder_manager, "calculation_year", 2023)
+        climate_zone = getattr(self.folder_manager, "climate_zone", DEFAULT_CLIMATE_ZONE)
+        persons = getattr(self.folder_manager, "persons_per_household", DEFAULT_PERSONS_PER_HOUSEHOLD)
         self._calc_base_path = self.model.base_path
+        # What the profiles are computed from, for the "veraltet" check (UT-H10)
+        self._calc_inputs = {
+            "Gebäudedaten": building_data_fingerprint(self.model.data),
+            "Klimadaten": climate_settings(try_filename, year, climate_zone, persons),
+        }
         self._calc_thread = HeatDemandThread(
             self.model.data,
             try_filename,
             year,
             self.model.json_path,
-            climate_zone=getattr(self.folder_manager, "climate_zone", DEFAULT_CLIMATE_ZONE),
-            persons_per_household=getattr(self.folder_manager, "persons_per_household", DEFAULT_PERSONS_PER_HOUSEHOLD),
+            climate_zone=climate_zone,
+            persons_per_household=persons,
         )
         self._calc_thread.calculation_done.connect(self._on_heat_demand_done)
         self._calc_thread.calculation_error.connect(self._on_heat_demand_error)
@@ -480,6 +412,8 @@ class BuildingPresenter:
         :type outcome: HeatDemandOutcome
         """
         self.view.set_calculation_running(False)
+        if not outcome.save_error:
+            record(self._calc_base_path, BUILDING_PROFILES, new_stamp(self._calc_inputs))
         if self.model.base_path != self._calc_base_path:
             # The project changed while the worker ran: the results belong to the previous
             # project (already written to its folder) and must not show up in this one.
@@ -551,9 +485,7 @@ class BuildingTabView(QWidget):
     of heat demand profiles.
     """
 
-    create_csv_template_signal = pyqtSignal()
     load_csv_signal = pyqtSignal()
-    save_csv_signal = pyqtSignal()
     load_json_signal = pyqtSignal()
     save_json_signal = pyqtSignal()
     calculate_heat_demand_signal = pyqtSignal()
@@ -584,17 +516,10 @@ class BuildingTabView(QWidget):
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
-        new_template_action = QAction("Neue CSV-Vorlage erstellen", self)
-        new_template_action.triggered.connect(self.createCsvTemplate)
-        self.menubar.addAction(new_template_action)
-
-        load_csv_action = QAction("Gebäudedaten laden", self)
+        # No template / save of its own any more: the building list is edited in the project tab (UT-M13)
+        load_csv_action = QAction("Gebäudeliste neu laden", self)
         load_csv_action.triggered.connect(self.loadCsvFile)
         self.menubar.addAction(load_csv_action)
-
-        save_csv_action = QAction("Gebäudedaten speichern", self)
-        save_csv_action.triggered.connect(self.saveCsvFile)
-        self.menubar.addAction(save_csv_action)
 
         self.calculate_action = QAction(self._CALCULATE_TEXT, self)
         self.calculate_action.triggered.connect(self.calculateHeatDemand)
@@ -612,7 +537,15 @@ class BuildingTabView(QWidget):
 
     def initDataTable(self):
         """Initialize data table widget."""
+        hint = QLabel(
+            "Gebäudeliste des Projekts (Quartier IST.csv). Bearbeitet wird sie im Tab „Projektdefinition“; "
+            "Änderungen dort erscheinen hier automatisch."
+        )
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #666666; padding: 4px;")
+        self.main_layout.addWidget(hint)
         self.table_widget = QTableWidget(self)
+        self.table_widget.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table_widget.setMinimumSize(1200, 300)
         self.table_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.main_layout.addWidget(self.table_widget)
@@ -666,17 +599,9 @@ class BuildingTabView(QWidget):
         combobox_group.setLayout(combobox_group_layout)
         self.main_layout.addWidget(combobox_group)
 
-    def createCsvTemplate(self):
-        """Emit signal to create a new CSV template."""
-        self.create_csv_template_signal.emit()
-
     def loadCsvFile(self):
-        """Emit signal to load CSV file."""
+        """Emit signal to (re)load the project's building list."""
         self.load_csv_signal.emit()
-
-    def saveCsvFile(self):
-        """Emit signal to save CSV file."""
-        self.save_csv_signal.emit()
 
     def loadJsonFile(self):
         """Emit signal to load JSON file."""

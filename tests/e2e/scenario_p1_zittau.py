@@ -235,6 +235,45 @@ def energy():
     )
 
 
+def outdated():
+    """H10/M14: after everything was computed, save, change a building, recalculate - what is outdated?"""
+    ensure_open()
+    presenter = H.VIEW.projectTab.presenter
+    explorer = H.VIEW.comparisonTab.project_explorer
+
+    def check(label):
+        presenter.update_progress_tracker()
+        H.log("CHECK H10", f"{label}: tracker", presenter.view.outdated_label.text() or "(nichts veraltet)")
+        H.log("CHECK H10", f"{label}: steps", {s["key"]: s.get("outdated") for s in presenter.process_steps})
+        explorer.discover_projects()
+        variant = explorer.project_tree.topLevelItem(0)
+        H.log("CHECK H10", f"{label}: comparison", [variant.child(i).text(0) for i in range(variant.childCount())])
+
+    check("after the calculation")
+    H.VIEW.save_all_project_results()  # rewrites every file - must not make anything outdated
+    check("after saving the project")
+
+    table = presenter.view.csvTable
+    headers = [table.horizontalHeaderItem(c).text() for c in range(table.columnCount())]
+    column = headers.index("Wärmebedarf")
+    changed = f"{float(table.item(0, column).text()) * 1.1:.0f}"
+    table.item(0, column).setText(changed)
+    presenter.save_csv(show_dialog=False)
+    check("after changing a building")
+    H.VIEW.save_all_project_results()
+    stored = pd.read_csv(project_csv(), sep=";", encoding="utf-8-sig", dtype=str)["Wärmebedarf"].iloc[0]
+    H.log("CHECK M13", "changed building survives a project save", (changed, stored))
+
+    building_tab = H.VIEW.buildingTab
+    building_tab.presenter.load_csv(project_csv(), show_dialog=False)
+    building_tab.presenter.calculate_heat_demand()
+    H.wait_until(H.thread_finished(building_tab.presenter, "_calc_thread"), 600, "heat demand")
+    check("after recalculating the load profiles")
+    H.VIEW.tabWidget.setCurrentIndex(0)
+    H.pump(1)
+    H.shot(H.VIEW, "p1_outdated")
+
+
 def _static_75(dialog):
     config = dialog.network_config_tab
     config.supplyTemperatureControlInput.setCurrentText("Statisch")
@@ -307,6 +346,7 @@ if __name__ == "__main__":
             "network": network,
             "hydraulics": hydraulics,
             "energy": energy,
+            "outdated": outdated,
             "variant": variant,
             "optimize": optimize,
         }
