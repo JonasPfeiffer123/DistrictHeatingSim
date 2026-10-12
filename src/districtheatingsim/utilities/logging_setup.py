@@ -29,6 +29,14 @@ _FILE_FORMAT = "%(asctime)s %(levelname)-8s %(name)s [%(threadName)s]: %(message
 _CONSOLE_FORMAT = "%(levelname)-8s %(name)s: %(message)s"
 _OWN_HANDLER = "_districtheatingsim_handler"
 
+#: The log file of the last configure_logging() call (None: console only / not configured)
+_current_log_file: str | None = None
+
+
+def current_log_file() -> str | None:
+    """Path of the log file the application writes to, for messages that point to it."""
+    return _current_log_file
+
 
 def default_log_dir() -> str:
     """
@@ -106,4 +114,6 @@ def configure_logging(level: int | str | None = None, log_dir: str | None = None
     for handler in handlers:
         setattr(handler, _OWN_HANDLER, True)
         root.addHandler(handler)
+    global _current_log_file
+    _current_log_file = log_path
     return log_path

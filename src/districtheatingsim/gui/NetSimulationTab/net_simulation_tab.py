@@ -101,6 +101,7 @@ class NetSimulationTab(QWidget):
 
         self.NetworkGenerationData = None
         self.unsaved_changes = False  # net computed/changed since it was loaded or saved (UT-M6)
+        self._net_ready = False  # an initialised (or loaded) net exists; a time series needs it (UT-M8)
         self._init_thread = None
         self._calc_thread = None
         self._time_series_workers = 1  # parallel processes for the detailed time series (G2)
@@ -127,6 +128,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData = None
         self._net_stamp = None  # the calculation state of the previous variant's net (UT-H10)
         self.unsaved_changes = False
+        self._net_ready = False
         self._pipe_table.clear()
         self._net_plot.clear()
         self._ts_widget.clear()
@@ -282,6 +284,17 @@ class NetSimulationTab(QWidget):
 
     def opencalculateNetDialog(self):
         """Open time series calculation dialog."""
+        if self.NetworkGenerationData is None or not getattr(self, "_net_ready", False):
+            # Started after a failed initialisation it ran into a traceback (UT-M8)
+            QMessageBox.information(
+                self,
+                "Kein initialisiertes Netz",
+                "Die Zeitreihenberechnung braucht ein initialisiertes Netz.\n\n"
+                "Initialisieren Sie es über „Netz generieren“ oder laden Sie ein gespeichertes Netz "
+                "(„Pandapipes Netz laden“). Ist die Initialisierung fehlgeschlagen, nennt ihre Fehlermeldung "
+                "den Grund.",
+            )
+            return
         dialog = TimeSeriesCalculationDialog(self.base_path, self)
         if dialog.exec():
             inputs = dialog.getValues()
@@ -304,6 +317,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData.COP_filename = self.folder_manager.cop_filename
         self.NetworkGenerationData.TRY_filename = self.folder_manager.try_filename
 
+        self._net_ready = False
         # The load profiles the net is initialised with, for the "veraltet" check (UT-H10)
         profiles = read_state(self.base_path).get(BUILDING_PROFILES)
         self._init_inputs = {BUILDING_PROFILES: stamp_id(profiles)}
@@ -319,6 +333,7 @@ class NetSimulationTab(QWidget):
         # Recorded when the net is saved; a time series refers to it from now on
         self._net_stamp = new_stamp(getattr(self, "_init_inputs", {}))
         self.unsaved_changes = True
+        self._net_ready = True
         self._refresh_all_widgets()
 
     # ------------------------------------------------------------------
@@ -681,6 +696,7 @@ class NetSimulationTab(QWidget):
             self.NetworkGenerationData = nd
             self._refresh_all_widgets()
             self.unsaved_changes = False
+            self._net_ready = True
 
             if show_dialog:
                 QMessageBox.information(

@@ -1062,8 +1062,8 @@ class EnergySystemOptimizer:
 
         if not has_optimization_params:
             raise ValueError(
-                "No optimization parameters available. Energy system optimization requires "
-                "technologies with configurable parameters (e.g., capacity, storage volume)."
+                "Keine Optimierung möglich: Keine der Erzeugeranlagen hat einstellbare Größen mit Grenzen "
+                "(z. B. Leistung, Kollektorfläche oder Speichervolumen mit min./max. Wert)."
             )
 
         for restart in range(self.num_restarts):
