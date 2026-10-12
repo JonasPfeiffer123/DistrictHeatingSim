@@ -139,9 +139,12 @@ SOLAR_SECTIONS: list[Section] = [
             Field("vs", "Solarspeichervolumen in m³", "20"),
             ComboField("Typ", "Kollektortyp", ["Vakuumröhrenkollektor", "Flachkollektor"], "Vakuumröhrenkollektor"),
             Field("Tsmax", "Maximale Speichertemperatur in °C", "90"),
-            Field("Longitude", "Longitude des Erzeugerstandortes", "-14.4222"),
-            Field("STD_Longitude", "STD_Longitude des Erzeugerstandortes", "15", cast=int),
-            Field("Latitude", "Latitude des Erzeugerstandortes", "51.1676"),
+            # Longitudes count west-positive in the solar code: east of Greenwich is negative. The
+            # time-zone meridian used to default to +15 against -14.42, which shifted the hourly
+            # profile by an hour (UT-M4). A new collector takes the project location (UT-H9).
+            Field("Longitude", "Längengrad des Erzeugerstandorts in ° (östlich negativ, z. B. -14.42)", "-14.4222"),
+            Field("STD_Longitude", "Längengrad der Zeitzone in ° (MEZ: -15)", "-15", cast=int),
+            Field("Latitude", "Breitengrad des Erzeugerstandorts in °", "51.1676"),
             Field("East_West_collector_azimuth_angle", "Azimuth-Ausrichtung des Kollektors in °", "0"),
             Field("Collector_tilt_angle", "Neigungswinkel des Kollektors in ° (0-90)", "36"),
             Field("Tm_rl", "Startwert Rücklauftemperatur in Speicher in °C", "60"),

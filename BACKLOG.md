@@ -2029,8 +2029,24 @@ IDs below are the report's IDs with a `UT-` prefix.
   Vaubanallee on one point; with numbers still 2 street-only (Walter-Gropius-Straße 13,
   Kurt-Tucholsky-Straße 9), which used to count as found. Tests: `tests/test_geocoding_quality.py`.
 
-**Later stages (see the report, section 6):** UT-H9 (climate data/location), UT-H10 (stale
-results), UT-M1…M17, UT-N.
+**Stage 3 – guided project start (branch `fix/anwendertest-stufe3`):**
+- UT-H9 — every project got the bundled TRY (Oberlausitz, 51.17° N / 14.42° E) and VDI 4655 climate
+  zone 9 / 2 persons per household without a hint; the solar thermal dialog was pre-filled with
+  Görlitz in mixed signs (−14.42 / +15, UT-M4: the hourly profile one hour early); the map always
+  opened over Görlitz. **Fixed 2026-10-12:** `utilities/project_location.py` (TRY location from the
+  file name or the EPSG:3034 header, distance, the 15 DWD TRY regions as `CLIMATE_ZONES`);
+  `ProjectFolderManager` stores `location`, `climate_zone`, `persons_per_household`
+  (`project_settings.json`, defaults = the former fixed values) and finds the project location
+  (stored, else the mean of the geocoded buildings); the heat demand passes zone and persons to
+  pyslpheat and asks once per project and TRY when the TRY lies more than 50 km away (DWD link);
+  the TRY dialog ("Datenbasis → Klimadaten (TRY) festlegen") shows the distance; the project tab
+  has climate zone and persons next to the year; a new solar collector takes the project location
+  (west-positive, MEZ −15) and the dialog default meridian is −15; the map opens at the project.
+  UT-M4 partly: the producer coordinate (Görlitz with one digit too many), the Bad Muskau address
+  and the street dialog's "Zittau" are gone (placeholders; the street dialog takes the project's
+  place). Tests: `tests/test_project_location.py`.
+
+**Later stages (see the report, section 6):** UT-H10 (stale results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

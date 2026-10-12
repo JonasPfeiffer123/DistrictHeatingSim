@@ -692,11 +692,20 @@ class VisualizationPresenter(QObject):
             return
         network_path = os.path.join(base_path, "Wärmenetz", "Wärmenetz.geojson")
         if not os.path.exists(network_path):
-            return  # no network generated yet — nothing to auto-load
+            self._center_map_on_project()  # no network yet: at least show the project's place
+            return
         try:
             self.add_geojson_layer([network_path])
         except Exception:
             logger.exception("Automatisches Laden des Wärmenetzes fehlgeschlagen: %s", network_path)
+
+    def _center_map_on_project(self):
+        """Center the map on the project location; it always opened over Görlitz (UT-H9)."""
+        location_of = getattr(self.folder_manager, "project_location", None)
+        location = location_of() if location_of else None
+        if location is not None:
+            lat, lon = location
+            self.view.web_view.page().runJavaScript(f"window.map && window.map.setView([{lat}, {lon}], 15);")
 
     def _reload_network_on_map(self, path):
         """Reload the empty map and re-display the (corrected) network once, avoiding duplicates."""
@@ -1002,6 +1011,9 @@ class VisualizationPresenter(QObject):
         dialog = DownloadOSMDataDialog(
             self.model.base_path, self.config_manager, self.view, self, project_crs=self.folder_manager.project_crs
         )
+        location = getattr(self.folder_manager, "location", None)
+        if location and location.get("name"):
+            dialog.cityLineEdit.setText(location["name"])  # the place given when the project was created
         dialog.setVisualizationTab(self)
         dialog.show()  # Non-modal dialog - allows map interaction
         dialog.raise_()

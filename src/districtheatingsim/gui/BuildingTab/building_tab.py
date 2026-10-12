@@ -48,6 +48,11 @@ from districtheatingsim.heat_requirement.building_profiles_io import (
     read_building_profiles,
     write_building_profiles,
 )
+from districtheatingsim.utilities.project_location import (
+    DEFAULT_CLIMATE_ZONE,
+    DEFAULT_PERSONS_PER_HOUSEHOLD,
+    climate_data_warning,
+)
 from districtheatingsim.utilities.schema import check_version
 
 logger = logging.getLogger(__name__)
@@ -120,7 +125,14 @@ class BuildingModel:
 
     HeatDemandResult = HeatDemandResult
 
-    def calculate_heat_demand(self, data, try_filename, year: int = 2023):
+    def calculate_heat_demand(
+        self,
+        data,
+        try_filename,
+        year: int = 2023,
+        climate_zone: str = DEFAULT_CLIMATE_ZONE,
+        persons_per_household: int = DEFAULT_PERSONS_PER_HOUSEHOLD,
+    ):
         """
         Calculate heat demand profiles from building data (synchronously).
 
@@ -135,7 +147,7 @@ class BuildingModel:
         :return: Calculated heat demand profiles in kW
         :rtype: HeatDemandResult
         """
-        return calculate_heat_demand(data, try_filename, year)
+        return calculate_heat_demand(data, try_filename, year, climate_zone, persons_per_household)
 
 
 class BuildingPresenter:
@@ -169,6 +181,7 @@ class BuildingPresenter:
         self.combined_data = None
         self._calc_thread = None
         self._calc_base_path = None
+        self._confirmed_climate_data = set()  # (project, TRY) the user calculates with despite the distance
 
         # Connect signals
         self.folder_manager.project_folder_changed.connect(self.standard_path)
@@ -415,13 +428,49 @@ class BuildingPresenter:
             return
 
         try_filename = self.folder_manager.try_filename
+        if not self._climate_data_confirmed(try_filename):
+            return
         year = getattr(self.folder_manager, "calculation_year", 2023)
         self._calc_base_path = self.model.base_path
-        self._calc_thread = HeatDemandThread(self.model.data, try_filename, year, self.model.json_path)
+        self._calc_thread = HeatDemandThread(
+            self.model.data,
+            try_filename,
+            year,
+            self.model.json_path,
+            climate_zone=getattr(self.folder_manager, "climate_zone", DEFAULT_CLIMATE_ZONE),
+            persons_per_household=getattr(self.folder_manager, "persons_per_household", DEFAULT_PERSONS_PER_HOUSEHOLD),
+        )
         self._calc_thread.calculation_done.connect(self._on_heat_demand_done)
         self._calc_thread.calculation_error.connect(self._on_heat_demand_error)
         self.view.set_calculation_running(True)
         self._calc_thread.start()
+
+    def _climate_data_confirmed(self, try_filename) -> bool:
+        """
+        Ask before calculating with a TRY far from the project (UT-H9); once per project and TRY.
+
+        :return: True to calculate.
+        """
+        location_of = getattr(self.folder_manager, "project_location", None)
+        if not try_filename or location_of is None:
+            return True
+        key = (self.folder_manager.project_folder, try_filename)
+        if key in self._confirmed_climate_data:
+            return True
+        warning = climate_data_warning(try_filename, location_of())
+        if warning is None:
+            return True
+        reply = QMessageBox.question(
+            self.view,
+            "Klimadaten passen nicht zum Standort",
+            f"{warning}\n\nTrotzdem mit diesen Klimadaten rechnen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return False
+        self._confirmed_climate_data.add(key)
+        return True
 
     def _on_heat_demand_done(self, outcome):
         """

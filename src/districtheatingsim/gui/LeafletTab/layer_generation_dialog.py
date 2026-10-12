@@ -219,8 +219,10 @@ class LayerGenerationDialog(QDialog):
         self.coordSystemComboBox.addItems([self.project_crs, "WGS84"])
         coordInputLayout.addRow("Koordinatensystem:", self.coordSystemComboBox)
 
+        # No pre-filled place: it was a Görlitz coordinate with one digit too many and an address in
+        # Bad Muskau, whatever the project (UT-M4)
         self.coordInput = QLineEdit(self)
-        self.coordInput.setText("499827.8585093066,55666161.599635682")  # Görlitz
+        self.coordInput.setPlaceholderText("X-Koordinate, Y-Koordinate (oder „Aus Karte wählen“)")
         self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate'")
         coordInputLayout.addRow("Koordinaten:", self.coordInput)
 
@@ -241,7 +243,7 @@ class LayerGenerationDialog(QDialog):
         # Address input
         addressInputLayout = QFormLayout()
         self.addressInput = QLineEdit(self)
-        self.addressInput.setText("Deutschland,Sachsen,Bad Muskau,Gablenzer Straße 4")
+        self.addressInput.setPlaceholderText("Land,Bundesland,Stadt,Straße Hausnummer")
         self.addressInput.setToolTip("Eingabe in folgender Form: 'Land,Bundesland,Stadt,Adresse'")
         addressInputLayout.addRow("Adresse:", self.addressInput)
 

@@ -49,6 +49,7 @@ from districtheatingsim.utilities.crs_utils import (
     reproject_building_csv,
     suggest_crs_for_coordinates,
 )
+from districtheatingsim.utilities.project_location import CLIMATE_ZONES, climate_zone_label
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +249,14 @@ class ProjectPresenter:
             self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
             self.view.year_spinbox.valueChanged.connect(self.folder_manager.set_calculation_year)
 
+            # VDI 4655 climate zone and persons per household (UT-H9)
+            self._show_vdi4655_settings()
+            self.view.climate_zone_combo.currentIndexChanged.connect(
+                lambda _index: self.folder_manager.set_climate_zone(self.view.climate_zone_combo.currentData())
+            )
+            self.view.persons_spinbox.valueChanged.connect(self.folder_manager.set_persons_per_household)
+            self.folder_manager.settings_changed.connect(self._show_vdi4655_settings)
+
             # Initial update after view is available
             if self.folder_manager.variant_folder:
                 self.on_variant_folder_changed(self.folder_manager.variant_folder)
@@ -268,8 +277,19 @@ class ProjectPresenter:
                 self.view.year_spinbox.blockSignals(True)
                 self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
                 self.view.year_spinbox.blockSignals(False)
+                self._show_vdi4655_settings()
         if self.view:  # Only update progress if view exists
             self.update_progress_tracker()
+
+    def _show_vdi4655_settings(self):
+        """Show the project's climate zone and persons per household without saving them again."""
+        combo, spinbox = self.view.climate_zone_combo, self.view.persons_spinbox
+        for widget in (combo, spinbox):
+            widget.blockSignals(True)
+        combo.setCurrentIndex(max(0, combo.findData(self.folder_manager.climate_zone)))
+        spinbox.setValue(self.folder_manager.persons_per_household)
+        for widget in (combo, spinbox):
+            widget.blockSignals(False)
 
     def on_tree_view_double_clicked(self, index):
         """
@@ -938,6 +958,26 @@ class ProjectTabView(QWidget):
         year_row.addWidget(self.year_spinbox)
         year_row.addStretch()
         self.leftLayout.addLayout(year_row)
+
+        # VDI 4655 parameters of the project (UT-H9: were fixed to zone 9 / 2 persons)
+        climate_row = QHBoxLayout()
+        climate_row.addWidget(QLabel("Klimazone (VDI 4655):"))
+        self.climate_zone_combo = QComboBox()
+        for zone in CLIMATE_ZONES:
+            self.climate_zone_combo.addItem(climate_zone_label(zone), userData=zone)
+        self.climate_zone_combo.setToolTip(
+            "Klimazone für die Lastprofile nach VDI 4655 (EFH/MFH) – die TRY-Region des Deutschen\n"
+            "Wetterdienstes, in der das Quartier liegt. Für BDEW-Gebäudetypen ohne Bedeutung."
+        )
+        climate_row.addWidget(self.climate_zone_combo)
+        climate_row.addWidget(QLabel("Personen je Haushalt:"))
+        self.persons_spinbox = QSpinBox()
+        self.persons_spinbox.setRange(1, 10)
+        self.persons_spinbox.setFixedWidth(60)
+        self.persons_spinbox.setToolTip("Personen je Haushalt für die Warmwasserprofile nach VDI 4655")
+        climate_row.addWidget(self.persons_spinbox)
+        climate_row.addStretch()
+        self.leftLayout.addLayout(climate_row)
 
         # Button-Bar für alle Aktionen
         button_layout = QHBoxLayout()

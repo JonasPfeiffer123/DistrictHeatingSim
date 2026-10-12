@@ -92,7 +92,10 @@ class DownloadOSMDataDialog(OSMDownloadDialogBase):
         self.cityWidget = QWidget()
         cityLayout = QVBoxLayout(self.cityWidget)
         cityLayout.setContentsMargins(0, 5, 0, 0)
-        self.cityLineEdit = QLineEdit("Zittau")
+        self.cityLineEdit = (
+            QLineEdit()
+        )  # was "Zittau" for every project (UT-M4); the map tab fills in the project's place
+        self.cityLineEdit.setPlaceholderText("z. B. Zittau")
         cityLayout.addWidget(QLabel("Stadt/Ortsname:"))
         cityLayout.addWidget(self.cityLineEdit)
         areaLayout.addWidget(self.cityWidget)
