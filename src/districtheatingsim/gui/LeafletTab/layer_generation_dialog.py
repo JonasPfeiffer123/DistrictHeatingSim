@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.geocoding.geocoding import get_coordinates
+from districtheatingsim.geocoding.geocoding import PRECISION_HOUSE, PRECISION_STREET, locate_address
 from districtheatingsim.utilities.web_services import ServiceUnavailableError
 
 
@@ -503,12 +503,20 @@ class LayerGenerationDialog(QDialog):
             # In the project CRS: the default target was EPSG:25833, which put the producer of a
             # UTM-32 project ~450 km off (BACKLOG UT-K2).
             try:
-                x, y = get_coordinates(address, to_crs=self.project_crs)
+                x, y, precision = locate_address(address, to_crs=self.project_crs)
             except ServiceUnavailableError as e:
                 QMessageBox.warning(self, "Adressdienst nicht erreichbar", str(e))
                 return
             if x and y:
                 self.insertRowInTable(str(x), str(y))
+                if precision != PRECISION_HOUSE:
+                    found = "die Straße" if precision == PRECISION_STREET else "der Ort"
+                    QMessageBox.warning(
+                        self,
+                        "Adresse ungenau gefunden",
+                        f"Für „{address}“ wurde nur {found} gefunden, nicht das Gebäude.\n\n"
+                        "Die Koordinate wurde übernommen; bitte prüfen und bei Bedarf korrigieren.",
+                    )
             else:
                 QMessageBox.warning(self, "Adresse nicht gefunden", f"Die Adresse wurde nicht gefunden: {address}")
 

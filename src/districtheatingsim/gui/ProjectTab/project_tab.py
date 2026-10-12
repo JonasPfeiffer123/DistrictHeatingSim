@@ -12,7 +12,7 @@ import logging
 import os
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QFileSystemModel
+from PyQt6.QtGui import QAction, QColor, QFileSystemModel
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -35,7 +35,7 @@ from PyQt6.QtWidgets import (
 )
 
 from districtheatingsim.geocoding.building_csv import centroid_of, format_building_csv_summary, geojson_to_building_csv
-from districtheatingsim.geocoding.geocoding import format_geocoding_summary
+from districtheatingsim.geocoding.geocoding import format_geocoding_summary, geocoding_row_notes
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
@@ -780,13 +780,35 @@ class ProjectPresenter:
             self.load_csv(fname)
             # Update the progress tracker to refresh CSV status (should now show "mit Koordinaten")
             self.update_progress_tracker()
-            all_found, message = format_geocoding_summary(summary)
-            if all_found:
+            self._mark_geocoding_findings(summary)
+            all_fine, message = format_geocoding_summary(summary)
+            if all_fine:
                 self.view.show_message("Geocoding erfolgreich", message)
             else:
-                QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", message)
+                QMessageBox.warning(self.view, "Geocoding: Bitte Ergebnis prüfen", message)
             if _same_file(fname, self._building_csv_path()):
                 self._check_coordinates_fit_crs()
+
+    #: Row colours after geocoding: not found / imprecise or shared point (translucent for both themes)
+    NOT_FOUND_COLOUR = QColor(220, 50, 50, 80)
+    IMPRECISE_COLOUR = QColor(240, 160, 0, 80)
+
+    def _mark_geocoding_findings(self, summary):
+        """Colour the table rows whose geocoding needs a look; the note is their tooltip (UT-H6)."""
+        not_found = {item["number"] for item in summary.get("not_found", [])}
+        table = self.view.csvTable
+        for number, note in geocoding_row_notes(summary).items():
+            row = number - 1
+            if not 0 <= row < table.rowCount():
+                continue
+            colour = self.NOT_FOUND_COLOUR if number in not_found else self.IMPRECISE_COLOUR
+            for column in range(table.columnCount()):
+                item = table.item(row, column)
+                if item is None:
+                    item = QTableWidgetItem("")
+                    table.setItem(row, column, item)
+                item.setBackground(colour)
+                item.setToolTip(note)
 
     def on_geocode_error(self, error_message):
         """

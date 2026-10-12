@@ -206,7 +206,7 @@ class TestNominatim:
         def blocked(address, to_crs=None):
             raise ServiceUnavailableError("gesperrt")
 
-        monkeypatch.setattr(geocoding, "get_coordinates", blocked)
+        monkeypatch.setattr(geocoding, "locate_address", blocked)
         with pytest.raises(ServiceUnavailableError):
             geocoding.process_data(str(path), crs="EPSG:25833")
         assert path.read_text(encoding="utf-8-sig") == content

@@ -99,6 +99,32 @@ def geocode_default_crs():
     H.wait_until(lambda: not building_tab.presenter._calc_thread.isRunning(), 300, "heat demand")
 
 
+def geocode_quality():
+    """H6: streets without house numbers (as in the original run) - street-only points and 4× the same point."""
+    ensure_open()
+    source = pd.read_csv(UTF8_EXPORT, sep=";", dtype=str)
+    data = pd.read_csv(project_csv(), sep=";", encoding="utf-8-sig", dtype=str)
+    data["Adresse"] = source["Straße"].values
+    tucholsky = source["Straße"].eq("Kurt-Tucholsky-Straße").values
+    data.loc[tucholsky, "Adresse"] = "Kurt-Tucholsky-Straße 9"  # a number Nominatim does not know
+    data = data.drop(columns=[c for c in ("UTM_X", "UTM_Y") if c in data.columns])
+    data.to_csv(project_csv(), sep=";", index=False, encoding="utf-8-sig")
+    H.VIEW.presenter.folder_manager.set_project_crs("EPSG:25832")
+    tab = H.VIEW.projectTab
+    tab.presenter.load_csv(project_csv())
+    tab.presenter.geocode_current_csv()
+    H.wait_until(H.thread_finished(tab.presenter, "geocodingThread"), 300, "geocoding (no house numbers)")
+    table = tab.presenter.view.csvTable
+    address_column = [table.horizontalHeaderItem(c).text() for c in range(table.columnCount())].index("Adresse")
+    marked = {
+        row + 1: (table.item(row, address_column).text(), table.item(row, address_column).toolTip())
+        for row in range(table.rowCount())
+        if table.item(row, address_column).toolTip()
+    }
+    H.log("CHECK H6", "rows marked in the building table", marked)
+    H.shot(tab, "p3_geocoding_quality")
+
+
 def corrected_data():
     """What a user does after the errors: CRS 25832 first, house numbers, decimal points, geocode again."""
     ensure_open()
@@ -232,6 +258,7 @@ if __name__ == "__main__":
         {
             "import_excel": import_excel,
             "geocode_default_crs": geocode_default_crs,
+            "geocode_quality": geocode_quality,
             "corrected_data": corrected_data,
             "producer_geocoding": producer_geocoding,
             "networks": networks,
