@@ -358,13 +358,18 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         if not hasattr(self, "base_path") or not self.base_path:
             return "continue"  # No project loaded, continue operation
+        # Every close and switch used to ask, with "Speichern" as default, and the save rewrote
+        # everything (UT-M6). Now only unsaved changes are asked about.
+        changes = self.unsaved_changes()
+        if not changes:
+            return "continue"
 
         from PyQt6.QtWidgets import QMessageBox
 
         # Create custom message box with three options
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle(title)
-        msgBox.setText("Es ist ein Projekt geöffnet.")
+        msgBox.setText("Nicht gespeichert:\n" + "\n".join(f"  • {change}" for change in changes))
         msgBox.setInformativeText(info_text)
 
         # Force larger dialog size with stylesheet
@@ -540,8 +545,11 @@ class HeatSystemDesignGUI(QMainWindow):
         # Add primary file actions to file menu
         createNewProjectAction = QAction("Neues Projekt erstellen", self)
         chooseProjectAction = QAction("Projekt öffnen", self)
+        saveProjectAction = QAction("Projekt speichern", self)
+        saveProjectAction.setShortcut("Ctrl+S")
+        saveProjectAction.triggered.connect(self.save_project)
         createCopyAction = QAction("Projektkopie erstellen", self)
-        for primaryFileAction in [createNewProjectAction, chooseProjectAction, createCopyAction]:
+        for primaryFileAction in [createNewProjectAction, chooseProjectAction, saveProjectAction, createCopyAction]:
             fileMenu.addAction(primaryFileAction)
 
         fileMenu.addSeparator()  # Separate each major action for clarity
@@ -801,54 +809,44 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Handle folder selection - either direct path or user dialog
         if not folder_path:
-            folder_path = QFileDialog.getExistingDirectory(
-                self, "Projektordner auswählen", os.path.dirname(os.path.dirname(self.base_path))
+            start = os.path.dirname(os.path.dirname(self.base_path)) if self.base_path else ""
+            folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", start)
+            if not folder_path:
+                return  # cancelled: no save question, no "Projektpfad '' nicht gefunden" (UT-M5)
+
+        if not os.path.isdir(folder_path):
+            self.show_error_message(f"Der Projektordner wurde nicht gefunden:\n{folder_path}")
+            return
+        available_variants = discover_variants(folder_path)
+        if not available_variants:
+            self.show_error_message(
+                f"„{folder_path}“ ist kein DistrictHeatingSim-Projekt: Es enthält keinen Variantenordner "
+                "(„Variante 1“ …)."
             )
-
-        try:
-            # Check if user wants to save before switching projects
-            dialog_result = self.show_save_dialog(
-                "Projekt öffnen",
-                "Möchten Sie Ihre Änderungen vor dem Öffnen eines anderen Projekts speichern?",
-                "Speichern und Projekt öffnen",
+            return
+        # The variant is chosen before anything changes; cancelling used to leave the project
+        # opened with the previous project's variant
+        variant_name = available_variants[0]
+        if len(available_variants) > 1:
+            variant_name, ok = QInputDialog.getItem(
+                self, "Variante auswählen", "Wähle eine Variante aus:", available_variants, 0, False
             )
+            if not ok or not variant_name:
+                return
 
-            if dialog_result == "cancel":
-                return  # User cancelled operation
-            elif dialog_result == "save":
-                if not self.save_all_project_results():
-                    return  # User cancelled save operation
-            # If 'discard' or 'continue', proceed without saving
+        dialog_result = self.show_save_dialog(
+            "Projekt öffnen",
+            "Möchten Sie Ihre Änderungen vor dem Öffnen eines anderen Projekts speichern?",
+            "Speichern und Projekt öffnen",
+        )
+        if dialog_result == "cancel":
+            return
+        if dialog_result == "save" and not self.save_all_project_results():
+            return
 
-            # Validate project path and proceed with opening
-            if folder_path and os.path.exists(folder_path):
-                self.presenter.open_existing_project(folder_path)
-
-                # Discover and present available variants
-                available_variants = self.get_available_variants(folder_path)
-                if available_variants:
-                    # If only one variant, select it automatically
-                    if len(available_variants) == 1:
-                        variant_name = available_variants[0]
-                        self.presenter.folder_manager.set_variant_folder(variant_name)
-                        # Automatically load available results
-                        self.on_importResultsAction()
-                    else:
-                        # Multiple variants - let user choose
-                        variant_name, ok = QInputDialog.getItem(
-                            self, "Variante auswählen", "Wähle eine Variante aus:", available_variants, 0, False
-                        )
-                        if ok and variant_name:
-                            self.presenter.folder_manager.set_variant_folder(variant_name)
-                            # Automatically load available results after variant selection
-                            self.on_importResultsAction()
-                else:
-                    self.show_error_message("Keine verfügbaren Varianten gefunden.")
-            else:
-                raise FileNotFoundError(f"Projektpfad '{folder_path}' nicht gefunden.")
-
-        except FileNotFoundError as e:
-            self.show_error_message(str(e))
+        self.presenter.open_existing_project(folder_path)
+        self.presenter.folder_manager.set_variant_folder(variant_name)
+        self.on_importResultsAction()
 
     def get_available_variants(self, project_path: str) -> list[str]:
         """
@@ -1113,18 +1111,42 @@ class HeatSystemDesignGUI(QMainWindow):
                 running.append(label)
         return running
 
+    def unsaved_changes(self) -> list[str]:
+        """
+        What a project save would write that is not on disk yet (UT-M6).
+
+        Load profiles, networks generated on the map and time-series results are written when they
+        are computed; the building table, the pandapipes net and the generator results are not.
+        """
+        changes = []
+        project_presenter = getattr(getattr(self, "projectTab", None), "presenter", None)
+        if project_presenter is not None and getattr(project_presenter, "table_modified", False):
+            changes.append("Gebäudeliste (Tab „Projektdefinition“)")
+        if getattr(getattr(self, "calcTab", None), "unsaved_changes", False):
+            changes.append("Netzberechnung (Tab „Wärmenetzberechnung“)")
+        energy_tab = getattr(self, "energySystemTab", None)
+        if getattr(energy_tab, "unsaved_changes", False):
+            changes.append(f"Erzeugerberechnung „{energy_tab._active_config_name}“")
+        return changes
+
+    def save_project(self) -> None:
+        """Menu "Projekt speichern": save the unsaved changes, if there are any."""
+        if not self.base_path:
+            return
+        if not self.unsaved_changes():
+            self.show_message("Projekt speichern", "Es gibt keine ungespeicherten Änderungen.")
+            return
+        self.save_all_project_results()
+
     def save_all_project_results(self) -> bool:
         """
-        Zentrale Speicherlogik für alle Projektergebnisse.
-        Ruft die jeweiligen Save-Methoden der einzelnen Tabs/Presenter auf.
-        Sollte vor dem Schließen der Anwendung und beim Wechsel des Projekts/Variante aufgerufen werden.
-        Vor dem Speichern wird ein Warn-Dialog angezeigt, der auf fehlende Versionierung und mögliche Überschreibung hinweist.
-        Bricht der Nutzer den Dialog ab, wird die Aktion abgebrochen.
+        Save what changed since it was loaded or saved (see :meth:`unsaved_changes`).
 
-        Returns
-        -------
-        bool
-            True wenn erfolgreich gespeichert, False wenn abgebrochen
+        Only the changed parts are written: re-exporting an unchanged net used to overwrite a
+        network generated on the map since, and the extra "Daten werden überschrieben" question
+        came on every close (UT-M6).
+
+        :return: True if saved (or nothing to save), False if a calculation runs or saving failed.
         """
         # Saving while a worker runs stored intermediate states (a net that never converged
         # again, BACKLOG UT-K4); the caller (close, project/variant switch) is cancelled instead.
@@ -1139,51 +1161,34 @@ class HeatSystemDesignGUI(QMainWindow):
             )
             return False
 
-        reply = QMessageBox.warning(
-            self,
-            "Achtung: Daten werden überschrieben!",
-            "Mit dieser Aktion werden alle aktuellen Projektdaten überschrieben. Es ist noch keine Versionierung implementiert. Möchten Sie fortfahren?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            # Aktion abbrechen, falls der Nutzer abbricht
-            return False
-
+        changes = self.unsaved_changes()
         errors = []
         try:
-            # Gebäudedaten speichern
-            if hasattr(self, "projectTab") and hasattr(self.projectTab.presenter, "save_csv"):
+            project_presenter = getattr(getattr(self, "projectTab", None), "presenter", None)
+            if project_presenter is not None and project_presenter.table_modified:
                 try:
-                    self.projectTab.presenter.save_csv(show_dialog=False)
+                    project_presenter.save_csv(show_dialog=False)
                 except Exception as e:
-                    errors.append(f"ProjektTab: {str(e)}")
-            # Netzdaten speichern
-            if hasattr(self, "calcTab") and hasattr(self.calcTab, "saveNet"):
+                    errors.append(f"Gebäudeliste: {str(e)}")
+            if getattr(getattr(self, "calcTab", None), "unsaved_changes", False):
                 try:
                     self.calcTab.saveNet(show_dialog=False)
-                except Exception as e:
-                    errors.append(f"CalcTab: {str(e)}")
-            if hasattr(self, "calcTab") and hasattr(self.calcTab, "exportNetGeoJSON"):
-                try:
                     self.calcTab.exportNetGeoJSON(show_dialog=False)
                 except Exception as e:
-                    errors.append(f"CalcTab GeoJSON: {str(e)}")
-            # Energiesystem speichern
-            if hasattr(self, "energySystemTab") and hasattr(self.energySystemTab, "save_results_JSON"):
+                    errors.append(f"Netzberechnung: {str(e)}")
+            if getattr(getattr(self, "energySystemTab", None), "unsaved_changes", False):
                 try:
                     self.energySystemTab.save_results_JSON(show_dialog=False)
                 except Exception as e:
-                    errors.append(f"EnergySystemTab: {str(e)}")
-            # Weitere Tabs nach Bedarf ergänzen
+                    errors.append(f"Erzeugerberechnung: {str(e)}")
         except Exception as e:
             errors.append(f"Allgemeiner Fehler: {str(e)}")
         if errors:
             self.show_error_message("Fehler beim Speichern der Projektdaten:\n" + "\n".join(errors))
             return False  # Fehler beim Speichern
-        else:
-            self.show_message("Erfolg", "Alle Projektdaten wurden erfolgreich gespeichert.")
-            return True  # Erfolgreich gespeichert
+        if changes:
+            self.show_message("Gespeichert", "Gespeichert:\n" + "\n".join(f"  • {change}" for change in changes))
+        return True
 
     # Theme and Appearance Methods
     # ============================

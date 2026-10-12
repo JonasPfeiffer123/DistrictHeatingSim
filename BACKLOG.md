@@ -2103,7 +2103,25 @@ IDs below are the report's IDs with a `UT-` prefix.
   middle (`ElidedLabel`, full path as tooltip); the footer labels no longer show as bands. Tests:
   `tests/test_welcome_screen.py` (no squeezed widget at 100/125/150 %).
 
-**Later stages (see the report, section 6):** UT-M1…M12, M15–M17 (M4, M17 partly done above), UT-N.
+**Stage 4 – finishing (branch `fix/anwendertest-feinschliff`):**
+- UT-M5 — cancelling "Projekt öffnen" still asked to save and then said "Projektpfad '' nicht
+  gefunden"; the project was opened before the variant was chosen, a cancelled choice left it half
+  open (and `set_project_folder` kept the previous project's variant until the caller switched).
+  **Fixed 2026-10-12:** a cancelled dialog returns at once; a folder without variants is refused as
+  "kein DistrictHeatingSim-Projekt"; the variant is chosen before the save question and the open.
+- UT-M6 — every close/switch asked to save (default "Speichern"), the save asked again ("Daten werden
+  überschrieben … keine Versionierung") and rewrote everything; re-exporting an unchanged net
+  overwrote a network generated on the map since. **Fixed 2026-10-12:** the tabs track what is unsaved
+  (project table, net computed/changed, generator results); the question appears only then and
+  names it; the save writes only those parts; "Datei → Projekt speichern" (Ctrl+S).
+- UT-M17 (rest) — switching to a variant asked which generator config to load whenever none was
+  stored (every new variant copy). **Fixed 2026-10-12:** no question; the stored config, else the most
+  recently saved one; a variant copy takes over the source's active config.
+- UT-H10 (open item) — pipe edits after the initialisation ("Neu berechnen") now give the net a new
+  stamp, so a time series computed before shows as outdated.
+  Tests: `tests/test_main_window_flows.py`; robustness scenario `cancel_open close_with_save`.
+
+**Later stages (see the report, section 6):** UT-M1…M3, M7–M12, M15, M16, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

@@ -116,6 +116,7 @@ class EnergySystemTab(QWidget):
         self.results = {}
         self.energy_system = None
         self.results_stamp = None
+        self.unsaved_changes = False  # results computed since they were loaded or saved (UT-M6)
         self.techTab.tech_objects.clear()
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
@@ -315,45 +316,27 @@ class EnergySystemTab(QWidget):
         for name, _ in configs:
             self.configCombo.addItem(name)
 
-        # Restore the saved active config for this variant
+        # Restore the saved active config for this variant. Without one (a new variant copy) the
+        # most recently saved config is taken; asking on every variant switch was UT-M17.
         saved = self.folder_manager.get_active_energy_config(self.base_path) if self.base_path else "Standard"
         idx = self.configCombo.findText(saved)
+        if idx < 0 or (saved == DEFAULT_CONFIG_NAME and config_file(self._ergebnisse_dir(), saved) is None):
+            saved = self._newest_config(configs)
+            idx = self.configCombo.findText(saved)
         if idx >= 0:
             self.configCombo.setCurrentIndex(idx)
             self._active_config_name = saved
         else:
             self._active_config_name = configs[0][0] if configs else "Standard"
-
-        # Show selection dialog only when multiple configs exist and no saved preference
-        configs_on_disk = [
-            c
-            for c in configs
-            if c[0] != "Standard" or config_file(self._ergebnisse_dir(), DEFAULT_CONFIG_NAME) is not None
-        ]
-        if len(configs_on_disk) > 1 and idx < 0:
-            self.configCombo.blockSignals(False)
-            self._ask_which_config(configs)
-            return
-
         self.configCombo.blockSignals(False)
 
-    def _ask_which_config(self, configs: list):
-        """Show a selection dialog when multiple configs exist and no preference is saved."""
-        names = [name for name, _ in configs]
-        chosen, ok = QInputDialog.getItem(
-            self,
-            "Erzeugerkonfiguration wählen",
-            "Mehrere Konfigurationen vorhanden.\nWelche soll geladen werden?",
-            names,
-            0,
-            False,
-        )
-        if ok and chosen:
-            idx = self.configCombo.findText(chosen)
-            if idx >= 0:
-                self.configCombo.setCurrentIndex(idx)
-            self._active_config_name = chosen
-            self.folder_manager.set_active_energy_config(self.base_path, chosen)
+    def _newest_config(self, configs: list) -> str:
+        """Name of the most recently saved config (Standard if none is saved)."""
+        saved = [(name, config_file(self._ergebnisse_dir(), name)) for name, _filename in configs]
+        saved = [(name, path) for name, path in saved if path]
+        if not saved:
+            return DEFAULT_CONFIG_NAME
+        return max(saved, key=lambda item: os.path.getmtime(item[1]))[0]
 
     def _on_config_selected(self, index: int):
         """Handle combo-box selection change — persist and load the selected config."""
@@ -624,6 +607,7 @@ class EnergySystemTab(QWidget):
         self.energy_system = result[0]
         # Recorded with the results when they are saved (UT-H10)
         self.results_stamp = new_stamp(getattr(self, "_calc_inputs", {}))
+        self.unsaved_changes = True
 
         if self.optimize:
             self.optimized_energy_system = result[1]
@@ -887,6 +871,7 @@ class EnergySystemTab(QWidget):
             self.energy_system.save_to_file(json_filename)
             if getattr(self, "results_stamp", None):
                 record(self.base_path, generation_key(self._active_config_name), self.results_stamp)
+            self.unsaved_changes = False
             # Refresh combo in case a new file was created
             self._refresh_config_combo()
             if show_dialog:
@@ -921,6 +906,7 @@ class EnergySystemTab(QWidget):
         try:
             self.energy_system = EnergySystem.load_from_file(json_filename)
             self.results_stamp = read_state(self.base_path).get(generation_key(self._active_config_name))
+            self.unsaved_changes = False
             self.process_data()
             if show_dialog:
                 QMessageBox.information(

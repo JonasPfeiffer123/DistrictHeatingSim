@@ -100,6 +100,7 @@ class NetSimulationTab(QWidget):
         self._update_base_path(self.folder_manager.variant_folder)
 
         self.NetworkGenerationData = None
+        self.unsaved_changes = False  # net computed/changed since it was loaded or saved (UT-M6)
         self._init_thread = None
         self._calc_thread = None
         self._time_series_workers = 1  # parallel processes for the detailed time series (G2)
@@ -125,6 +126,7 @@ class NetSimulationTab(QWidget):
         """Clear the displayed network state (data + pipe table + plot + time series)."""
         self.NetworkGenerationData = None
         self._net_stamp = None  # the calculation state of the previous variant's net (UT-H10)
+        self.unsaved_changes = False
         self._pipe_table.clear()
         self._net_plot.clear()
         self._ts_widget.clear()
@@ -316,6 +318,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData = network_data
         # Recorded when the net is saved; a time series refers to it from now on
         self._net_stamp = new_stamp(getattr(self, "_init_inputs", {}))
+        self.unsaved_changes = True
         self._refresh_all_widgets()
 
     # ------------------------------------------------------------------
@@ -383,6 +386,7 @@ class NetSimulationTab(QWidget):
     def _on_time_series_done(self, network_data):
         self._end_time_series_progress()
         self.NetworkGenerationData = network_data
+        self.unsaved_changes = True
         self._refresh_all_widgets()
 
         save_results_csv(
@@ -505,6 +509,10 @@ class NetSimulationTab(QWidget):
 
     def _on_recalculation_done(self, network_data):
         self.NetworkGenerationData = network_data
+        self.unsaved_changes = True
+        # Changed pipes make a time series computed before outdated (UT-H10)
+        previous = getattr(self, "_net_stamp", None) or {}
+        self._net_stamp = new_stamp(previous.get("eingaben", {}))
         self._progress_bar.setRange(0, 1)
         self._progress_bar.setFormat("Berechnung abgeschlossen")
         self._net_plot.set_network(self.NetworkGenerationData)
@@ -562,6 +570,7 @@ class NetSimulationTab(QWidget):
             save_net(nd.net, net_path)
             if getattr(self, "_net_stamp", None):
                 record(self.base_path, NETWORK_CALCULATION, self._net_stamp)
+            self.unsaved_changes = False
 
             waerme_data = np.column_stack([nd.waerme_hast_ges_W[i] for i in range(nd.waerme_hast_ges_W.shape[0])])
             waerme_df = pd.DataFrame(
@@ -671,6 +680,7 @@ class NetSimulationTab(QWidget):
 
             self.NetworkGenerationData = nd
             self._refresh_all_widgets()
+            self.unsaved_changes = False
 
             if show_dialog:
                 QMessageBox.information(
