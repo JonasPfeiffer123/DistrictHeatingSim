@@ -54,7 +54,7 @@ class TestBomRoundTrip:
     def test_geocoding_twice_keeps_one_bom(self, tmp_path, monkeypatch):
         from districtheatingsim.geocoding import geocoding
 
-        monkeypatch.setattr(geocoding, "get_coordinates", lambda address, to_crs=None: (486492.0, 5638274.8))
+        monkeypatch.setattr(geocoding, "locate_address", lambda address, to_crs=None: (486492.0, 5638274.8, "house"))
         path = str(tmp_path / "Quartier IST.csv")
         open(path, "w", encoding="utf-8-sig").write(HEADER + "\n" + ROW + "\n")
         for _ in range(2):

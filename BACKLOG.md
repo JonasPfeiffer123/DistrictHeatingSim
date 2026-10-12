@@ -2014,9 +2014,23 @@ IDs below are the report's IDs with a `UT-` prefix.
   OSMnx "vollständig verbunden" without auto-snap; the MST net initialises in pandapipes (12
   consumers, 479.5 kW). Tests: `test_every_house_connection_ends_on_a_return_junction`,
   `TestUserTestH4`, `TestGenerationInputs`, `test_unconnected_buildings_are_marked_on_the_map`.
+- UT-H6 — geocoding quality not reported: the project tab dropped the summary (fixed with UT-K2),
+  and nobody said when Nominatim fell back to the street (an unknown house number) or the town, or
+  when several buildings got the same point; an empty address was sent as ", Stadt, …" and came back
+  as the town centre; the map tab geocoded into EPSG:25833 whatever the project CRS. **Fixed
+  2026-10-12:** `geocoding.locate_address` returns the match precision from Nominatim's `place_rank`
+  (`match_precision`: ≥ 28 house, 26–27 street, below town; `get_coordinates` wraps it);
+  `process_data` lists `not_found`, `street_only`, `town_only` and `same_point` groups with the table
+  row number, skips rows without address and keeps blank lines. `format_geocoding_summary` names them
+  all (capped at 15 per finding); the project tab colours the rows with the note as tooltip
+  (`geocoding_row_notes`), the map tab passes the project CRS and adds a layer "Geocoding prüfen"; the
+  producer geocoding warns when only the street/town was found. Verified with `scenario_p3_freiburg.py
+  geocode_quality corrected_data` against Nominatim: streets without number → 12 street-only, 4×
+  Vaubanallee on one point; with numbers still 2 street-only (Walter-Gropius-Straße 13,
+  Kurt-Tucholsky-Straße 9), which used to count as found. Tests: `tests/test_geocoding_quality.py`.
 
-**Later stages (see the report, section 6):** UT-H6 (geocoding quality), UT-H9 (climate
-data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
+**Later stages (see the report, section 6):** UT-H9 (climate data/location), UT-H10 (stale
+results), UT-M1…M17, UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

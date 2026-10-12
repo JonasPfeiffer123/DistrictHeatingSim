@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import tempfile
+from collections import defaultdict
 
 from geopy.exc import GeocoderParseError, GeocoderQueryError, GeocoderServiceError
 from geopy.extra.rate_limiter import RateLimiter
@@ -37,9 +38,46 @@ def _is_service_failure(exc: BaseException) -> bool:
     return isinstance(exc, GeocoderServiceError) or is_transient(exc)
 
 
-def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
+#: Match precision of :func:`locate_address`: the house (number or building), only the street, or
+#: only a square, district or the town.
+PRECISION_HOUSE = "house"
+PRECISION_STREET = "street"
+PRECISION_TOWN = "town"
+
+#: Nominatim ``place_rank`` of a result: 28-30 house numbers and buildings, 26-27 streets, below
+#: that squares, districts and towns (https://nominatim.org/release-docs/latest/customize/Ranking/).
+#: An address whose house number Nominatim does not know comes back as the street (UT-H6).
+_HOUSE_RANK = 28
+_STREET_RANK = 26
+
+#: Decimals (m) to which projected coordinates are compared for "same point": Nominatim gives
+#: identical answers for a repeated street, so only exact repeats need catching
+_SAME_POINT_DECIMALS = 1
+
+#: Entries listed per finding in the user message; the rest is counted
+_MAX_LISTED = 15
+
+
+def match_precision(raw: dict) -> str:
     """
-    Geocode address and transform coordinates to UTM.
+    Precision of a Nominatim result from its ``place_rank`` (one of the ``PRECISION_*`` values).
+
+    :param raw: The raw Nominatim answer (``geopy.Location.raw``).
+    """
+    try:
+        rank = int(raw.get("place_rank"))
+    except (TypeError, ValueError):
+        return PRECISION_STREET if raw.get("class") == "highway" else PRECISION_HOUSE
+    if rank >= _HOUSE_RANK:
+        return PRECISION_HOUSE
+    if rank >= _STREET_RANK:
+        return PRECISION_STREET
+    return PRECISION_TOWN
+
+
+def locate_address(address, from_crs="epsg:4326", to_crs="epsg:25833"):
+    """
+    Geocode an address, transform it to the target CRS and say how precise the match is.
 
     Uses a shared rate-limited Nominatim instance (max 1 req/sec) to comply
     with the Nominatim usage policy.
@@ -50,45 +88,132 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     :type from_crs: str
     :param to_crs: Target CRS (default: ETRS89/UTM Zone 33N)
     :type to_crs: str
-    :return: (UTM_X, UTM_Y) coordinates or (None, None) if the address was not found
-    :rtype: tuple of float
+    :return: ``(x, y, precision)`` with a ``PRECISION_*`` value, or ``(None, None, None)`` if the
+        address was not found
+    :rtype: tuple
     :raises ServiceUnavailableError: If Nominatim is blocked, overloaded or unreachable
     """
-    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
-
     try:
         location = _geocode(address)
     except Exception as e:
         if _is_service_failure(e):
             raise ServiceUnavailableError(describe_service_error("Nominatim", e, attempts=4)) from e
         logger.warning("Geocoding of %s failed: %s", address, e)
-        return (None, None)
-    if location:
-        utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
-        return (utm_x, utm_y)
-    logger.warning("Could not geocode the address %s", address)
-    return (None, None)
+        return (None, None, None)
+    if not location:
+        logger.warning("Could not geocode the address %s", address)
+        return (None, None, None)
+    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
+    utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
+    return (utm_x, utm_y, match_precision(location.raw or {}))
+
+
+def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
+    """
+    Geocode address and transform coordinates to UTM.
+
+    :return: (UTM_X, UTM_Y) coordinates or (None, None) if the address was not found
+    :rtype: tuple of float
+    :raises ServiceUnavailableError: If Nominatim is blocked, overloaded or unreachable
+
+    See :func:`locate_address`, which also returns the precision of the match.
+    """
+    utm_x, utm_y, _precision = locate_address(address, from_crs=from_crs, to_crs=to_crs)
+    return (utm_x, utm_y)
+
+
+def _listed(entries: list[str]) -> str:
+    """Bullet list of at most ``_MAX_LISTED`` entries, the rest counted."""
+    lines = [f"  • {entry}" for entry in entries[:_MAX_LISTED]]
+    if len(entries) > _MAX_LISTED:
+        lines.append(f"  … und {len(entries) - _MAX_LISTED} weitere")
+    return "\n".join(lines)
+
+
+def _numbers(entries: list[dict]) -> str:
+    return ", ".join(str(entry["number"]) for entry in entries)
+
+
+def _group_label(group: list[dict]) -> str:
+    """'Nr. 1, 2, 3: Vaubanallee, Freiburg' - the addresses once each."""
+    addresses = list(dict.fromkeys(entry["address"] for entry in group))
+    return f"Nr. {_numbers(group)}: {' / '.join(addresses)}"
 
 
 def format_geocoding_summary(summary: dict) -> tuple[bool, str]:
     """
     German user message for the summary returned by :func:`process_data`.
 
-    :param summary: Dict with ``total``, ``success``, ``failed`` and ``failed_addresses``.
-    :return: ``(all_found, message)``.
+    Besides the addresses that were not found it names the ones Nominatim only placed on the
+    street or in the town and the buildings that ended up on the same point (UT-H6) - each would
+    otherwise give a wrong house connection without any hint.
+
+    :param summary: Dict of :func:`process_data`.
+    :return: ``(all_fine, message)``.
     :rtype: tuple[bool, str]
     """
     total = summary.get("total", 0)
     success = summary.get("success", 0)
-    failed_addresses = summary.get("failed_addresses", [])
     message = f"Geocoding abgeschlossen: {success} von {total} Adressen gefunden."
-    if not failed_addresses:
+    not_found = summary.get("not_found")
+    if not_found is None:  # summary without row numbers
+        not_found = [{"number": None, "address": address} for address in summary.get("failed_addresses", [])]
+    street_only = summary.get("street_only", [])
+    town_only = summary.get("town_only", [])
+    same_point = summary.get("same_point", [])
+
+    def entry(item):
+        return item["address"] if item["number"] is None else f"Nr. {item['number']}: {item['address']}"
+
+    sections = []
+    if not_found:
+        sections.append(f"Nicht gefunden ({len(not_found)}):\n{_listed([entry(item) for item in not_found])}")
+    if street_only:
+        sections.append(
+            f"Nur die Straße gefunden, nicht das Haus ({len(street_only)}) – der Punkt liegt irgendwo auf der "
+            f"Straße:\n{_listed([entry(item) for item in street_only])}"
+        )
+    if town_only:
+        sections.append(
+            f"Nur der Ort gefunden ({len(town_only)}) – der Punkt liegt im Orts- oder Stadtteilzentrum:\n"
+            f"{_listed([entry(item) for item in town_only])}"
+        )
+    if same_point:
+        sections.append(
+            f"Mehrere Gebäude auf demselben Punkt ({len(same_point)} "
+            f"{'Gruppe' if len(same_point) == 1 else 'Gruppen'}):\n"
+            f"{_listed([_group_label(group) for group in same_point])}"
+        )
+    if not sections:
         return True, message
-    details = "\n".join(f"  • {address}" for address in failed_addresses)
-    return False, (
-        f"{message}\n\nNicht gefunden ({len(failed_addresses)}):\n{details}\n\n"
-        "Bitte prüfen Sie diese Adressen und ergänzen Sie die Koordinaten manuell."
+    hint = (
+        "Bitte prüfen Sie Schreibweise und Hausnummer und geocodieren Sie erneut, oder tragen Sie die "
+        "Koordinaten (UTM_X/UTM_Y) von Hand ein."
     )
+    if summary.get("not_found") is not None:
+        hint = f"Nr. = Zeile der Gebäudetabelle. {hint}"
+    return False, "\n\n".join([message, *sections, hint])
+
+
+def geocoding_row_notes(summary: dict) -> dict[int, str]:
+    """
+    Note per building (table row number, 1-based) that needs a look after geocoding (UT-H6).
+
+    :param summary: Dict of :func:`process_data`.
+    :return: ``{number: note}`` for the rows to mark; empty if all addresses were found exactly.
+    """
+    notes: dict[int, list[str]] = defaultdict(list)
+    for item in summary.get("not_found", []):
+        notes[item["number"]].append("Adresse nicht gefunden")
+    for item in summary.get("street_only", []):
+        notes[item["number"]].append("Nur die Straße gefunden, nicht das Haus")
+    for item in summary.get("town_only", []):
+        notes[item["number"]].append("Nur der Ort gefunden")
+    for group in summary.get("same_point", []):
+        for item in group:
+            others = ", ".join(str(other["number"]) for other in group if other is not item)
+            notes[item["number"]].append(f"Gleicher Punkt wie Nr. {others}")
+    return {number: "; ".join(texts) for number, texts in notes.items()}
 
 
 def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
@@ -101,7 +226,10 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     :type input_csv: str
     :param crs: Target projected CRS for UTM_X/UTM_Y columns (default EPSG:25833)
     :type crs: str
-    :return: Summary dict with keys ``total``, ``success``, ``failed``, ``failed_addresses``
+    :return: Summary dict with keys ``total``, ``success``, ``failed``, ``failed_addresses`` and the
+        findings to check (UT-H6): ``not_found``, ``street_only``, ``town_only`` (lists of
+        ``{"number", "address", "x", "y"}``, number = 1-based data row as in the building table) and
+        ``same_point`` (groups of such entries that got identical coordinates)
     :rtype: dict
     :raises ServiceUnavailableError: If Nominatim fails; the CSV is left unchanged
     """
@@ -111,6 +239,8 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     total = 0
     success = 0
     failed_addresses = []
+    findings = {"not_found": [], "street_only": [], "town_only": []}
+    by_point = defaultdict(list)
 
     try:
         # utf-8-sig on both sides: reading the BOM-prefixed file as plain utf-8 kept the BOM in the
@@ -137,16 +267,31 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
                 headers_written = False
                 writer.writerow(headers + ["UTM_X", "UTM_Y"])
 
-            for row in reader:
-                country, state, city, address = row[0], row[1], row[2], row[3]
+            for number, row in enumerate(reader, start=1):
+                if not any(cell.strip() for cell in row):
+                    writer.writerow(row)  # blank line: kept, not counted
+                    continue
+                country, state, city, address = (cell.strip() for cell in (row + [""] * 4)[:4])
                 full_address = f"{address}, {city}, {state}, {country}"
-                utm_x, utm_y = get_coordinates(full_address, to_crs=crs)  # rate-limited via _geocode
+                if address:
+                    utm_x, utm_y, precision = locate_address(full_address, to_crs=crs)  # rate-limited
+                else:
+                    # Without a street Nominatim answers with the town centre
+                    utm_x, utm_y, precision = None, None, None
 
                 total += 1
+                item = {"number": number, "address": ", ".join(p for p in (address or "(keine Adresse)", city) if p)}
                 if utm_x is not None and utm_y is not None:
                     success += 1
+                    item.update(x=utm_x, y=utm_y)
+                    if precision == PRECISION_STREET:
+                        findings["street_only"].append(item)
+                    elif precision == PRECISION_TOWN:
+                        findings["town_only"].append(item)
+                    by_point[(round(utm_x, _SAME_POINT_DECIMALS), round(utm_y, _SAME_POINT_DECIMALS))].append(item)
                 else:
                     failed_addresses.append(full_address)
+                    findings["not_found"].append(item)
 
                 if headers_written:
                     # Ensure the row has enough columns before assignment
@@ -171,7 +316,14 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
         except OSError:
             pass
 
-    return {"total": total, "success": success, "failed": total - success, "failed_addresses": failed_addresses}
+    return {
+        "total": total,
+        "success": success,
+        "failed": total - success,
+        "failed_addresses": failed_addresses,
+        **findings,
+        "same_point": [group for group in by_point.values() if len(group) > 1],
+    }
 
 
 if __name__ == "__main__":
