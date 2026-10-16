@@ -83,7 +83,10 @@ class TestHeatDemandThread:
         with qtbot.waitSignal(thread.calculation_error, timeout=60000) as blocker:
             thread.start()
         thread.wait()
-        assert "Fehler" in blocker.args[0]
+        message = blocker.args[0]
+        # German cause, no traceback (UT-M1: that goes to the log file)
+        assert message.startswith("Die Berechnung der Gebäudelastgänge ist fehlgeschlagen.")
+        assert "Traceback" not in message
 
 
 class _FakeSignal:

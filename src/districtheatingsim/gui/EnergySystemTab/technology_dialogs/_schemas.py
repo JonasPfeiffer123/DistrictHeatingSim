@@ -21,13 +21,13 @@ from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (
 
 GAS_BOILER: list = [
     Field("thermal_capacity_kW", "Thermische Leistung Gaskessel in kW", "1000"),
-    Field("Nutzungsgrad", "Nutzungsgrad Gaskessel", "0.9"),
+    Field("Nutzungsgrad", "Nutzungsgrad Gaskessel (0–1)", "0.9"),
     Field("spez_Investitionskosten", "spez. Investitionskosten in €/kW", "30"),
 ]
 
 POWER_TO_HEAT: list = [
     Field("thermal_capacity_kW", "Thermische Leistung Power-To-Heat in kW", "1000"),
-    Field("Nutzungsgrad", "Nutzungsgrad Power-to-Heat", "0.9"),
+    Field("Nutzungsgrad", "Nutzungsgrad Power-to-Heat (0–1)", "0.9"),
     Field("spez_Investitionskosten", "spez. Investitionskosten in €/kW", "30"),
 ]
 
@@ -35,7 +35,7 @@ WASTE_HEAT_PUMP: list = [
     Field("Kühlleistung_Abwärme", "Kühlleistung Abwärme in kW", "30"),
     Field("Temperatur_Abwärme", "Temperatur Abwärme in °C", "30"),
     Field("spez_Investitionskosten_Abwärme", "spez. Investitionskosten Abwärmenutzung in €/kW", "500"),
-    Field("spezifische_Investitionskosten_WP", "spez. Investitionskosten Wärmepumpe", "1000"),
+    Field("spezifische_Investitionskosten_WP", "spez. Investitionskosten Wärmepumpe in €/kW", "1000"),
 ]
 
 
@@ -50,15 +50,15 @@ def storage_fields(volume_key: str, opt_min_key: str, opt_max_key: str, spez_cos
     passed in.
     """
     return [
-        Field(volume_key, "Speicher Volumen", "20"),
-        Field("T_vorlauf", "Vorlauftemperatur", "90"),
-        Field("T_ruecklauf", "Rücklauftemperatur", "60"),
-        Field("initial_fill", "initiale Füllung", "0.0"),
-        Field("min_fill", "minimale Füllung", "0.2"),
-        Field("max_fill", "maximale Füllung", "0.8"),
+        Field(volume_key, "Speichervolumen in m³", "20"),
+        Field("T_vorlauf", "Vorlauftemperatur Speicher in °C", "90"),
+        Field("T_ruecklauf", "Rücklauftemperatur Speicher in °C", "60"),
+        Field("initial_fill", "Füllstand zu Beginn (Anteil 0–1)", "0.0"),
+        Field("min_fill", "minimaler Füllstand (Anteil 0–1)", "0.2"),
+        Field("max_fill", "maximaler Füllstand (Anteil 0–1)", "0.8"),
         Field("spez_Investitionskosten_Speicher", "spez. Investitionskosten Speicher in €/m³", spez_cost_default),
-        Field(opt_min_key, "Untere Grenze Speichervolumen Optimierung", "0"),
-        Field(opt_max_key, "Obere Grenze Speichervolumen Optimierung", "100"),
+        Field(opt_min_key, "Untere Grenze Speichervolumen Optimierung in m³", "0"),
+        Field(opt_max_key, "Obere Grenze Speichervolumen Optimierung in m³", "100"),
     ]
 
 
@@ -69,33 +69,33 @@ BIOMASS_MAIN: list = [
     Field("Größe_Holzlager", "Größe Holzlager in t", "40"),
     Field("spez_Investitionskosten", "spez. Investitionskosten Kessel in €/kW", "200"),
     Field("spez_Investitionskosten_Holzlager", "spez. Investitionskosten Holzlager in €/t", "400"),
-    Field("Nutzungsgrad_BMK", "Nutzungsgrad Biomassekessel", "0.8"),
-    Field("min_Teillast", "minimale Teillast", "0.3"),
-    Field("opt_BMK_min", "Untere Grenze th. Leistung Optimierung", "0"),
-    Field("opt_BMK_max", "Obere Grenze th. Leistung Optimierung", "5000"),
+    Field("Nutzungsgrad_BMK", "Nutzungsgrad Biomassekessel (0–1)", "0.8"),
+    Field("min_Teillast", "minimale Teillast (Anteil 0–1)", "0.3"),
+    Field("opt_BMK_min", "Untere Grenze th. Leistung Optimierung in kW", "0"),
+    Field("opt_BMK_max", "Obere Grenze th. Leistung Optimierung in kW", "5000"),
     CheckField("speicher_aktiv", "Speicher aktiv"),
 ]
 BIOMASS_STORAGE = storage_fields("Speicher_Volumen", "opt_Speicher_min", "opt_Speicher_max", "750")
 
 CHP_MAIN: list = [
-    Field("th_Leistung_kW", "thermische Leistung", "100"),
-    Field("el_Wirkungsgrad", "elektrischer Wirkungsgrad BHKW", "0.33"),
-    Field("KWK_Wirkungsgrad", "KWK Wirkungsgrad", "0.9"),
-    Field("min_Teillast", "minimale Teillast", "0.7"),
-    Field("spez_Investitionskosten_GBHKW", "spez. Investitionskosten BHKW", "1500"),
-    Field("opt_BHKW_min", "Untere Grenze th. Leistung Optimierung", "0"),
-    Field("opt_BHKW_max", "Obere Grenze th. Leistung Optimierung", "1000"),
+    Field("th_Leistung_kW", "thermische Leistung in kW", "100"),
+    Field("el_Wirkungsgrad", "elektrischer Wirkungsgrad BHKW (0–1)", "0.33"),
+    Field("KWK_Wirkungsgrad", "KWK-Gesamtwirkungsgrad (0–1)", "0.9"),
+    Field("min_Teillast", "minimale Teillast (Anteil 0–1)", "0.7"),
+    Field("spez_Investitionskosten_GBHKW", "spez. Investitionskosten BHKW in €/kW", "1500"),
+    Field("opt_BHKW_min", "Untere Grenze th. Leistung Optimierung in kW", "0"),
+    Field("opt_BHKW_max", "Obere Grenze th. Leistung Optimierung in kW", "1000"),
     CheckField("speicher_aktiv", "Speicher aktiv"),
 ]
 
 HOLZGAS_CHP_MAIN: list = [
-    Field("th_Leistung_kW", "thermische Leistung", "100"),
-    Field("el_Wirkungsgrad", "elektrischer Wirkungsgrad BHKW", "0.33"),
-    Field("KWK_Wirkungsgrad", "KWK Wirkungsgrad", "0.9"),
-    Field("min_Teillast", "minimale Teillast", "0.7"),
-    Field("spez_Investitionskosten_HBHKW", "spez. Investitionskosten BHKW", "1850"),
-    Field("opt_BHKW_min", "Untere Grenze th. Leistung Optimierung", "0"),
-    Field("opt_BHKW_max", "Obere Grenze th. Leistung Optimierung", "1000"),
+    Field("th_Leistung_kW", "thermische Leistung in kW", "100"),
+    Field("el_Wirkungsgrad", "elektrischer Wirkungsgrad BHKW (0–1)", "0.33"),
+    Field("KWK_Wirkungsgrad", "KWK-Gesamtwirkungsgrad (0–1)", "0.9"),
+    Field("min_Teillast", "minimale Teillast (Anteil 0–1)", "0.7"),
+    Field("spez_Investitionskosten_HBHKW", "spez. Investitionskosten BHKW in €/kW", "1850"),
+    Field("opt_BHKW_min", "Untere Grenze th. Leistung Optimierung in kW", "0"),
+    Field("opt_BHKW_max", "Obere Grenze th. Leistung Optimierung in kW", "1000"),
     CheckField("speicher_aktiv", "Speicher aktiv"),
 ]
 # CHP and HolzgasCHP share the same storage block.
@@ -108,9 +108,9 @@ CHP_STORAGE = storage_fields("Speicher_Volumen_BHKW", "opt_BHKW_Speicher_min", "
 # / scalar / ndarray) is handled by RiverHeatPumpDialog's getInputs override.
 RIVER: list = [
     Field("Wärmeleistung_FW_WP", "th. Leistung Wärmepumpe in kW", "200"),
-    Field("dT", "Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur", "0"),
-    Field("spez_Investitionskosten_Flusswasser", "spez. Investitionskosten Flusswärmenutzung", "1000"),
-    Field("spezifische_Investitionskosten_WP", "spez. Investitionskosten Wärmepumpe", "1000"),
+    Field("dT", "Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur in K", "0"),
+    Field("spez_Investitionskosten_Flusswasser", "spez. Investitionskosten Flusswärmenutzung in €/kW", "1000"),
+    Field("spezifische_Investitionskosten_WP", "spez. Investitionskosten Wärmepumpe in €/kW", "1000"),
 ]
 
 
@@ -149,9 +149,9 @@ SOLAR_SECTIONS: list[Section] = [
             Field("Collector_tilt_angle", "Neigungswinkel des Kollektors in ° (0-90)", "36"),
             Field("Tm_rl", "Startwert Rücklauftemperatur in Speicher in °C", "60"),
             Field("Qsa", "Startwert Speicherfüllstand", "0"),
-            Field("Vorwärmung_K", "Mögliche Abweichung von Solltemperatur bei Vorwärmung", "8"),
-            Field("DT_WT_Solar_K", "Grädigkeit Wärmeübertrager Kollektor/Speicher", "5"),
-            Field("DT_WT_Netz_K", "Grädigkeit Wärmeübertrager Speicher/Netz", "5"),
+            Field("Vorwärmung_K", "Mögliche Abweichung von Solltemperatur bei Vorwärmung in K", "8"),
+            Field("DT_WT_Solar_K", "Grädigkeit Wärmeübertrager Kollektor/Speicher in K", "5"),
+            Field("DT_WT_Netz_K", "Grädigkeit Wärmeübertrager Speicher/Netz in K", "5"),
         ],
     ),
     Section(
@@ -165,9 +165,9 @@ SOLAR_SECTIONS: list[Section] = [
     Section(
         "Optimierungsparameter",
         [
-            Field("opt_volume_min", "Untere Grenze Speichervolumen Optimierung", "1"),
-            Field("opt_volume_max", "Obere Grenze Speichervolumen Optimierung", "200"),
-            Field("opt_area_min", "Untere Grenze Kollektorfläche Optimierung", "1"),
+            Field("opt_volume_min", "Untere Grenze Speichervolumen Optimierung in m³", "1"),
+            Field("opt_volume_max", "Obere Grenze Speichervolumen Optimierung in m³", "200"),
+            Field("opt_area_min", "Untere Grenze Kollektorfläche Optimierung in m²", "1"),
             Field("opt_area_max", "Obere Grenze Kollektorfläche Optimierung", "2000"),
         ],
     ),

@@ -117,6 +117,11 @@ function importGeoJSON(geojsonData, fileName, editable) {
         editable = true; // Default: editierbar
     }
 
+    // The same layer loaded again replaces the old one instead of adding a copy (UT-M3)
+    if (fileName && window.removeLayersByName) {
+        window.removeLayersByName(fileName);
+    }
+
     const crsUrn = geojsonData.crs ? geojsonData.crs.properties.name : null;
     const sourceCRS = crsUrn ? urnToEPSG(crsUrn) : 'EPSG:4326';
 

@@ -48,17 +48,20 @@ def resolve_calculation_method(building_types, calc_method: str) -> str:
     types = {str(t).strip() for t in building_types}
     unknown = sorted(types - VDI4655_BUILDING_TYPES - BDEW_BUILDING_TYPES)
     if unknown:
+        # German: the message reaches the user (UT-M1); an empty cell reads as "nan"
         raise ValueError(
-            f"Unknown building types: {', '.join(unknown)}. Use VDI 4655 types "
-            f"({', '.join(sorted(VDI4655_BUILDING_TYPES))}) or BDEW types ({', '.join(sorted(BDEW_BUILDING_TYPES))})."
+            f"Unbekannte Gebäudetypen: {', '.join(unknown)}"
+            + (" („nan“ = Gebäudetyp nicht ausgefüllt)" if "nan" in unknown else "")
+            + f". Erlaubt sind VDI-4655-Typen ({', '.join(sorted(VDI4655_BUILDING_TYPES))}) oder BDEW-Typen "
+            f"({', '.join(sorted(BDEW_BUILDING_TYPES))}); die Gebäudeliste bearbeiten Sie im Tab „Projektdefinition“."
         )
     vdi = sorted(types & VDI4655_BUILDING_TYPES)
     bdew = sorted(types & BDEW_BUILDING_TYPES)
     if vdi and bdew:
         raise ValueError(
-            f"The building data mixes VDI 4655 types ({', '.join(vdi)}) with BDEW types ({', '.join(bdew)}). "
-            "All buildings of a project must use the same method: for residential buildings in a BDEW "
-            "project use HEF (single-family) or HMF (multi-family) instead of EFH/MFH."
+            f"Die Gebäudeliste mischt VDI-4655-Typen ({', '.join(vdi)}) mit BDEW-Typen ({', '.join(bdew)}). "
+            "Ein Projekt rechnet nur mit einem Verfahren: für Wohngebäude in einem BDEW-Projekt HEF "
+            "(Einfamilienhaus) oder HMF (Mehrfamilienhaus) statt EFH/MFH verwenden."
         )
     return "VDI4655" if vdi else "BDEW"
 

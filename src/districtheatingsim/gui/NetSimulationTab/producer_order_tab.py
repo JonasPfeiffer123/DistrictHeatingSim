@@ -126,8 +126,9 @@ class ProducerOrderTab(QWidget):
         generator_features = geojson_data[geojson_data["feature_type"] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR]
 
         producers = []
-        for idx, row in generator_features.iterrows():
-            producers.append({"name": f"Erzeugerstandort {idx + 1}", "location": row["geometry"]})
+        # Numbered 1, 2, … as on the map; the row index of the whole network gave "Erzeugerstandort 162" (UT-N)
+        for number, (_idx, row) in enumerate(generator_features.iterrows(), start=1):
+            producers.append({"name": f"Erzeugerstandort {number}", "location": row["geometry"]})
         return producers
 
     def add_producer_to_order(self):

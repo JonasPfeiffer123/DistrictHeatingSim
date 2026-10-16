@@ -16,6 +16,13 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushBu
 from scipy.interpolate import griddata
 
 
+def price_range(base: float) -> tuple[str, str]:
+    """Lower and upper end of a sensitivity range: 60 % and 140 % of the base price, in steps of 5."""
+    lower = max(0.0, round(0.6 * base / 5) * 5)
+    upper = max(lower + 5, round(1.4 * base / 5) * 5)
+    return f"{lower:g}", f"{upper:g}"
+
+
 class SensitivityTab(QWidget):
     """
     A QWidget subclass representing the SensitivityTab.
@@ -72,9 +79,17 @@ class SensitivityTab(QWidget):
         """
         inputLayout = QVBoxLayout()
 
-        self.gasPriceRange = self.createRangeInputField("Gaspreisbereich (€): ", "€/MWh", "30", "60", "5")
-        self.electricityPriceRange = self.createRangeInputField("Strompreisbereich (€): ", "€/MWh", "60", "120", "5")
-        self.woodPriceRange = self.createRangeInputField("Holzpreisbereich (€): ", "€/MWh", "40", "80", "5")
+        # Ranges around the base prices of the economic parameters (set_base_prices); the fixed
+        # defaults (gas 30-60 €/MWh, electricity 60-120) did not even contain the base prices (UT-M16)
+        self._base_prices = {}
+        self.gasPriceRange = self.createRangeInputField("Gaspreis", "€/MWh", *price_range(70.0), "5")
+        self.electricityPriceRange = self.createRangeInputField("Strompreis", "€/MWh", *price_range(150.0), "5")
+        self.woodPriceRange = self.createRangeInputField("Holzpreis", "€/MWh", *price_range(50.0), "5")
+        self._ranges = {
+            "gas_price": self.gasPriceRange,
+            "electricity_price": self.electricityPriceRange,
+            "wood_price": self.woodPriceRange,
+        }
 
         self.startButton = QPushButton("Sensitivitätsuntersuchung starten")
         self.startButton.clicked.connect(self.start_sensitivity_analysis)
@@ -123,6 +138,27 @@ class SensitivityTab(QWidget):
         layout.addWidget(label)
         layout.addLayout(rangeLayout)
         return layout
+
+    def set_base_prices(self, economic_parameters: dict):
+        """
+        Centre the price ranges on the base prices of the economic parameters (60-140 %).
+
+        Only when a base price changed - ranges the user edited for the same prices are kept.
+        """
+        names = {"gas_price": "Gaspreis", "electricity_price": "Strompreis", "wood_price": "Holzpreis"}
+        for key, layout in self._ranges.items():
+            try:
+                base = float(economic_parameters[key])
+            except (KeyError, TypeError, ValueError):
+                continue
+            label = layout.itemAt(0).widget()
+            label.setText(f"{names[key]} (Basis {base:g} €/MWh)")
+            if self._base_prices.get(key) == base:
+                continue
+            self._base_prices[key] = base
+            lower, upper = price_range(base)
+            layout.itemAt(1).itemAt(1).widget().setText(lower)
+            layout.itemAt(1).itemAt(3).widget().setText(upper)
 
     def createPlotArea(self):
         """
@@ -235,7 +271,15 @@ class SensitivityTab(QWidget):
         ax.set_zlabel("Wärmegestehungskosten (€/MWh)")
         ax.set_title("Gesamtwärmegestehungskosten (€/MWh)")
 
+        # One legend below the plot: inside the 3D axes it covered the surfaces (UT-M16)
         custom_lines = [plt.Line2D([0], [0], color=colors[i], lw=4) for i in range(len(unique_wood_prices))]
-        ax.legend(custom_lines, [f"Holzpreis: {price} €/MWh" for price in unique_wood_prices])
+        self.figure.legend(
+            custom_lines,
+            [f"Holzpreis {price:g} €/MWh" for price in unique_wood_prices],
+            loc="lower center",
+            ncol=min(5, len(unique_wood_prices)),
+            frameon=False,
+        )
+        self.figure.subplots_adjust(left=0.02, right=0.98, top=0.93, bottom=0.12)
 
         self.canvas.draw()

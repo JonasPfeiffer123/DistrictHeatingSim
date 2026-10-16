@@ -492,6 +492,10 @@ function deleteLayer(layer) {
     }
 
     layerList = layerList.filter(l => l !== layer); // Entferne die Layer aus der Liste
+    if (activeLayer === layer) {
+        activeLayer = null;
+        window.activeLayer = null;
+    }
 
     // Entferne den entsprechenden Listeneintrag aus der Anzeige
     const listItems = document.querySelectorAll('.layer-item');
@@ -548,27 +552,37 @@ window.createNewLayer = createNewLayer;
 window.addLayerToList = addLayerToList;
 window.layerList = layerList;
 
-// Erstelle automatisch einen Standard-Layer beim Laden
-document.addEventListener('DOMContentLoaded', function() {
-    // Warte kurz bis Map initialisiert ist
-    setTimeout(() => {
-        if (layerList.length === 0 && window.map && window.allLayers) {
-            console.log('Erstelle Standard-Layer beim Start');
-            const defaultLayer = L.featureGroup();
-            defaultLayer.options = {
-                name: 'Neuer Layer',
-                color: '#3388ff',
-                opacity: 1.0,
-                visible: true,
-                locked: false
-            };
-            
-            addLayerToList(defaultLayer);
-            window.allLayers.addLayer(defaultLayer);
-            window.map.addLayer(defaultLayer);
-            setActiveLayer(defaultLayer);
-            
-            console.log('Standard-Layer erstellt und als aktiv gesetzt');
-        }
-    }, 100);
-});
+// No empty "Neuer Layer (0)" at start any more (UT-M3): the drawing layer is created on first use
+const DRAWING_LAYER_NAME = 'Gezeichnete Objekte';
+
+// The layer a new drawing goes to: the active one, else (created once) "Gezeichnete Objekte"
+function ensureDrawingLayer() {
+    if (activeLayer && !activeLayer.options.locked) {
+        return activeLayer;
+    }
+    let layer = layerList.find(l => l.options && l.options.name === DRAWING_LAYER_NAME && !l.options.locked);
+    if (!layer) {
+        layer = L.featureGroup();
+        layer.options = {
+            name: DRAWING_LAYER_NAME,
+            color: '#3388ff',
+            opacity: 1.0,
+            visible: true,
+            locked: false
+        };
+        addLayerToList(layer);
+        window.allLayers.addLayer(layer);
+        window.map.addLayer(layer);
+    }
+    setActiveLayer(layer);
+    return layer;
+}
+
+// Remove the layers of this name: loading a network, building points or a marker layer again
+// replaced nothing and every re-generation added another copy (UT-M3)
+function removeLayersByName(name) {
+    layerList.filter(l => l.options && l.options.name === name).forEach(l => deleteLayer(l));
+}
+
+window.ensureDrawingLayer = ensureDrawingLayer;
+window.removeLayersByName = removeLayersByName;

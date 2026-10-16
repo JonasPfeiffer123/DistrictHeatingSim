@@ -56,7 +56,7 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
     import_results_csv,
     save_results_csv,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson, initialisation_summary
 from districtheatingsim.utilities.calculation_state import (
     BUILDING_PROFILES,
     NETWORK_CALCULATION,
@@ -100,6 +100,8 @@ class NetSimulationTab(QWidget):
         self._update_base_path(self.folder_manager.variant_folder)
 
         self.NetworkGenerationData = None
+        self.unsaved_changes = False  # net computed/changed since it was loaded or saved (UT-M6)
+        self._net_ready = False  # an initialised (or loaded) net exists; a time series needs it (UT-M8)
         self._init_thread = None
         self._calc_thread = None
         self._time_series_workers = 1  # parallel processes for the detailed time series (G2)
@@ -125,6 +127,8 @@ class NetSimulationTab(QWidget):
         """Clear the displayed network state (data + pipe table + plot + time series)."""
         self.NetworkGenerationData = None
         self._net_stamp = None  # the calculation state of the previous variant's net (UT-H10)
+        self.unsaved_changes = False
+        self._net_ready = False
         self._pipe_table.clear()
         self._net_plot.clear()
         self._ts_widget.clear()
@@ -280,6 +284,17 @@ class NetSimulationTab(QWidget):
 
     def opencalculateNetDialog(self):
         """Open time series calculation dialog."""
+        if self.NetworkGenerationData is None or not getattr(self, "_net_ready", False):
+            # Started after a failed initialisation it ran into a traceback (UT-M8)
+            QMessageBox.information(
+                self,
+                "Kein initialisiertes Netz",
+                "Die Zeitreihenberechnung braucht ein initialisiertes Netz.\n\n"
+                "Initialisieren Sie es über „Netz generieren“ oder laden Sie ein gespeichertes Netz "
+                "(„Pandapipes Netz laden“). Ist die Initialisierung fehlgeschlagen, nennt ihre Fehlermeldung "
+                "den Grund.",
+            )
+            return
         dialog = TimeSeriesCalculationDialog(self.base_path, self)
         if dialog.exec():
             inputs = dialog.getValues()
@@ -302,6 +317,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData.COP_filename = self.folder_manager.cop_filename
         self.NetworkGenerationData.TRY_filename = self.folder_manager.try_filename
 
+        self._net_ready = False
         # The load profiles the net is initialised with, for the "veraltet" check (UT-H10)
         profiles = read_state(self.base_path).get(BUILDING_PROFILES)
         self._init_inputs = {BUILDING_PROFILES: stamp_id(profiles)}
@@ -316,7 +332,23 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData = network_data
         # Recorded when the net is saved; a time series refers to it from now on
         self._net_stamp = new_stamp(getattr(self, "_init_inputs", {}))
+        self.unsaved_changes = True
+        self._net_ready = True
         self._refresh_all_widgets()
+        # The pump lift changed silently (1.5 -> 3.3 bar); say how it was designed and why (UT-M12)
+        try:
+            summary = initialisation_summary(
+                network_data.net,
+                getattr(network_data, "lift_pressure_pump", None),
+                getattr(network_data, "max_velocity_pipe", None)
+                if getattr(network_data, "diameter_optimization_pipe_checked", False)
+                else None,
+            )
+        except Exception:
+            logger.exception("Zusammenfassung der Netzinitialisierung nicht möglich")
+            summary = ""
+        if summary:
+            QMessageBox.information(self, "Netz initialisiert", summary)
 
     # ------------------------------------------------------------------
     # Time series simulation
@@ -383,6 +415,7 @@ class NetSimulationTab(QWidget):
     def _on_time_series_done(self, network_data):
         self._end_time_series_progress()
         self.NetworkGenerationData = network_data
+        self.unsaved_changes = True
         self._refresh_all_widgets()
 
         save_results_csv(
@@ -505,6 +538,10 @@ class NetSimulationTab(QWidget):
 
     def _on_recalculation_done(self, network_data):
         self.NetworkGenerationData = network_data
+        self.unsaved_changes = True
+        # Changed pipes make a time series computed before outdated (UT-H10)
+        previous = getattr(self, "_net_stamp", None) or {}
+        self._net_stamp = new_stamp(previous.get("eingaben", {}))
         self._progress_bar.setRange(0, 1)
         self._progress_bar.setFormat("Berechnung abgeschlossen")
         self._net_plot.set_network(self.NetworkGenerationData)
@@ -562,6 +599,7 @@ class NetSimulationTab(QWidget):
             save_net(nd.net, net_path)
             if getattr(self, "_net_stamp", None):
                 record(self.base_path, NETWORK_CALCULATION, self._net_stamp)
+            self.unsaved_changes = False
 
             waerme_data = np.column_stack([nd.waerme_hast_ges_W[i] for i in range(nd.waerme_hast_ges_W.shape[0])])
             waerme_df = pd.DataFrame(
@@ -671,6 +709,8 @@ class NetSimulationTab(QWidget):
 
             self.NetworkGenerationData = nd
             self._refresh_all_widgets()
+            self.unsaved_changes = False
+            self._net_ready = True
 
             if show_dialog:
                 QMessageBox.information(
