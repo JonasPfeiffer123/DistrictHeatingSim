@@ -20,6 +20,12 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from districtheatingsim.gui.MainTab.project_structure import DEFAULT_VARIANT_NAME
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
 from districtheatingsim.utilities.path_utils import user_settings_dir
+from districtheatingsim.utilities.project_location import (
+    CLIMATE_ZONES,
+    DEFAULT_CLIMATE_ZONE,
+    DEFAULT_PERSONS_PER_HOUSEHOLD,
+    building_location,
+)
 from districtheatingsim.utilities.schema import add_meta, check_version
 from districtheatingsim.utilities.utilities import DEFAULT_COP_RESOURCE, DEFAULT_TRY_RESOURCE, get_resource_path
 
@@ -261,6 +267,7 @@ class ProjectFolderManager(QObject):
 
     project_folder_changed = pyqtSignal(str)
     crs_changed = pyqtSignal(str)  # Emitted when project CRS changes
+    settings_changed = pyqtSignal()  # Emitted when location, climate zone or persons change
 
     def __init__(self, config_manager: ProjectConfigManager | None = None):
         """
@@ -288,6 +295,11 @@ class ProjectFolderManager(QObject):
         # Persisted climate / heat-pump data file paths (None = not yet configured)
         self.try_filename: str | None = None
         self.cop_filename: str | None = None
+
+        # Location and VDI 4655 parameters of the project (UT-H9)
+        self.location: dict | None = None  # {"lat", "lon", "name"} from the new-project assistant
+        self.climate_zone: str = DEFAULT_CLIMATE_ZONE
+        self.persons_per_household: int = DEFAULT_PERSONS_PER_HOUSEHOLD
 
         # Do not emit initial folder change signal; will be emitted after project selection
 
@@ -388,31 +400,29 @@ class ProjectFolderManager(QObject):
         return data
 
     def load_project_settings(self) -> None:
-        """Load per-project settings (CRS, active energy configs, TRY/COP paths) from ``project_settings.json``."""
+        """Load per-project settings (CRS, active energy configs, TRY/COP paths, location) from ``project_settings.json``."""
         path = self._settings_path()
+        data = {}
         if path and os.path.exists(path):
             try:
                 with open(path, encoding="utf-8") as f:
-                    data = json.load(f)
-                data = self._migrate_project_settings(data)
-                self.project_crs = data.get("crs", DEFAULT_CRS)
-                self.calculation_year = int(data.get("calculation_year", 2023))
-                self.active_energy_configs = data.get("active_energy_configs", {})
-                # Resolve stored paths: prefer project-relative, fall back to absolute
-                self.try_filename = self._resolve_data_file(data.get("try_filename"))
-                self.cop_filename = self._resolve_data_file(data.get("cop_filename"))
+                    data = self._migrate_project_settings(json.load(f))
             except (json.JSONDecodeError, OSError):
-                self.project_crs = DEFAULT_CRS
-                self.calculation_year = 2023
-                self.active_energy_configs = {}
-                self.try_filename = None
-                self.cop_filename = None
-        else:
-            self.project_crs = DEFAULT_CRS
-            self.calculation_year = 2023
-            self.active_energy_configs = {}
-            self.try_filename = None
-            self.cop_filename = None
+                data = {}
+        self.project_crs = data.get("crs", DEFAULT_CRS)
+        self.calculation_year = int(data.get("calculation_year", 2023))
+        self.active_energy_configs = data.get("active_energy_configs", {})
+        # Resolve stored paths: prefer project-relative, fall back to absolute
+        self.try_filename = self._resolve_data_file(data.get("try_filename"))
+        self.cop_filename = self._resolve_data_file(data.get("cop_filename"))
+        location = data.get("location")
+        self.location = location if isinstance(location, dict) and {"lat", "lon"} <= set(location) else None
+        zone = str(data.get("climate_zone", DEFAULT_CLIMATE_ZONE))
+        self.climate_zone = zone if zone in CLIMATE_ZONES else DEFAULT_CLIMATE_ZONE
+        try:
+            self.persons_per_household = max(1, int(data.get("persons_per_household", DEFAULT_PERSONS_PER_HOUSEHOLD)))
+        except (TypeError, ValueError):
+            self.persons_per_household = DEFAULT_PERSONS_PER_HOUSEHOLD
 
     def _to_relative_path(self, absolute: str | None) -> str | None:
         """
@@ -447,6 +457,9 @@ class ProjectFolderManager(QObject):
                         "active_energy_configs": self.active_energy_configs,
                         "try_filename": self._to_relative_path(self.try_filename),
                         "cop_filename": self._to_relative_path(self.cop_filename),
+                        "location": self.location,
+                        "climate_zone": self.climate_zone,
+                        "persons_per_household": self.persons_per_household,
                     },
                     "project_settings",
                 )
@@ -500,6 +513,54 @@ class ProjectFolderManager(QObject):
         """
         self.calculation_year = int(year)
         self.save_project_settings()
+
+    def set_location(self, lat: float, lon: float, name: str = "") -> None:
+        """
+        Set the project location (WGS84) and persist it.
+
+        :param lat: Latitude [degrees].
+        :param lon: Longitude [degrees].
+        :param name: What the user entered, e.g. the town.
+        """
+        self.location = {"lat": float(lat), "lon": float(lon), "name": name}
+        self.save_project_settings()
+        self.settings_changed.emit()
+
+    def set_climate_zone(self, zone: str) -> None:
+        """
+        Set the VDI 4655 climate zone (``"1"`` … ``"15"``) and persist it.
+
+        :raises ValueError: For an unknown zone.
+        """
+        zone = str(zone)
+        if zone not in CLIMATE_ZONES:
+            raise ValueError(f"Unbekannte Klimazone: {zone}")
+        self.climate_zone = zone
+        self.save_project_settings()
+        self.settings_changed.emit()
+
+    def set_persons_per_household(self, persons: int) -> None:
+        """Set the VDI 4655 persons per household and persist it."""
+        self.persons_per_household = max(1, int(persons))
+        self.save_project_settings()
+        self.settings_changed.emit()
+
+    def project_location(self) -> tuple[float, float] | None:
+        """
+        ``(lat, lon)`` of the project: the stored location, else the mean of the geocoded buildings.
+
+        :return: The location, or None if neither is known.
+        """
+        if self.location:
+            return float(self.location["lat"]), float(self.location["lon"])
+        variant = self.get_variant_folder()
+        if not variant:
+            return None
+        try:
+            csv_path = os.path.join(variant, self.config_manager.get_relative_path("current_building_data_path"))
+        except (KeyError, TypeError):
+            return None
+        return building_location(os.path.normpath(csv_path), self.project_crs)
 
     def _copy_data_file_to_project(self, src: str, subfolder: str) -> str:
         """

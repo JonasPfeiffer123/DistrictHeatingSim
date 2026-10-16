@@ -205,11 +205,11 @@ def test_producer_address_is_geocoded_in_the_project_crs(qapp, monkeypatch):
 
     targets = []
 
-    def fake_get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
+    def fake_locate_address(address, from_crs="epsg:4326", to_crs="epsg:25833"):
         targets.append(to_crs)
-        return 412550.8, 5314169.4
+        return 412550.8, 5314169.4, "house"
 
-    monkeypatch.setattr(layer_generation_dialog, "get_coordinates", fake_get_coordinates)
+    monkeypatch.setattr(layer_generation_dialog, "locate_address", fake_locate_address)
     dialog = layer_generation_dialog.LayerGenerationDialog("", _FakeConfig(), project_crs="EPSG:25832")
     dialog.addressInput.setText("Deutschland,Baden-Württemberg,Freiburg im Breisgau,Vaubanallee 2")
     dialog.geocodeAndAdd()

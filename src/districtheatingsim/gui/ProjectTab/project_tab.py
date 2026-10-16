@@ -12,7 +12,7 @@ import logging
 import os
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QFileSystemModel
+from PyQt6.QtGui import QAction, QColor, QFileSystemModel
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -35,13 +35,18 @@ from PyQt6.QtWidgets import (
 )
 
 from districtheatingsim.geocoding.building_csv import centroid_of, format_building_csv_summary, geojson_to_building_csv
-from districtheatingsim.geocoding.geocoding import format_geocoding_summary
+from districtheatingsim.geocoding.geocoding import format_geocoding_summary, geocoding_row_notes
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.MainTab.project_structure import discover_variants
-from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
-from districtheatingsim.gui.ProjectTab.project_progress import evaluate_process_steps
+from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, CsvImportDialog
+from districtheatingsim.gui.ProjectTab.project_progress import (
+    default_process_steps,
+    evaluate_process_steps,
+    outdated_summary,
+)
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.gui.utilities import any_thread_running
+from districtheatingsim.utilities.calculation_state import climate_settings
 from districtheatingsim.utilities.crs_utils import (
     COMMON_CRS_OPTIONS,
     outside_crs_area,
@@ -49,6 +54,7 @@ from districtheatingsim.utilities.crs_utils import (
     reproject_building_csv,
     suggest_crs_for_coordinates,
 )
+from districtheatingsim.utilities.project_location import CLIMATE_ZONES, DEFAULT_CLIMATE_ZONE, climate_zone_label
 
 logger = logging.getLogger(__name__)
 
@@ -176,52 +182,11 @@ class ProjectPresenter:
         self.data_manager = data_manager
         self.config_manager = config_manager
 
-        # Define process steps for project tracking
-        self.process_steps = [
-            {
-                "name": "Schritt 1: Gebäudedaten Quartier definieren",
-                "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'. Die CSV kann manuell erstellt, aus GeoJSON importiert oder durch Geocoding mit Koordinaten angereichert werden.",
-                "required_files": ["../Definition Quartier IST/Quartier IST.csv"],
-                "csv_creation_status": "not_checked",  # Will be updated dynamically
-                "geocoding_status": "not_checked",  # Will be updated dynamically
-            },
-            {
-                "name": "Schritt 2: Gebäude-Lastgang generieren",
-                "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
-                # Current Parquet file, or the JSON of projects saved before BACKLOG G7
-                "required_files": [["Lastgang/Gebäude Lastgang.parquet", "Lastgang/Gebäude Lastgang.json"]],
-            },
-            {
-                "name": "Schritt 3: Straßendaten herunterladen",
-                "description": "Führen Sie eine OSM-Straßenabfrage im Tab 'Wärmenetz generieren' durch.",
-                "required_files": ["../Eingangsdaten allgemein/Straßen.geojson"],
-            },
-            {
-                "name": "Schritt 3: Wärmenetz Daten erstellen",
-                "description": "Generieren Sie das Wärmenetz im Tab 'Wärmenetz generieren'.",
-                "required_files": ["Wärmenetz/Wärmenetz.geojson"],
-            },
-            {
-                "name": "Schritt 4: Thermohydraulische Berechnung",
-                "description": "Führen Sie die Thermohydraulische Berechnung mit den generierten Netzdaten durch.",
-                "required_files": [
-                    # Current JSON, or the pickle of projects saved before BACKLOG G7
-                    ["Wärmenetz/Ergebnisse Netzinitialisierung.json", "Wärmenetz/Ergebnisse Netzinitialisierung.p"],
-                    "Wärmenetz/Ergebnisse Netzinitialisierung.csv",
-                    "Wärmenetz/Konfiguration Netzinitialisierung.json",
-                    "Lastgang/Lastgang.csv",
-                ],
-                "check_dimensioned_network": True,  # Special check for dimensioned flag in Wärmenetz.geojson
-            },
-            {
-                "name": "Schritt 5: Erzeugermix auslegen und berechnen",
-                "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
-                "required_files": [
-                    "Ergebnisse/calculated_heat_generation.csv",
-                    ["Ergebnisse/Ergebnisse.parquet", "Ergebnisse/Ergebnisse.json"],
-                ],
-            },
-        ]
+        # Steps of the progress tracker (UT-M14: names, tabs, no street download step)
+        self.process_steps = default_process_steps()
+
+        # Edits in the building table not saved yet; saved when the user leaves the tab (UT-M13)
+        self.table_modified = False
 
         # Connect signals and initialize (only after view is set)
         self.folder_manager.project_folder_changed.connect(self.on_variant_folder_changed)
@@ -237,6 +202,10 @@ class ProjectPresenter:
         """
         if self.view:
             self.view.treeView.doubleClicked.connect(self.on_tree_view_double_clicked)
+            table = self.view.csvTable
+            table.itemChanged.connect(self._mark_table_modified)
+            table.model().rowsInserted.connect(self._mark_table_modified)
+            table.model().rowsRemoved.connect(self._mark_table_modified)
 
             # Synchronise CRS selector with current project CRS and listen for changes
             self.view.set_crs(self.folder_manager.project_crs)
@@ -248,10 +217,36 @@ class ProjectPresenter:
             self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
             self.view.year_spinbox.valueChanged.connect(self.folder_manager.set_calculation_year)
 
+            # VDI 4655 climate zone and persons per household (UT-H9)
+            self._show_vdi4655_settings()
+            self.view.climate_zone_combo.currentIndexChanged.connect(
+                lambda _index: self.folder_manager.set_climate_zone(self.view.climate_zone_combo.currentData())
+            )
+            self.view.persons_spinbox.valueChanged.connect(self.folder_manager.set_persons_per_household)
+            self.folder_manager.settings_changed.connect(self._show_vdi4655_settings)
+
             # Initial update after view is available
             if self.folder_manager.variant_folder:
                 self.on_variant_folder_changed(self.folder_manager.variant_folder)
             self.update_progress_tracker()
+
+    def _mark_table_modified(self, *_args):
+        self.table_modified = True
+
+    def save_if_modified(self) -> bool:
+        """
+        Save the building table if it was edited since it was loaded or saved.
+
+        Called when the user leaves the tab: the heat demand tab shows the saved list (UT-M13).
+
+        :return: True if something was saved.
+        """
+        if not self.table_modified or not self.model.current_file_path:
+            return False
+        self.save_csv(show_dialog=False)
+        self.view.statusLabel.setText(f"Gebäudeliste gespeichert: {os.path.basename(self.model.current_file_path)}")
+        self.update_progress_tracker()
+        return True
 
     def on_variant_folder_changed(self, path):
         """
@@ -268,8 +263,19 @@ class ProjectPresenter:
                 self.view.year_spinbox.blockSignals(True)
                 self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
                 self.view.year_spinbox.blockSignals(False)
+                self._show_vdi4655_settings()
         if self.view:  # Only update progress if view exists
             self.update_progress_tracker()
+
+    def _show_vdi4655_settings(self):
+        """Show the project's climate zone and persons per household without saving them again."""
+        combo, spinbox = self.view.climate_zone_combo, self.view.persons_spinbox
+        for widget in (combo, spinbox):
+            widget.blockSignals(True)
+        combo.setCurrentIndex(max(0, combo.findData(self.folder_manager.climate_zone)))
+        spinbox.setValue(self.folder_manager.persons_per_household)
+        for widget in (combo, spinbox):
+            widget.blockSignals(False)
 
     def on_tree_view_double_clicked(self, index):
         """
@@ -519,6 +525,7 @@ class ProjectPresenter:
             for column, cell_value in enumerate(row_data):
                 item = QTableWidgetItem(cell_value)
                 self.view.csvTable.setItem(row, column, item)
+        self.table_modified = False
 
     def save_csv(self, show_dialog=True):
         """
@@ -545,6 +552,7 @@ class ProjectPresenter:
             self.model.current_file_path = file_path
         try:
             self.model.save_csv(file_path, headers, data)
+            self.table_modified = False
             if show_dialog:
                 self.view.show_message("Erfolg", f"CSV-Datei wurde in {file_path} gespeichert.")
         except Exception as e:
@@ -576,21 +584,8 @@ class ProjectPresenter:
         :param show_dialog: Show file dialog if True.
         :type show_dialog: bool
         """
-        headers = [
-            "Land",
-            "Bundesland",
-            "Stadt",
-            "Adresse",
-            "Wärmebedarf",
-            "Gebäudetyp",
-            "Subtyp",
-            "WW_Anteil",
-            "Typ_Heizflächen",
-            "VLT_max",
-            "Steigung_Heizkurve",
-            "RLT_max",
-            "Normaußentemperatur",
-        ]
+        # The one building template, also used by the import (UT-M13: the heat demand tab had its own)
+        headers = [name for name, *_ in TARGET_COLUMNS]
         default_data = [""] * len(headers)
         if not fname:
             fname = os.path.join(
@@ -780,13 +775,35 @@ class ProjectPresenter:
             self.load_csv(fname)
             # Update the progress tracker to refresh CSV status (should now show "mit Koordinaten")
             self.update_progress_tracker()
-            all_found, message = format_geocoding_summary(summary)
-            if all_found:
+            self._mark_geocoding_findings(summary)
+            all_fine, message = format_geocoding_summary(summary)
+            if all_fine:
                 self.view.show_message("Geocoding erfolgreich", message)
             else:
-                QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", message)
+                QMessageBox.warning(self.view, "Geocoding: Bitte Ergebnis prüfen", message)
             if _same_file(fname, self._building_csv_path()):
                 self._check_coordinates_fit_crs()
+
+    #: Row colours after geocoding: not found / imprecise or shared point (translucent for both themes)
+    NOT_FOUND_COLOUR = QColor(220, 50, 50, 80)
+    IMPRECISE_COLOUR = QColor(240, 160, 0, 80)
+
+    def _mark_geocoding_findings(self, summary):
+        """Colour the table rows whose geocoding needs a look; the note is their tooltip (UT-H6)."""
+        not_found = {item["number"] for item in summary.get("not_found", [])}
+        table = self.view.csvTable
+        for number, note in geocoding_row_notes(summary).items():
+            row = number - 1
+            if not 0 <= row < table.rowCount():
+                continue
+            colour = self.NOT_FOUND_COLOUR if number in not_found else self.IMPRECISE_COLOUR
+            for column in range(table.columnCount()):
+                item = table.item(row, column)
+                if item is None:
+                    item = QTableWidgetItem("")
+                    table.setItem(row, column, item)
+                item.setBackground(colour)
+                item.setToolTip(note)
 
     def on_geocode_error(self, error_message):
         """
@@ -822,9 +839,17 @@ class ProjectPresenter:
         if not self.view:  # Skip if view not available yet
             return
 
-        csv_status, overall_progress = evaluate_process_steps(self.model.base_path, self.process_steps)
+        fm = self.folder_manager
+        climate = climate_settings(
+            getattr(fm, "try_filename", None),
+            getattr(fm, "calculation_year", None),
+            getattr(fm, "climate_zone", DEFAULT_CLIMATE_ZONE),
+            getattr(fm, "persons_per_household", None),
+        )
+        csv_status, overall_progress = evaluate_process_steps(self.model.base_path, self.process_steps, climate)
 
         self.view.update_progress(overall_progress, csv_status=csv_status)
+        self.view.set_outdated(outdated_summary(self.process_steps))
         self.view.set_process_steps(self.process_steps)
 
 
@@ -881,6 +906,13 @@ class ProjectTabView(QWidget):
 
         self.leftLayout.addLayout(self.progressLayout)
 
+        # Results that no longer fit their inputs (UT-H10)
+        self.outdated_label = QLabel("")
+        self.outdated_label.setWordWrap(True)
+        self.outdated_label.setStyleSheet("font-weight: bold; color: #e65100;")
+        self.outdated_label.setVisible(False)
+        self.leftLayout.addWidget(self.outdated_label)
+
         # CSV-Status oben
         self.csv_status_label = QLabel("❓ Quartier IST.csv: Status unbekannt")
         self.csv_status_label.setStyleSheet(
@@ -916,6 +948,26 @@ class ProjectTabView(QWidget):
         year_row.addWidget(self.year_spinbox)
         year_row.addStretch()
         self.leftLayout.addLayout(year_row)
+
+        # VDI 4655 parameters of the project (UT-H9: were fixed to zone 9 / 2 persons)
+        climate_row = QHBoxLayout()
+        climate_row.addWidget(QLabel("Klimazone (VDI 4655):"))
+        self.climate_zone_combo = QComboBox()
+        for zone in CLIMATE_ZONES:
+            self.climate_zone_combo.addItem(climate_zone_label(zone), userData=zone)
+        self.climate_zone_combo.setToolTip(
+            "Klimazone für die Lastprofile nach VDI 4655 (EFH/MFH) – die TRY-Region des Deutschen\n"
+            "Wetterdienstes, in der das Quartier liegt. Für BDEW-Gebäudetypen ohne Bedeutung."
+        )
+        climate_row.addWidget(self.climate_zone_combo)
+        climate_row.addWidget(QLabel("Personen je Haushalt:"))
+        self.persons_spinbox = QSpinBox()
+        self.persons_spinbox.setRange(1, 10)
+        self.persons_spinbox.setFixedWidth(60)
+        self.persons_spinbox.setToolTip("Personen je Haushalt für die Warmwasserprofile nach VDI 4655")
+        climate_row.addWidget(self.persons_spinbox)
+        climate_row.addStretch()
+        self.leftLayout.addLayout(climate_row)
 
         # Button-Bar für alle Aktionen
         button_layout = QHBoxLayout()
@@ -1143,6 +1195,11 @@ class ProjectTabView(QWidget):
             config = status_config.get(csv_status, status_config["unbekannt"])
             self.csv_status_label.setText(config["text"])
             self.csv_status_label.setStyleSheet(config["style"])
+
+    def set_outdated(self, text: str):
+        """Show which steps are outdated (empty text hides the line)."""
+        self.outdated_label.setText(text)
+        self.outdated_label.setVisible(bool(text))
 
     def showDetailsDialog(self):
         """

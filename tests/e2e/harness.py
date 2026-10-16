@@ -391,10 +391,30 @@ def start_app(size=(1600, 1000)):
     return VIEW
 
 
-def new_project(name, parent=PROJECTS):
-    """Welcome screen -> 'Neues Projekt erstellen' (parent folder + name dialogs)."""
-    FILE_ANSWERS.append(parent)
-    INPUT_ANSWERS.append((name, True))
+def new_project(name, parent=PROJECTS, place=None, buildings="manual"):
+    """
+    Welcome screen -> 'Neues Projekt erstellen': the assistant with name and folder.
+
+    :param place: ``(lat, lon, name)`` taken as the found place on the location page (no
+        Nominatim lookup), or None to skip the page as a user may.
+    :param buildings: Source of the buildings ("import", "osm", "manual"); "manual" leaves the
+        scenario in the project tab with an empty building list.
+    """
+
+    def fill(wizard):
+        wizard.show()
+        wizard.restart()
+        wizard.project_page.folder_edit.setText(parent)
+        wizard.project_page.name_edit.setText(name)
+        wizard.next()
+        if place:
+            wizard.location_page.set_place(*place)
+        wizard.next()
+        wizard.buildings_page.buttons[buildings].setChecked(True)
+        log("STATE", "new-project assistant", wizard.choice())
+        wizard.hide()
+
+    DIALOG_HANDLERS["NewProjectWizard"] = [fill]
     VIEW.welcome_screen.new_project_clicked()
     pump(2)
     return os.path.join(parent, name)

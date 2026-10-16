@@ -6,56 +6,17 @@ Dialog windows for user input and configuration.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
-import re
-
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
 
+from districtheatingsim.utilities.project_location import (
+    DWD_TRY_URL,
+    TRY_DISTANCE_WARNING_KM,
+    distance_km,
+    format_location,
+    try_location,
+)
 from districtheatingsim.utilities.utilities import DEFAULT_COP_RESOURCE, DEFAULT_TRY_RESOURCE, get_resource_path
-
-
-def _extract_try_location(path: str) -> str:
-    """
-    Extract the geographic location from a TRY file path.
-
-    Tries two methods in order:
-    1. Filename pattern ``TRY????_LLLLLLWWWWWW_*.dat`` (lat = LLLLLL/10000, lon = WWWWWW/10000)
-    2. File header ``Rechtswert`` / ``Hochwert`` lines → convert EPSG:3034 (LCC) → WGS84
-
-    :param path: Path to the TRY .dat file
-    :type path: str
-    :return: Human-readable location string, e.g. ``"51.1676 °N, 14.4222 °E"``
-    :rtype: str
-    """
-    # 1. Filename-based extraction
-    m = re.search(r"_(\d{6})(\d{6})_", os.path.basename(path))
-    if m:
-        lat = int(m.group(1)) / 10000
-        lon = int(m.group(2)) / 10000
-        return f"{lat:.4f} °N, {lon:.4f} °E"
-
-    # 2. Header-based extraction (Lambert Conformal Conic → WGS84)
-    try:
-        rw = hw = None
-        with open(path, encoding="latin-1", errors="replace") as f:
-            for line in f:
-                if line.startswith("Rechtswert"):
-                    rw = float(line.split(":")[1].split()[0])
-                elif line.startswith("Hochwert"):
-                    hw = float(line.split(":")[1].split()[0])
-                if rw is not None and hw is not None:
-                    break
-        if rw is not None and hw is not None:
-            from pyproj import Transformer
-
-            t = Transformer.from_crs("EPSG:3034", "EPSG:4326", always_xy=True)
-            lon, lat = t.transform(rw, hw)
-            return f"{lat:.4f} °N, {lon:.4f} °E"
-    except Exception:
-        pass
-
-    return ""
 
 
 class TemperatureDataDialog(QDialog):
@@ -74,6 +35,7 @@ class TemperatureDataDialog(QDialog):
         :type parent: QWidget, optional
         """
         super().__init__(parent)
+        self.project_location = None  # (lat, lon) of the project, set before showing the dialog
         self.initUI()
 
     def initUI(self):
@@ -83,20 +45,21 @@ class TemperatureDataDialog(QDialog):
         .. note::
            Creates description label with DWD link, file input field with default TRY path, and OK/Cancel buttons.
         """
-        self.setWindowTitle("Testreferenzjahr-Datei auswählen")
+        self.setWindowTitle("Klimadaten (Testreferenzjahr) auswählen")
         self.resize(600, 200)
 
         self.main_layout = QVBoxLayout(self)
 
         # Description label with DWD link
         self.descriptionLabel = QLabel(
-            "Bitte wählen Sie die Datei des Testreferenzjahres (TRY) aus, die Sie verwenden möchten.<br>"
-            "Testreferenzjahre können unter <a href='https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html'>"
-            "https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html</a> bezogen werden.<br>"
-            "Es ist jedoch eine Registrierung beim DWD notwendig",
+            "Bitte wählen Sie die Datei des Testreferenzjahres (TRY) für den Standort des Projekts.<br>"
+            "Mitgeliefert ist nur ein TRY für die Oberlausitz (51,17° N, 14,42° O). Testreferenzjahre für "
+            f"jeden Ort in Deutschland erhalten Sie kostenlos beim Deutschen Wetterdienst: "
+            f"<a href='{DWD_TRY_URL}'>{DWD_TRY_URL}</a> (Registrierung nötig).",
             self,
         )
         self.descriptionLabel.setWordWrap(True)
+        self.descriptionLabel.setOpenExternalLinks(True)
         self.descriptionLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.descriptionLabel)
 
@@ -135,13 +98,31 @@ class TemperatureDataDialog(QDialog):
 
         self.main_layout.addLayout(self.buttonLayout)
 
+    def set_project_location(self, location):
+        """
+        Show the distance of the TRY to the project (UT-H9).
+
+        :param location: ``(lat, lon)`` of the project, or None if unknown.
+        """
+        self.project_location = location
+        self._update_location_label(self.temperatureDataFileInput.text())
+
     def _update_location_label(self, path: str):
         """Update the location label from the given TRY file path."""
-        loc = _extract_try_location(path) if path else ""
-        if loc:
-            self.locationLabel.setText(f"Standort: {loc}")
-        else:
+        point = try_location(path) if path else None
+        if point is None:
             self.locationLabel.setText("")
+            return
+        text = f"Standort des TRY: {format_location(*point)}"
+        style = ""
+        if self.project_location is not None:
+            distance = distance_km(point, self.project_location)
+            text += f" – {distance:.0f} km vom Projektstandort ({format_location(*self.project_location)})"
+            if distance > TRY_DISTANCE_WARNING_KM:
+                text += "\nDieses TRY passt nicht zum Projekt."
+                style = "color: #c62828; font-weight: bold;"
+        self.locationLabel.setText(text)
+        self.locationLabel.setStyleSheet(style)
 
     def selectFilename(self, lineEdit):
         """

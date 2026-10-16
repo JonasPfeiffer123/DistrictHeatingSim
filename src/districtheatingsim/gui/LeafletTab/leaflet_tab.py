@@ -25,7 +25,7 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QFileDialog, QMenuBar, QMessageBox, QProgressBar, QVBoxLayout, QWidget
 from shapely.geometry import Point
 
-from districtheatingsim.geocoding.geocoding import format_geocoding_summary
+from districtheatingsim.geocoding.geocoding import format_geocoding_summary, geocoding_row_notes
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
@@ -432,7 +432,8 @@ class VisualizationPresenter(QObject):
             # Cooperative stop (waits for the current run to finish) instead of
             # terminate(), which can kill the thread mid-write and truncate the CSV.
             self.geocodingThread.stop()
-        self.geocodingThread = GeocodingThread(inputfilename)
+        # In the project CRS: without it the map tab geocoded into EPSG:25833 (BACKLOG UT-K2/UT-H6)
+        self.geocodingThread = GeocodingThread(inputfilename, project_crs=self.folder_manager.project_crs)
         self.geocodingThread.calculation_done.connect(self.on_geocode_done)
         self.geocodingThread.calculation_error.connect(self.on_geocode_error)
         self.geocodingThread.start()
@@ -452,13 +453,44 @@ class VisualizationPresenter(QObject):
         self.view.progressBar.setRange(0, 1)
 
         fname, summary = result
-        all_found, message = format_geocoding_summary(summary)
-        if all_found:
+        all_fine, message = format_geocoding_summary(summary)
+        if all_fine:
             QMessageBox.information(self.view, "Geocoding erfolgreich", message)
         else:
-            QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", message)
+            QMessageBox.warning(self.view, "Geocoding: Bitte Ergebnis prüfen", message)
 
         self.load_csv_coordinates(fname)
+        self._mark_geocoding_findings(summary)
+
+    #: Map layer that marks the buildings placed only on the street/town or on a shared point (UT-H6)
+    GEOCODING_LAYER = "Geocoding prüfen"
+
+    def _mark_geocoding_findings(self, summary):
+        """Show the geocoded buildings that need a look as a point layer on the map."""
+        notes = geocoding_row_notes(summary)
+        located = {}
+        for key in ("street_only", "town_only"):
+            for item in summary.get(key, []):
+                located[item["number"]] = item
+        for group in summary.get("same_point", []):
+            for item in group:
+                located[item["number"]] = item
+        points = [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [item["x"], item["y"]]},
+                "properties": {"Nr.": number, "Adresse": item["address"], "Hinweis": notes.get(number, "")},
+            }
+            for number, item in sorted(located.items())
+        ]
+        if not points:
+            return
+        layer = {
+            "type": "FeatureCollection",
+            "crs": {"type": "name", "properties": {"name": self.folder_manager.project_crs}},
+            "features": points,
+        }
+        self.view.web_view.page().runJavaScript(f"window.importGeoJSON({json.dumps(layer)}, '{self.GEOCODING_LAYER}');")
 
     def on_geocode_error(self, error_message):
         """
@@ -660,11 +692,20 @@ class VisualizationPresenter(QObject):
             return
         network_path = os.path.join(base_path, "Wärmenetz", "Wärmenetz.geojson")
         if not os.path.exists(network_path):
-            return  # no network generated yet — nothing to auto-load
+            self._center_map_on_project()  # no network yet: at least show the project's place
+            return
         try:
             self.add_geojson_layer([network_path])
         except Exception:
             logger.exception("Automatisches Laden des Wärmenetzes fehlgeschlagen: %s", network_path)
+
+    def _center_map_on_project(self):
+        """Center the map on the project location; it always opened over Görlitz (UT-H9)."""
+        location_of = getattr(self.folder_manager, "project_location", None)
+        location = location_of() if location_of else None
+        if location is not None:
+            lat, lon = location
+            self.view.web_view.page().runJavaScript(f"window.map && window.map.setView([{lat}, {lon}], 15);")
 
     def _reload_network_on_map(self, path):
         """Reload the empty map and re-display the (corrected) network once, avoiding duplicates."""
@@ -970,6 +1011,9 @@ class VisualizationPresenter(QObject):
         dialog = DownloadOSMDataDialog(
             self.model.base_path, self.config_manager, self.view, self, project_crs=self.folder_manager.project_crs
         )
+        location = getattr(self.folder_manager, "location", None)
+        if location and location.get("name"):
+            dialog.cityLineEdit.setText(location["name"])  # the place given when the project was created
         dialog.setVisualizationTab(self)
         dialog.show()  # Non-modal dialog - allows map interaction
         dialog.raise_()
