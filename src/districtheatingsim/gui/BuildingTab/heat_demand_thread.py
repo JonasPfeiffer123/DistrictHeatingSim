@@ -10,7 +10,6 @@ window for the whole calculation (BACKLOG G6). The work itself is in ``compute_a
 which touches no widgets and is unit-testable without a ``QThread``.
 """
 
-import traceback
 from collections import namedtuple
 
 import pandas as pd
@@ -19,6 +18,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from districtheatingsim.gui.utilities import convert_to_serializable
 from districtheatingsim.heat_requirement.building_profiles_io import write_building_profiles
 from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
+from districtheatingsim.utilities.error_messages import report_error
 from districtheatingsim.utilities.project_location import DEFAULT_CLIMATE_ZONE, DEFAULT_PERSONS_PER_HOUSEHOLD
 
 HeatDemandResult = namedtuple(
@@ -215,8 +215,7 @@ class HeatDemandThread(QThread):
             )
             self.calculation_done.emit(outcome)
         except Exception as e:
-            tb = traceback.format_exc()
-            self.calculation_error.emit(f"Es ist ein Fehler aufgetreten: {e}\n\nDetails:\n{tb}")
+            self.calculation_error.emit(report_error(e, "Die Berechnung der Gebäudelastgänge"))
 
     def stop(self):
         """

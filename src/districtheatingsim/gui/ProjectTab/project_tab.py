@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMenu,
     QMessageBox,
@@ -888,6 +889,12 @@ class ProjectTabView(QWidget):
         self.treeView = QTreeView()
         self.treeView.setModel(self.model)
         self.treeView.setMinimumWidth(500)
+        # The name column takes the free width; it was cut to "Definit…" (UT-N)
+        header = self.treeView.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        for column in range(1, 4):
+            header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
         self.treeView.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Projektfortschritt oben
@@ -896,6 +903,8 @@ class ProjectTabView(QWidget):
         self.progressLayout.addWidget(self.progressLabel)
 
         self.projectProgressBar = QProgressBar(self)
+        # The percentage stands in the label: on the blue bar it was hardly readable (UT-N)
+        self.projectProgressBar.setTextVisible(False)
         self.progressLayout.addWidget(self.projectProgressBar)
 
         # Details Button
@@ -1171,6 +1180,7 @@ class ProjectTabView(QWidget):
         :type csv_status: str
         """
         self.projectProgressBar.setValue(int(progress))
+        self.progressLabel.setText(f"Projektfortschritt: {progress:.0f} %")
         if csv_status is not None:
             # Define status with icons and colors
             status_config = {

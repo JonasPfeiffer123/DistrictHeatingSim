@@ -328,8 +328,12 @@ class ProjectFolderManager(QObject):
         self.project_folder = path
         self.config_manager.set_last_project(self.project_folder)
 
-        # Validate and set variant folder
-        if not self.variant_folder or not os.path.exists(self.variant_folder):
+        # Validate and set variant folder: a variant of the previous project used to stay active
+        # (and was announced with the new project's settings) until the caller switched it
+        inside = self.variant_folder and os.path.normcase(
+            os.path.dirname(os.path.normpath(self.variant_folder))
+        ) == os.path.normcase(os.path.normpath(path))
+        if not inside or not os.path.exists(self.variant_folder):
             self.variant_folder = os.path.join(self.project_folder, DEFAULT_VARIANT_NAME)
 
         # Load per-project settings (CRS, …)

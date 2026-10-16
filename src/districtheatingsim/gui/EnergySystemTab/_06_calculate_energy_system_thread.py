@@ -8,9 +8,10 @@ Thread for calculating heat generation mix in district heating simulation, runni
 """
 
 import copy
-import traceback
 
 from PyQt6.QtCore import QThread, pyqtSignal
+
+from districtheatingsim.utilities.error_messages import report_error
 
 
 def run_energy_system_calculation(energy_system, optimize, weights):
@@ -77,9 +78,8 @@ class CalculateEnergySystemThread(QThread):
             self.calculation_done.emit(result)
 
         except Exception as e:
-            tb = traceback.format_exc()
-            error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
-            self.calculation_error.emit(error_message)
+            action = "Die Optimierung des Erzeugermix" if self.optimize else "Die Berechnung des Erzeugermix"
+            self.calculation_error.emit(report_error(e, action))
 
     def stop(self):
         """

@@ -141,7 +141,7 @@ class AqvaHeat(HeatPump):
             "WGK": WGK_Abwärme,
             "spec_co2_total": self.spec_co2_total,  # tCO2/MWh_heat
             "primärenergie": self.primärenergie,
-            "color": "blue",
+            "color": "teal",  # not the river heat pump's blue (UT-M7)
         }
 
         return results

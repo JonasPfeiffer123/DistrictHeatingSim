@@ -29,6 +29,22 @@ from districtheatingsim.utilities.schema import add_meta, check_version
 logger = logging.getLogger(__name__)
 
 
+_UNITS = {"kW": "kW", "kWh": "kWh", "MWh": "MWh", "°C": "°C", "%": "%", "m3": "m³", "bar": "bar"}
+
+
+def _quantity_label(var_name: str) -> str:
+    """'Wärmeleistung_kW' -> 'Wärmeleistung (kW)', 'Speicher_SOC_%' -> 'Speicher SOC (%)'."""
+    parts = [part for part in var_name.split("_") if part]
+    unit = None
+    if parts and parts[-1] in _UNITS:
+        unit = _UNITS[parts.pop()]
+    if parts and parts[-1] == "L":  # the app's suffix for hourly time series ("Wärmeleistung_L")
+        parts.pop()
+    parts = [{"el": "elektrische", "th": "thermische"}.get(part, part) for part in parts]
+    text = " ".join(parts) or var_name
+    return f"{text} ({unit})" if unit else text
+
+
 class EnergySystem:
     """
     Multi-technology district heating system integration.
@@ -476,11 +492,18 @@ class EnergySystem:
         # Extract data using the explicit get_plot_data() interface instead of dir()
         # to avoid picking up inherited attributes and internal helpers.
         self.extracted_data = {}
+        self.plot_labels = {"Last_L": "Wärmebedarf (kW)"}
         for tech_class in self.technologies:
             for var_name, var_value in tech_class.get_plot_data().items():
+                # On/off masks are no quantities to plot; the list showed them as "BHKW_1_betrieb_mask" (UT-M10)
+                if np.asarray(var_value).dtype == bool:
+                    continue
                 if len(var_value) == len(self.time_steps):
                     unique_var_name = f"{tech_class.name}_{var_name}"
                     self.extracted_data[unique_var_name] = var_value
+                    self.plot_labels[unique_var_name] = (
+                        f"{tech_class.name.replace('_', ' ')}: {_quantity_label(var_name)}"
+                    )
 
         # Add storage data
         if self.storage:
@@ -514,6 +537,9 @@ class EnergySystem:
             # Add unmet demand to extracted data structure if index was found
             if unmet_demand_index is not None:
                 self.extracted_data["Ungedeckter_Bedarf_kW"] = self.results["Wärmeleistung_L"][unmet_demand_index]
+
+        for key in self.extracted_data:
+            self.plot_labels.setdefault(key, _quantity_label(key))
 
         # Initial selection
         self.initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
@@ -572,11 +598,9 @@ class EnergySystem:
         line_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
         def _clean_label(var: str) -> str:
-            """Strip internal suffixes for display in legend."""
-            label = var.replace("_Wärmeleistung", "")
-            label = label.replace("_kW", " (kW)").replace("_%", " (%)")
-            label = label.replace("_°C", " (°C)")
-            return label
+            """Display name of a plotted variable (the heat output of a technology: just its name)."""
+            label = getattr(self, "plot_labels", {}).get(var) or _quantity_label(var)
+            return label.replace(": Wärmeleistung (kW)", "")
 
         stackplot_data = []
         stackplot_labels = []
@@ -676,9 +700,12 @@ class EnergySystem:
         if "Last_L" in selected_vars:
             y_data_ax1.append(np.asarray(self.results["Last_L"]))
         if y_data_ax1:
-            y_min = min(arr.min() for arr in y_data_ax1)
-            y_max = max(arr.max() for arr in y_data_ax1)
-            ax_main.set_ylim(y_min, y_max)
+            # From 0 (or below for storage charging): starting at the smallest value hid a 150 kW CHP
+            # that runs all year (UT-M10); the stacked heat outputs need the summed maximum
+            y_min = min(0.0, min(float(np.nanmin(arr)) for arr in y_data_ax1))
+            stacked = np.sum([np.asarray(arr, dtype=float) for arr in stackplot_data], axis=0) if stackplot_data else 0
+            y_max = max(float(np.nanmax(stacked)), max(float(np.nanmax(arr)) for arr in y_data_ax1))
+            ax_main.set_ylim(y_min, y_max * 1.05 if y_max > 0 else 1.0)
         if ax2:
             y_data_ax2 = []
             for var_name in line_vars:
@@ -1062,8 +1089,8 @@ class EnergySystemOptimizer:
 
         if not has_optimization_params:
             raise ValueError(
-                "No optimization parameters available. Energy system optimization requires "
-                "technologies with configurable parameters (e.g., capacity, storage volume)."
+                "Keine Optimierung möglich: Keine der Erzeugeranlagen hat einstellbare Größen mit Grenzen "
+                "(z. B. Leistung, Kollektorfläche oder Speichervolumen mit min./max. Wert)."
             )
 
         for restart in range(self.num_restarts):

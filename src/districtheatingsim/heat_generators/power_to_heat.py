@@ -258,7 +258,7 @@ class PowerToHeat(BaseHeatGenerator):
             "Betriebsstunden_pro_Start": self.Betriebsstunden_pro_Start,
             "spec_co2_total": self.spec_co2_total,
             "primärenergie": self.primärenergie,
-            "color": "saddlebrown",  # Visualization color coding
+            "color": "mediumpurple",  # not the gas boiler's brown (UT-M7)
         }
 
         return results

@@ -679,7 +679,7 @@ def create_network(
         junction_dict_vl,
         pipe_creation_mode,
         diameter_mm if pipe_creation_mode == "diameter" else pipetype,
-        "flow line",
+        "Vorlauf",
     )
     create_pipes(
         net,
@@ -687,7 +687,7 @@ def create_network(
         junction_dict_rl,
         pipe_creation_mode,
         diameter_mm if pipe_creation_mode == "diameter" else pipetype,
-        "return line",
+        "Rücklauf",
     )
 
     # Create heat consumers
@@ -695,7 +695,7 @@ def create_network(
         net,
         get_line_coords_and_lengths(gdf_heat_exchanger)[0],
         {**junction_dict_vl, **junction_dict_rl},
-        "heat consumer",
+        "Hausanschluss",
     )
 
     # Create heat producers

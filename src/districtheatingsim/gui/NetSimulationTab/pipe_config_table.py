@@ -39,6 +39,20 @@ logger = logging.getLogger(__name__)
 _CHANGED_ROW_COLOR = "#fff3cd"
 
 
+#: German names for the pipe names of nets initialised before UT-M2 ("flow line 3" -> "Vorlauf 3")
+_PIPE_NAME_PREFIXES = {"flow line": "Vorlauf", "return line": "Rücklauf", "heat consumer": "Hausanschluss"}
+
+
+def pipe_display_name(name, index) -> str:
+    """Name of a pipe in the table, German also for nets saved with the English names."""
+    if not isinstance(name, str) or not name:
+        return f"Leitung {index}"
+    for english, german in _PIPE_NAME_PREFIXES.items():
+        if name.startswith(english):
+            return german + name[len(english) :]
+    return name
+
+
 class PipeConfigTable(QWidget):
     """
     Pipe configuration table with editable std_type, diameter, and roughness.
@@ -277,7 +291,7 @@ class PipeConfigTable(QWidget):
                 return item
 
             self._table.setItem(row, 0, ro(idx))
-            self._table.setItem(row, 1, ro(pipe_data.get("name", f"Pipe {idx}")))
+            self._table.setItem(row, 1, ro(pipe_display_name(pipe_data.get("name"), idx)))
             self._table.setItem(row, 2, ro(f"J{pipe_data['from_junction']}"))
             self._table.setItem(row, 3, ro(f"J{pipe_data['to_junction']}"))
             self._table.setItem(row, 4, ro(f"{pipe_data['length_km'] * 1000:.1f}"))

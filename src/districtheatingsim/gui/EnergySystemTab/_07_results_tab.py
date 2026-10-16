@@ -195,7 +195,7 @@ class ResultsTab(QWidget):
         self.variableComboBox = CheckableComboBox()
         self.variableComboBox.view().pressed.connect(self.updateSelectedVariables)
 
-        self.secondYAxisCheckBox = QCheckBox("Second y-Axis")
+        self.secondYAxisCheckBox = QCheckBox("Zweite y-Achse für Linien")
         self.secondYAxisCheckBox.stateChanged.connect(self.updateSelectedVariables)
 
         self.variableSelectionLayout.addWidget(self.variableComboBox)
@@ -447,17 +447,19 @@ class ResultsTab(QWidget):
         """
         extracted_data, initial_vars = self.energy_system.getInitialPlotData()
 
+        # The list shows readable names ("BHKW 1: Wärmeleistung (kW)"), not the internal keys (UT-M10)
+        labels = getattr(self.energy_system, "plot_labels", {})
+        self._plot_keys = {labels.get(key, key): key for key in [*extracted_data.keys(), "Last_L"]}
         model = self.variableComboBox.model()
         combo_items = [model.item(i).text() for i in range(model.rowCount())]
-        if set(extracted_data.keys()) != set(combo_items):
+        if list(self._plot_keys) != combo_items:
             self.variableComboBox.clear()
-            self.variableComboBox.addItems(extracted_data.keys())
-            self.variableComboBox.addItem("Last_L")
+            self.variableComboBox.addItems(list(self._plot_keys))
 
         for var in initial_vars:
-            self.variableComboBox.setItemChecked(var, True)
+            self.variableComboBox.setItemChecked(labels.get(var, var), True)
 
-        self.selected_variables = self.variableComboBox.checkedItems()
+        self.selected_variables = self._checked_keys()
         self.stackPlotFigure.clear()
         self.energy_system.plot_stack_plot(
             figure=self.stackPlotFigure,
@@ -466,11 +468,16 @@ class ResultsTab(QWidget):
         )
         self.stackPlotCanvas.draw()
 
+    def _checked_keys(self) -> list:
+        """The internal keys of the variables checked in the list."""
+        keys = getattr(self, "_plot_keys", {})
+        return [keys.get(label, label) for label in self.variableComboBox.checkedItems()]
+
     def updateSelectedVariables(self):
         """
         Updates the selected variables and re-plots the diagram.
         """
-        self.selected_variables = self.variableComboBox.checkedItems()
+        self.selected_variables = self._checked_keys()
         self.stackPlotFigure.clear()
         self.energy_system.plot_stack_plot(
             figure=self.stackPlotFigure,

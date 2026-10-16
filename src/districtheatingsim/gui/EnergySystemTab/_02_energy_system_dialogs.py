@@ -381,7 +381,20 @@ class WeightDialog(QDialog):
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
+        # The dialog did not say what the weights do (UT-M15); the indicators enter unscaled
+        explanation = QLabel(
+            "Die Optimierung minimiert die gewichtete Summe\n"
+            "  Gewicht WGK × WGK (€/MWh) + Gewicht CO₂ × CO₂ (t/MWh) + Gewicht PEF × PEF.\n\n"
+            "Die Kennzahlen gehen ohne Normierung ein: WGK liegt bei etwa 100, CO₂ bei etwa 0,2 und der "
+            "Primärenergiefaktor bei etwa 1. Bei gleichen Gewichten zählen daher praktisch nur die Kosten; "
+            "damit CO₂ ähnlich stark zählt wie die Kosten, braucht es ein Gewicht in der Größenordnung von 500.",
+            self,
+        )
+        explanation.setWordWrap(True)
+        explanation.setStyleSheet("color: #555555;")
+
         layout = QVBoxLayout()
+        layout.addWidget(explanation)
         layout.addLayout(form_layout)
         layout.addWidget(self.button_box)
 

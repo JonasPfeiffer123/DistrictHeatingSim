@@ -161,11 +161,12 @@ class BadPointPressureLiftController(BasicCtrl):
         if all(net.heat_consumer["qext_w"] == 0):
             return True
 
-        # Calculate current pressure difference at worst point
-        current_dp_bar = (
-            net.res_heat_consumer["p_from_bar"].at[self.heat_consumer_idx]
-            - net.res_heat_consumer["p_to_bar"].at[self.heat_consumer_idx]
-        )
+        # The worst point is taken from the current results on every iteration. It used to be fixed
+        # when the controller was created (and per time step): after the diameter sizing the
+        # initialisation regulated a station that was no longer the worst - in Zittau another one
+        # ended at -1.09 bar, its control valve "pumping" against the return pressure (UT-M12).
+        self.dp_min, self.heat_consumer_idx = self.calculate_worst_point(net)
+        current_dp_bar = self.dp_min
 
         # Check convergence within tolerance
         dp_within_tolerance = abs(current_dp_bar - self.target_dp_min_bar) < self.tolerance

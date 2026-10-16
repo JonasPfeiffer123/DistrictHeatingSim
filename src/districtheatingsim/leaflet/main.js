@@ -108,6 +108,7 @@ if (document.getElementById('map')._leaflet_id) {
             // Add event listeners for Leaflet.Draw to prevent undefined listener errors
             map.on('draw:created', function(e) {
                 var layer = e.layer;
+                if (window.ensureDrawingLayer) window.ensureDrawingLayer();
                 
                 // Füge Layer nur zum aktiven Layer hinzu
                 if (window.activeLayer && !window.activeLayer.options.locked) {
@@ -210,7 +211,7 @@ if (document.getElementById('map')._leaflet_id) {
 
         const display = document.getElementById('coordinateDisplay');
         if (display) {
-            display.textContent = "Latitude: " + lat + ", Longitude: " + lng;
+            display.textContent = "Breite: " + lat + ", Länge: " + lng;
         }
 
         if (!clickMarker) {
@@ -261,7 +262,7 @@ if (document.getElementById('map')._leaflet_id) {
         // Reset display styling immediately
         const display = document.getElementById('coordinateDisplay');
         if (display) {
-            display.textContent = "Koordinate ausgewählt: Lat " + lat.toFixed(6) + ", Lon " + lng.toFixed(6);
+            display.textContent = "Koordinate ausgewählt: Breite " + lat.toFixed(6) + ", Länge " + lng.toFixed(6);
             display.style.backgroundColor = "#f8f9fa";
             display.style.fontWeight = "normal";
         }
@@ -368,7 +369,8 @@ if (document.getElementById('map')._leaflet_id) {
                 return; // Don't add to active layer
             }
 
-            // Normal drawing mode - add to active layer
+            // Normal drawing mode - add to the active layer (created on first use)
+            if (window.ensureDrawingLayer) window.ensureDrawingLayer();
             if (window.activeLayer && !window.activeLayer.options.locked) {
                 window.activeLayer.addLayer(layer);
                 // Setze Layer-Eigenschaften

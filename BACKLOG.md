@@ -2103,7 +2103,123 @@ IDs below are the report's IDs with a `UT-` prefix.
   middle (`ElidedLabel`, full path as tooltip); the footer labels no longer show as bands. Tests:
   `tests/test_welcome_screen.py` (no squeezed widget at 100/125/150 %).
 
-**Later stages (see the report, section 6):** UT-M1…M12, M15–M17 (M4, M17 partly done above), UT-N.
+**Stage 4 – finishing (branch `fix/anwendertest-feinschliff`):**
+- UT-M5 — cancelling "Projekt öffnen" still asked to save and then said "Projektpfad '' nicht
+  gefunden"; the project was opened before the variant was chosen, a cancelled choice left it half
+  open (and `set_project_folder` kept the previous project's variant until the caller switched).
+  **Fixed 2026-10-12:** a cancelled dialog returns at once; a folder without variants is refused as
+  "kein DistrictHeatingSim-Projekt"; the variant is chosen before the save question and the open.
+- UT-M6 — every close/switch asked to save (default "Speichern"), the save asked again ("Daten werden
+  überschrieben … keine Versionierung") and rewrote everything; re-exporting an unchanged net
+  overwrote a network generated on the map since. **Fixed 2026-10-12:** the tabs track what is unsaved
+  (project table, net computed/changed, generator results); the question appears only then and
+  names it; the save writes only those parts; "Datei → Projekt speichern" (Ctrl+S).
+- UT-M17 (rest) — switching to a variant asked which generator config to load whenever none was
+  stored (every new variant copy). **Fixed 2026-10-12:** no question; the stored config, else the most
+  recently saved one; a variant copy takes over the source's active config.
+- UT-H10 (open item) — pipe edits after the initialisation ("Neu berechnen") now give the net a new
+  stamp, so a time series computed before shows as outdated.
+  Tests: `tests/test_main_window_flows.py`; robustness scenario `cancel_open close_with_save`.
+- UT-M1 — raw, often English tracebacks ("Unknown building types: nan", "unsupported operand …
+  'NoneType'", "No optimization parameters available", "could not convert string to float").
+  **Fixed 2026-10-12:** `utilities/error_messages.py` — `report_error` logs the traceback and returns
+  "<Schritt> ist fehlgeschlagen" with cause and hint (missing/locked file, non-converged hydraulics →
+  connectivity check, missing value, …) and the log file (`logging_setup.current_log_file`); used by
+  the heat demand, net (init/recalc/time series) and generator threads; the domain messages for
+  building types and the optimisation are German; the scale factor is checked with a German message.
+- UT-M8 — the time series could be started after a failed initialisation; a missing load profile
+  in the generator tab ended in an unhandled FileNotFoundError. **Fixed 2026-10-12:** the net tab
+  starts a time series only with an initialised or loaded net; the generator tab says which load
+  profile is missing and where it comes from, other preparation errors go through `report_error`.
+- UT-M9 — "Ergebnisse als CSV exportieren…" opened no dialog and always wrote
+  `calculated_heat_generation.csv`. **Fixed 2026-10-12:** save dialog, default name with the config
+  (`calculated_heat_generation_<Konfiguration>.csv`). Tests: `tests/test_error_messages.py`.
+- UT-M7 — variant comparison: KPIs "--" until "Projekte aktualisieren" (the reset slot ran after the
+  explorer's reload on a project change and cleared the dashboard again); the energy-mix pies
+  collapsed next to a legend per pie; Power-to-Heat had the gas boiler's colour (AqvaHeat the river
+  heat pump's). **Fixed 2026-10-12:** reset connected first; the comparison reloads when its tab is
+  opened; one legend below all pies, shares written in them; `comparison_data.TECH_COLORS` /
+  `technology_color` (one colour per type, also for results saved before); PtH and AqvaHeat got
+  their own colours.
+- UT-M10 — year chart: y axis from the smallest value (a 150 kW CHP running all year was almost
+  invisible); the variable list showed internal keys ("BHKW_1_betrieb_mask"). **Fixed 2026-10-12:**
+  y axis from 0 (or the storage charging below), up to the stacked maximum; boolean masks are no
+  plot variables; readable names (`EnergySystem.plot_labels`, "BHKW 1: elektrische Leistung (kW)")
+  in the list and the legend; "Second y-Axis" → "Zweite y-Achse für Linien" (part of M2).
+- UT-M16 — sensitivity: the default gas range 30–60 €/MWh (electricity 60–120) did not contain the
+  base price 70 (150); the legend covered the 3D surfaces. **Fixed 2026-10-12:** ranges 60–140 % of
+  the base prices of the economic parameters (`price_range`, kept when the user edited them for the
+  same prices), the base price in the label; one legend below the plot. UT-N: tab name
+  "Sensivitätsuntersuchung" → "Sensitivitätsuntersuchung". Tests: `tests/test_result_charts.py`.
+- UT-M12 — the pump lift given as 1.5 bar silently became 3.3 bar; v_max = 1 m/s also for the DN20
+  house connections. **Found while fixing (2026-10-12):** the bad-point controller kept the worst
+  point it found when it was created; `run_control` after the diameter sizing therefore regulated a
+  station that was no longer the worst — in Zittau station 11 ended at **−1.09 bar** (supply 3.56 <
+  return 4.65 bar, its control valve "pumping" 0.29 kg/s against the return), the shown 3.2 bar
+  lift was not enough. **Fixed 2026-10-12:** `BadPointPressureLiftController.is_converged` takes the
+  worst point from the current results on every iteration; Zittau now needs 5.44 bar for 1.14 bar at
+  station 11 (Görlitz golden master unchanged). After the initialisation a message says the pump
+  lift (vs. the given value), why the bad-point control changed it, the differential pressure at the
+  worst station and the highest velocity with the sizing limit (`utilities.initialisation_summary`);
+  the v_max field has its unit and says it applies to all pipes. Tests:
+  `tests/test_initialisation_summary.py`.
+  **Open – needs a decision:** the 5.4 bar come from ~2 bar loss each way at 1 m/s in small pipes.
+  Sizing by velocity only (1 m/s for DN20 house connections as for mains) gives high specific
+  pressure losses in small DN; a DN-dependent limit or a pressure-loss criterion (Pa/m) would change
+  the results of every project.
+- UT-M2 — missing units and English leftovers. **Fixed 2026-10-12:** Qt's German translation is
+  installed at start (`gui/qt_translation.py`: "OK/Abbrechen/Ja/Nein", file dialogs, file tree
+  "Name/Größe/Typ/Änderungsdatum"; the e2e harness does the same); the thermal storage dialog is
+  German (labels and choices; the model keys stay the item data); units in the network
+  configuration (°C, bar, K; the pump pressure marked "Startwert") and the generator dialogs (kW,
+  €/kW, m³, °C, K, shares 0–1 — only where the code documents the unit); network plot legend and
+  parameter list German; new nets name their pipes "Vorlauf/Rücklauf/Hausanschluss n", the pipe
+  table shows older English names in German (`pipe_display_name`); map help text German.
+  Still English: the type column of the file tree ("File Folder") comes from Windows itself.
+  **To check in the next exe build:** that PyInstaller bundles `qtbase_de.qm` (otherwise the log says
+  "Deutsche Qt-Übersetzung nicht gefunden" and the buttons stay English).
+- UT-N — **fixed 2026-10-12:** "Erzeugerstandort 162" → numbered 1, 2, … as on the map; the
+  one-option combo "Importtyp" is hidden; the network preview labels UTM metres as "Rechtswert/
+  Hochwert in m"; the 85/70 °C preset is "Warmes Netz" instead of "Niedertemperaturnetz" (only "kaltes
+  Netz" is ever compared; saved nets keep working); the project tree's name column takes the free
+  width; the progress percentage is in the label, not on the blue bar; README no longer promises a
+  PDF report (the `gui_framework.rst` reference was already fixed). Tests: `tests/test_german_texts.py`.
+- UT-M3 (rest) — old layers stayed on a re-generation (every generation added another "Vorlauf/
+  HAST/Erzeugeranlagen"), and an empty "Neuer Layer (0)" sat in the list from the start.
+  **Fixed 2026-10-12:** `importGeoJSON` replaces layers of the same name (`removeLayersByName`; also
+  the building points and the "Geocoding prüfen"/"Nicht angebundene Hausanschlüsse" markers); the
+  drawing layer is created on first use as "Gezeichnete Objekte" (`ensureDrawingLayer`) instead of
+  an empty default layer, and drawing without an active layer no longer ends in an alert. Verified in
+  the map: generating the Zittau network twice gives one set of layers; drawing without an active
+  layer creates the drawing layer once.
+- UT-M11 — infrastructure costs were flat placeholders (network 2 Mio. €, planning 0.5 Mio. €) in
+  every generator calculation unless "Kosten aus geoJSON berechnen" was clicked; "T_N, F_inst,
+  F_w_insp" were not explained. **Fixed 2026-10-12:** `gui/EnergySystemTab/infrastructure_costs.py`
+  estimates the network (flow route × 1000 €/m incl. civil works) and, once the network is
+  calculated, the house stations (Σ max. heat demand × 250 €/kW); `CostTab.prefill_from_network`
+  replaces only values that still equal the placeholder (on a variant change and before every
+  generator calculation), a note below the table names the estimates and the remaining flat values,
+  the column headers explain T_N/F_inst/F_w_insp/Bedienaufwand (VDI 2067). Verified in the Zittau
+  cost tab (3,074 m route → 3.07 Mio. €). Tests: `tests/test_infrastructure_costs.py`.
+
+- UT-M15 — plausibility of the generator results. **Done 2026-10-12:** the weighting dialog explains
+  the objective. **Analysed, needs decisions (no code changed):**
+  1. *PEF rises with a CHP while CO₂ falls:* `CHP.calculate_environmental_impact` credits the
+     generated electricity for CO₂ (`co2_savings = Strommenge × co2_factor_electricity`) but not for
+     primary energy (`primärenergie = Brennstoffbedarf × primärenergiefaktor`). Consistent would be a
+     credit in both (Stromgutschrift, e.g. AGFW FW 309-1 / GEG with a displacement factor) or in
+     neither; which method and factor is a decision.
+  2. *Optimizer weights are unscaled:* the objective is `w·WGK + w·CO₂ + w·PEF` with WGK ≈ 100 €/MWh,
+     CO₂ ≈ 0.2 t/MWh, PEF ≈ 1 — equal weights optimise practically the costs only (now explained in
+     the dialog). Normalising (e.g. by the start values) would change every optimisation.
+  3. *773 m² collector with 16 m³ storage:* ~21 l/m², far below the usual 50–100 l/m² for daily
+     storage; a plausibility check (storage per m² collector, full-load hours, loss share, heat
+     density — report stage 4 "Plausibilitätsampel") or tighter optimisation bounds.
+  4. *Storage costs:* the thermal network storage defaults to 50 €/m³ (a large pit storage value) at
+     1000 m³, the generator buffer storages to 750 €/m³ — size-dependent defaults would fit both.
+
+**Later stages (see the report, section 6):** stage 4 plausibility indicators; stage 5 e2e as
+`pytest -m e2e` with mocked services, user handbook.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
