@@ -358,6 +358,11 @@ QFrame#fundingFooter {
     padding: 15px;
 }
 
+/* The footer's labels take the footer's background, not the window's (they showed as bands) */
+QFrame#fundingFooter QLabel {
+    background: transparent;
+}
+
 QLabel#fundingTitle {
     color: #2d2d2d;
     font-weight: bold;

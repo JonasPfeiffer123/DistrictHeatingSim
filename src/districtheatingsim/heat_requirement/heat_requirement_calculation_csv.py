@@ -125,7 +125,12 @@ def _german_national_holidays(year: int) -> np.ndarray:
 
 
 def generate_profiles_from_csv(
-    data: pd.DataFrame, TRY: str, calc_method: str, year: int = 2023
+    data: pd.DataFrame,
+    TRY: str,
+    calc_method: str,
+    year: int = 2023,
+    climate_zone: str = "9",
+    number_people_household: int = 2,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Generate heat demand profiles from CSV building data.
@@ -141,6 +146,10 @@ def generate_profiles_from_csv(
     :param year: Year for profile calculation (affects weekday/holiday pattern and TRY mapping),
                  defaults to 2023
     :type year: int
+    :param climate_zone: VDI 4655 climate zone ("1" … "15", the DWD TRY regions), defaults to "9"
+    :type climate_zone: str
+    :param number_people_household: VDI 4655 persons per household, defaults to 2
+    :type number_people_household: int
     :return: Tuple of (time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_W,
              supply_temp, return_temp, air_temp)
     :rtype: Tuple[np.ndarray, ...]
@@ -162,9 +171,8 @@ def generate_profiles_from_csv(
 
     holidays = _german_national_holidays(year)
 
-    climate_zone = "9"  # Climate zone 9: Germany (VDI 4655)
-    number_people_household = 2  # Number of people per household (VDI 4655)
-
+    # Project settings since UT-H9; both were fixed to zone 9 and 2 persons for every project
+    climate_zone = str(climate_zone)
     # Extract and validate CSV data
     try:
         YEU_total_heat_kWh = data["Wärmebedarf"].values.astype(float)

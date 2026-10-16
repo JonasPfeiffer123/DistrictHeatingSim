@@ -60,7 +60,7 @@ class HeatSystemPresenter:
         # Connect the model signals directly to the view updates
         self.folder_manager.project_folder_changed.connect(self.view.update_project_folder_label)
 
-    def create_new_project(self, folder_path: str, project_name: str) -> bool:
+    def create_new_project(self, folder_path: str, project_name: str, choice=None) -> bool:
         """
         Create new district heating project with standardized folder structure.
 
@@ -72,6 +72,8 @@ class HeatSystemPresenter:
         :type folder_path: str
         :param project_name: Name of project folder
         :type project_name: str
+        :param choice: Answers of the new-project assistant (CRS, location, climate data)
+        :type choice: NewProjectChoice or None
         :return: True if successful, False otherwise
         :rtype: bool
         """
@@ -79,9 +81,16 @@ class HeatSystemPresenter:
         if not folder_path or not project_name:
             return False
 
+        full_path = os.path.join(folder_path, project_name)
+        if os.path.exists(full_path):
+            # Was "[WinError 183]" from creating the folder (UT-M17)
+            self.view.show_error_message(
+                f"Im Ordner {folder_path} gibt es bereits „{project_name}“. Bitte wählen Sie einen anderen Namen."
+            )
+            return False
+
         try:
             # Create the project folder with the standardized structure
-            full_path = os.path.join(folder_path, project_name)
             create_project_structure(full_path)
 
             # Register project with folder manager
@@ -98,13 +107,16 @@ class HeatSystemPresenter:
             # Seed the standard TRY + COP data files (copied into the project) so a fresh
             # project is immediately usable, like the climate data — no need to open the dialogs.
             self.folder_manager.apply_default_data_files()
+            if choice is not None:
+                self._apply_new_project_choice(choice)
 
-            # Create initial CSV file for building data in project tab
+            # Create initial CSV file for building data in project tab (without a second success
+            # message next to the one for the project)
             csv_path = os.path.join(
                 self.folder_manager.get_variant_folder(),
                 self.config_manager.get_relative_path("current_building_data_path"),
             )
-            self.view.projectTab.presenter.create_csv(csv_path)
+            self.view.projectTab.presenter.create_csv(csv_path, show_dialog=False)
 
             return True
 
@@ -112,6 +124,18 @@ class HeatSystemPresenter:
             # Provide user-friendly error feedback
             self.view.show_error_message(f"Ein Fehler ist aufgetreten: {e}")
             return False
+
+    def _apply_new_project_choice(self, choice) -> None:
+        """Store what the new-project assistant asked for in the project settings (UT-H9)."""
+        folder_manager = self.folder_manager
+        if choice.crs and choice.crs != folder_manager.project_crs:
+            folder_manager.set_project_crs(choice.crs)
+        if choice.location is not None:
+            folder_manager.set_location(*choice.location, choice.location_name)
+        if choice.try_filename:
+            folder_manager.set_try_filename(choice.try_filename)
+        folder_manager.set_climate_zone(choice.climate_zone)
+        folder_manager.set_persons_per_household(choice.persons_per_household)
 
     def open_existing_project(self, folder_path: str) -> None:
         """

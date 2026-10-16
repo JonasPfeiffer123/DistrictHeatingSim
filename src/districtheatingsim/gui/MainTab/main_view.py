@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QAction, QFont, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
+    QDialog,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -33,6 +34,12 @@ from PyQt6.QtWidgets import (
 # up (BACKLOG G8). QtWebEngineWidgets itself is imported by the entry point before the
 # QApplication exists, as Qt requires.
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
+from districtheatingsim.gui.MainTab.new_project_wizard import (
+    BUILDINGS_IMPORT,
+    BUILDINGS_OSM,
+    NewProjectWizard,
+    new_project_summary,
+)
 from districtheatingsim.gui.MainTab.project_structure import (
     discover_variants,
     resolve_new_project_start_dir,
@@ -554,7 +561,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
         # Data Menu - External data configuration
         dataMenu = self.menubar.addMenu("Datenbasis")
-        chooseTemperatureDataAction = QAction("Temperaturdaten festlegen", self)
+        chooseTemperatureDataAction = QAction("Klimadaten (TRY) festlegen", self)
         createCOPDataAction = QAction("COP-Kennfeld festlegen", self)
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
@@ -627,6 +634,27 @@ class HeatSystemDesignGUI(QMainWindow):
         self.tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         self.tabWidget.addTab(self.energySystemTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         self.tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
+        self._current_tab = self.tabWidget.currentWidget()
+        self.tabWidget.currentChanged.connect(self._on_tab_changed)
+
+    def _on_tab_changed(self, index: int) -> None:
+        """
+        Keep the one building list consistent between the tabs (UT-M13).
+
+        Edits in the project tab's table are saved when the user leaves the tab, and the heat
+        demand tab shows the saved list whenever it is opened.
+        """
+        previous, self._current_tab = self._current_tab, self.tabWidget.widget(index)
+        if previous is self.projectTab:
+            try:
+                self.projectTab.presenter.save_if_modified()
+            except Exception as e:
+                logger.exception("Gebäudeliste konnte nicht gespeichert werden")
+                self.show_error_message(f"Die Gebäudeliste konnte nicht gespeichert werden:\n{e}")
+        if self._current_tab is self.buildingTab:
+            self.buildingTab.presenter.refresh_buildings()
+        elif self._current_tab is self.projectTab:
+            self.projectTab.presenter.update_progress_tracker()
 
     def initLogo(self) -> None:
         """
@@ -727,39 +755,40 @@ class HeatSystemDesignGUI(QMainWindow):
                 return  # User cancelled save operation
         # If 'discard' or 'continue', proceed without saving
 
-        # Determine parent directory for new project
-        # If no project is loaded, use a sensible default or ask user
+        # Parent folder suggested in the assistant: next to the open project, else next to the most
+        # recent one, then ~/Documents, then home (resolved by the GUI-free helper).
         if self.base_path:
             folder_path = os.path.dirname(os.path.dirname(self.base_path))
         else:
-            # No project loaded - ask the user to select a parent folder, opening the
-            # picker at a sensible location (parent of the most recent project, then
-            # ~/Documents, then home — resolved by the GUI-free helper).
             recent_projects = []
             if hasattr(self, "presenter") and self.presenter and self.presenter.folder_manager:
                 try:
                     recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects() or []
                 except Exception:
                     recent_projects = []
+            folder_path = resolve_new_project_start_dir(recent_projects)
 
-            start_dir = resolve_new_project_start_dir(recent_projects)
-            folder_path = QFileDialog.getExistingDirectory(
-                self, "Übergeordneten Ordner für neues Projekt auswählen", start_dir
-            )
+        # Name, folder, location, climate data and the source of the buildings in one go (UT-H9)
+        wizard = NewProjectWizard(folder_path, self)
+        if wizard.exec() != QDialog.DialogCode.Accepted:
+            return
+        choice = wizard.choice()
+        if not self.presenter.create_new_project(choice.parent_folder, choice.name, choice):
+            return
+        self.restoreDataFilesFromProject()
+        self._continue_with_buildings(choice)
 
-        if folder_path:
-            # Collect project name from user
-            projectName, ok = QInputDialog.getText(
-                self, "Neues Projekt", "Projektnamen eingeben:", text="Neues Projekt"
-            )
-
-            # Process project creation if user confirmed
-            if ok and projectName:
-                success = self.presenter.create_new_project(folder_path, projectName)
-                if success:
-                    QMessageBox.information(
-                        self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt."
-                    )
+    def _continue_with_buildings(self, choice) -> None:
+        """Show the new project and take the user to where its buildings come from."""
+        summary = new_project_summary(choice)
+        if choice.building_source == BUILDINGS_OSM:
+            self.tabWidget.setCurrentWidget(self.visTab2)
+            QMessageBox.information(self, "Projekt angelegt", summary)
+            return
+        self.tabWidget.setCurrentWidget(self.projectTab)
+        QMessageBox.information(self, "Projekt angelegt", summary)
+        if choice.building_source == BUILDINGS_IMPORT:
+            self.projectTab.presenter.import_csv()
 
     def on_open_existing_project(self, folder_path: str | None = None) -> None:
         """
@@ -1129,11 +1158,6 @@ class HeatSystemDesignGUI(QMainWindow):
                     self.projectTab.presenter.save_csv(show_dialog=False)
                 except Exception as e:
                     errors.append(f"ProjektTab: {str(e)}")
-            if hasattr(self, "buildingTab") and hasattr(self.buildingTab.presenter, "save_csv"):
-                try:
-                    self.buildingTab.presenter.save_csv(show_dialog=False)
-                except Exception as e:
-                    errors.append(f"BuildingTab: {str(e)}")
             # Netzdaten speichern
             if hasattr(self, "calcTab") and hasattr(self.calcTab, "saveNet"):
                 try:
@@ -1199,6 +1223,7 @@ class HeatSystemDesignGUI(QMainWindow):
         Displays dialog for TRY (Test Reference Year) selection and triggers
         system-wide temperature data update.
         """
+        self.temperatureDataDialog.set_project_location(self.presenter.folder_manager.project_location())
         if self.temperatureDataDialog.exec():
             self.updateTemperatureData()
 

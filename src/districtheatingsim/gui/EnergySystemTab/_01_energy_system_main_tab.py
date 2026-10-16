@@ -48,6 +48,14 @@ from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+from districtheatingsim.utilities.calculation_state import (
+    TIME_SERIES,
+    generation_key,
+    new_stamp,
+    read_state,
+    record,
+    stamp_id,
+)
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 
@@ -107,6 +115,7 @@ class EnergySystemTab(QWidget):
         # Drop the previous project's energy system so nothing lingers on a project change.
         self.results = {}
         self.energy_system = None
+        self.results_stamp = None
         self.techTab.tech_objects.clear()
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
@@ -428,6 +437,7 @@ class EnergySystemTab(QWidget):
             # Both formats — a leftover legacy JSON would otherwise bring the config back.
             for filepath in config_files(self._ergebnisse_dir(), name):
                 os.remove(filepath)
+            record(self.base_path, generation_key(name), None)
         except OSError as e:
             QMessageBox.critical(self, "Fehler", f"Datei konnte nicht gelöscht werden:\n{e}")
             return
@@ -486,6 +496,7 @@ class EnergySystemTab(QWidget):
 
         # Import data from the CSV file
         time_steps, waerme_ges_kW, strom_wp_kW, pump_results = import_results_csv(self.csv_filename)
+        self._calc_inputs = {TIME_SERIES: self._time_series_id_of(self.csv_filename)}
         self.TRY_data = import_TRY(self.TRY_filename)
         self.COP_data = np.genfromtxt(self.COP_filename, delimiter=";")
 
@@ -539,6 +550,16 @@ class EnergySystemTab(QWidget):
 
         self.costTab.updateInfrastructureTable()
         self.energy_system.results["infrastructure_cost"] = self.costTab.data
+
+    def _time_series_id_of(self, load_profile_csv: str) -> str | None:
+        """Id of the variant's time series if ``load_profile_csv`` is its result file (UT-H10)."""
+        series = read_state(self.base_path).get(TIME_SERIES)
+        if not series or not series.get("datei") or not load_profile_csv:
+            return None
+        written = os.path.normcase(os.path.abspath(os.path.join(self.base_path, series["datei"])))
+        if written != os.path.normcase(os.path.abspath(load_profile_csv)):
+            return None
+        return stamp_id(series)
 
     def calculate_energy_system(self, optimize=False, weights=None):
         """
@@ -601,6 +622,8 @@ class EnergySystemTab(QWidget):
         """
         self.progressBar.setRange(0, 1)
         self.energy_system = result[0]
+        # Recorded with the results when they are saved (UT-H10)
+        self.results_stamp = new_stamp(getattr(self, "_calc_inputs", {}))
 
         if self.optimize:
             self.optimized_energy_system = result[1]
@@ -862,6 +885,8 @@ class EnergySystemTab(QWidget):
                 pass
             json_filename = self._active_json_path()
             self.energy_system.save_to_file(json_filename)
+            if getattr(self, "results_stamp", None):
+                record(self.base_path, generation_key(self._active_config_name), self.results_stamp)
             # Refresh combo in case a new file was created
             self._refresh_config_combo()
             if show_dialog:
@@ -895,6 +920,7 @@ class EnergySystemTab(QWidget):
 
         try:
             self.energy_system = EnergySystem.load_from_file(json_filename)
+            self.results_stamp = read_state(self.base_path).get(generation_key(self._active_config_name))
             self.process_data()
             if show_dialog:
                 QMessageBox.information(

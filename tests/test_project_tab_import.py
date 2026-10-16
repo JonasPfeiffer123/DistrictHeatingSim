@@ -54,7 +54,7 @@ class TestBomRoundTrip:
     def test_geocoding_twice_keeps_one_bom(self, tmp_path, monkeypatch):
         from districtheatingsim.geocoding import geocoding
 
-        monkeypatch.setattr(geocoding, "get_coordinates", lambda address, to_crs=None: (486492.0, 5638274.8))
+        monkeypatch.setattr(geocoding, "locate_address", lambda address, to_crs=None: (486492.0, 5638274.8, "house"))
         path = str(tmp_path / "Quartier IST.csv")
         open(path, "w", encoding="utf-8-sig").write(HEADER + "\n" + ROW + "\n")
         for _ in range(2):
@@ -88,6 +88,7 @@ def presenter(qapp, tmp_path, monkeypatch):
         csvTable=QTableWidget(),
         update_progress=lambda *a, **k: None,
         set_process_steps=lambda *a, **k: None,
+        set_outdated=lambda *a, **k: None,
         show_message=lambda *a: None,
     )
     p = ProjectPresenter(ProjectModel(), view, folder_manager, None, config_manager)

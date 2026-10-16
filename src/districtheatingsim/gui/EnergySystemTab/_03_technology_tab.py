@@ -33,6 +33,7 @@ from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechIn
 from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import CustomGraphicsView, SchematicScene
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
+from districtheatingsim.utilities.project_location import solar_location_inputs
 
 
 class CustomListWidget(QListWidget):
@@ -261,6 +262,12 @@ class TechnologyTab(QWidget):
         :param tech_data: Technology data.
         :type tech_data: dict
         """
+        if tech_type.startswith("Solarthermie") and not tech_data:
+            # A new collector field lies at the project, not at the bundled Görlitz default (UT-H9)
+            location_of = getattr(self.data_manager, "project_location", None)
+            location = location_of() if location_of else None
+            if location is not None:
+                tech_data = solar_location_inputs(location)
         dialog = TechInputDialog(tech_type, tech_data)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             new_tech = self.createTechnology(tech_type, dialog.getInputs())

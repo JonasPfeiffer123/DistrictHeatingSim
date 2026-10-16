@@ -20,10 +20,12 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -132,6 +134,26 @@ class ThemeToggleSwitch(QCheckBox):
             painter.drawEllipse(moon_center_x - 1, moon_center_y - 4, 6, 6)
 
 
+class ElidedLabel(QLabel):
+    """One-line label that shortens its text in the middle ("C:\\Users\\…\\Görlitz") to fit its width."""
+
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self._full_text = text
+        self.setMinimumWidth(1)  # may become narrower than the text; the text is elided then
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setText(text)
+
+    def full_text(self) -> str:
+        return self._full_text
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        elided = self.fontMetrics().elidedText(self._full_text, Qt.TextElideMode.ElideMiddle, self.width())
+        if elided != self.text():
+            self.setText(elided)
+
+
 class RecentProjectWidget(QFrame):
     """
     Widget for displaying a single recent project with thumbnail and metadata.
@@ -181,10 +203,10 @@ class RecentProjectWidget(QFrame):
         name_label.setWordWrap(True)
         layout.addWidget(name_label)
 
-        # Project path (shortened)
-        path_label = QLabel(self._get_display_path())
-        # Styling handled by central QSS themes
-        path_label.setWordWrap(True)
+        # Project path: a path has no place to wrap - it was cut off at the right edge; now it is
+        # shortened in the middle to the card's width, the full path is the tooltip
+        path_label = ElidedLabel(self._get_display_path())
+        path_label.setToolTip(self._get_display_path())
         layout.addWidget(path_label)
 
         # Last modified
@@ -195,7 +217,7 @@ class RecentProjectWidget(QFrame):
 
         self.setLayout(layout)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedHeight(100)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.setMinimumWidth(200)
 
     def _get_display_path(self) -> str:
@@ -256,19 +278,32 @@ class WelcomeScreen(QWidget):
            Creates three-section layout: header with title/theme toggle, content with recent projects and quick actions, funding footer.
         """
         self.setWindowTitle("DistrictHeatingSim - Welcome")
-        self.setMinimumSize(1000, 700)
 
-        # Main layout
+        # Everything sits in a scroll area: at 125-150 % display scaling a maximised window has
+        # only ~650-800 logical pixels of height, and Qt squeezed the sections below their minimum
+        # size - buttons were cut off inside their frames and overlapped. Now the page scrolls.
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        page_scroll = QScrollArea()
+        page_scroll.setObjectName("welcomePageScroll")
+        page_scroll.setWidgetResizable(True)
+        page_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        page_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        outer_layout.addWidget(page_scroll)
+        page = QWidget()
+        page_scroll.setWidget(page)
+
+        # Main layout (compact enough to fit without scrolling at 125 % on a 1080p screen)
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(50, 40, 50, 40)
-        main_layout.setSpacing(40)
+        main_layout.setContentsMargins(40, 20, 40, 20)
+        main_layout.setSpacing(24)
 
         # Header
         self.create_header(main_layout)
 
         # Content area with better proportions
         content_layout = QHBoxLayout()
-        content_layout.setSpacing(50)
+        content_layout.setSpacing(40)
 
         # Left side - Recent Projects (60% width)
         self.create_recent_projects_section(content_layout)
@@ -283,7 +318,7 @@ class WelcomeScreen(QWidget):
 
         main_layout.addStretch(0)  # No extra stretch at bottom
 
-        self.setLayout(main_layout)
+        page.setLayout(main_layout)
 
     def create_header(self, parent_layout):
         """
@@ -296,16 +331,20 @@ class WelcomeScreen(QWidget):
            Includes main title, subtitle, introductory text, and theme toggle switch positioned top-right.
         """
         header_layout = QVBoxLayout()
-        header_layout.setSpacing(15)
+        header_layout.setSpacing(8)
 
-        # Main title
+        # Main title, with the theme switcher in the top-right corner of the same row (it used to
+        # take a row of its own)
+        title_row = QGridLayout()
         title_label = QLabel("Willkommen bei DistrictHeatingSim")
         title_font = QFont()
         title_font.setPointSize(28)
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header_layout.addWidget(title_label)
+        title_row.addWidget(title_label, 0, 0)
+        title_row.addLayout(self._create_theme_switcher(), 0, 0, Qt.AlignmentFlag.AlignRight)
+        header_layout.addLayout(title_row)
 
         # Subtitle with better description
         subtitle_label = QLabel("Professionelle Fernwärmesystem-Planung und -Analyse")
@@ -322,8 +361,10 @@ class WelcomeScreen(QWidget):
         )
         intro_text.setWordWrap(True)
         intro_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        intro_text.setMaximumWidth(600)
-        intro_text.setContentsMargins(50, 10, 50, 10)
+        # A word-wrapped label shrinks to its narrowest wrap between stretches (six lines); a
+        # minimum width keeps it at two to three lines
+        intro_text.setMinimumWidth(520)
+        intro_text.setMaximumWidth(760)
         intro_font = QFont()
         intro_font.setPointSize(11)
         intro_text.setFont(intro_font)
@@ -335,9 +376,12 @@ class WelcomeScreen(QWidget):
         intro_container.addStretch()
         header_layout.addLayout(intro_container)
 
-        # Theme switcher (moved to top-right corner)
+        parent_layout.addLayout(header_layout)
+
+    def _create_theme_switcher(self) -> QHBoxLayout:
+        """Sun - toggle - moon, for the top-right corner of the header."""
         theme_layout = QHBoxLayout()
-        theme_layout.addStretch()  # Push theme switcher to the right
+        theme_layout.setSpacing(6)
 
         theme_label = QLabel("☀️")
         theme_label.setFont(QFont("Arial", 14))
@@ -352,10 +396,7 @@ class WelcomeScreen(QWidget):
         dark_label = QLabel("🌙")
         dark_label.setFont(QFont("Arial", 14))
         theme_layout.addWidget(dark_label)
-
-        header_layout.addLayout(theme_layout)
-
-        parent_layout.addLayout(header_layout)
+        return theme_layout
 
     def create_recent_projects_section(self, parent_layout):
         """
@@ -370,7 +411,7 @@ class WelcomeScreen(QWidget):
         left_widget = QWidget()
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(20)
+        left_layout.setSpacing(12)
 
         # Section title with project count
         title_layout = QHBoxLayout()
@@ -396,7 +437,7 @@ class WelcomeScreen(QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll_area.setMinimumHeight(400)
+        scroll_area.setMinimumHeight(180)  # grows with the window; was 400 and alone filled a 125 % screen
         scroll_area.setObjectName("projectScrollArea")
 
         # Container for project widgets
@@ -426,7 +467,7 @@ class WelcomeScreen(QWidget):
         right_widget = QWidget()
         right_layout = QVBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(35)
+        right_layout.setSpacing(16)
 
         # Quick Actions
         self.create_quick_actions(right_layout)
@@ -458,7 +499,7 @@ class WelcomeScreen(QWidget):
 
         # Action buttons with descriptions
         actions_layout = QVBoxLayout()
-        actions_layout.setSpacing(20)
+        actions_layout.setSpacing(12)
 
         # New Project button with description
         new_project_container = self.create_action_button(
@@ -491,7 +532,7 @@ class WelcomeScreen(QWidget):
         container.setObjectName("actionButtonContainer")
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
         # Main button
@@ -523,7 +564,7 @@ class WelcomeScreen(QWidget):
 
         # Getting started content
         started_layout = QVBoxLayout()
-        started_layout.setSpacing(15)
+        started_layout.setSpacing(10)
 
         # Documentation link
         doc_btn = QPushButton("📖 Dokumentation öffnen")
@@ -563,7 +604,7 @@ class WelcomeScreen(QWidget):
         footer_container.setObjectName("fundingFooter")
 
         footer_layout = QHBoxLayout()
-        footer_layout.setContentsMargins(20, 15, 20, 15)
+        footer_layout.setContentsMargins(12, 6, 12, 6)  # the theme adds 15 px padding of its own
         footer_layout.setSpacing(20)
 
         # Funding logo
@@ -576,8 +617,8 @@ class WelcomeScreen(QWidget):
             if os.path.exists(logo_path):
                 logo_label = QLabel()
                 pixmap = QPixmap(logo_path)
-                # Scale the logo to a reasonable size (max height 80px)
-                scaled_pixmap = pixmap.scaledToHeight(80, Qt.TransformationMode.SmoothTransformation)
+                # Scale the logo to a reasonable size
+                scaled_pixmap = pixmap.scaledToHeight(64, Qt.TransformationMode.SmoothTransformation)
                 logo_label.setPixmap(scaled_pixmap)
                 logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 footer_layout.addWidget(logo_label)

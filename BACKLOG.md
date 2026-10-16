@@ -2014,9 +2014,96 @@ IDs below are the report's IDs with a `UT-` prefix.
   OSMnx "vollständig verbunden" without auto-snap; the MST net initialises in pandapipes (12
   consumers, 479.5 kW). Tests: `test_every_house_connection_ends_on_a_return_junction`,
   `TestUserTestH4`, `TestGenerationInputs`, `test_unconnected_buildings_are_marked_on_the_map`.
+- UT-H6 — geocoding quality not reported: the project tab dropped the summary (fixed with UT-K2),
+  and nobody said when Nominatim fell back to the street (an unknown house number) or the town, or
+  when several buildings got the same point; an empty address was sent as ", Stadt, …" and came back
+  as the town centre; the map tab geocoded into EPSG:25833 whatever the project CRS. **Fixed
+  2026-10-12:** `geocoding.locate_address` returns the match precision from Nominatim's `place_rank`
+  (`match_precision`: ≥ 28 house, 26–27 street, below town; `get_coordinates` wraps it);
+  `process_data` lists `not_found`, `street_only`, `town_only` and `same_point` groups with the table
+  row number, skips rows without address and keeps blank lines. `format_geocoding_summary` names them
+  all (capped at 15 per finding); the project tab colours the rows with the note as tooltip
+  (`geocoding_row_notes`), the map tab passes the project CRS and adds a layer "Geocoding prüfen"; the
+  producer geocoding warns when only the street/town was found. Verified with `scenario_p3_freiburg.py
+  geocode_quality corrected_data` against Nominatim: streets without number → 12 street-only, 4×
+  Vaubanallee on one point; with numbers still 2 street-only (Walter-Gropius-Straße 13,
+  Kurt-Tucholsky-Straße 9), which used to count as found. Tests: `tests/test_geocoding_quality.py`.
 
-**Later stages (see the report, section 6):** UT-H6 (geocoding quality), UT-H9 (climate
-data/location), UT-H10 (stale results), UT-M1…M17, UT-N.
+**Stage 3 – guided project start (branch `fix/anwendertest-stufe3`):**
+- UT-H9 — every project got the bundled TRY (Oberlausitz, 51.17° N / 14.42° E) and VDI 4655 climate
+  zone 9 / 2 persons per household without a hint; the solar thermal dialog was pre-filled with
+  Görlitz in mixed signs (−14.42 / +15, UT-M4: the hourly profile one hour early); the map always
+  opened over Görlitz. **Fixed 2026-10-12:** `utilities/project_location.py` (TRY location from the
+  file name or the EPSG:3034 header, distance, the 15 DWD TRY regions as `CLIMATE_ZONES`);
+  `ProjectFolderManager` stores `location`, `climate_zone`, `persons_per_household`
+  (`project_settings.json`, defaults = the former fixed values) and finds the project location
+  (stored, else the mean of the geocoded buildings); the heat demand passes zone and persons to
+  pyslpheat and asks once per project and TRY when the TRY lies more than 50 km away (DWD link);
+  the TRY dialog ("Datenbasis → Klimadaten (TRY) festlegen") shows the distance; the project tab
+  has climate zone and persons next to the year; a new solar collector takes the project location
+  (west-positive, MEZ −15) and the dialog default meridian is −15; the map opens at the project.
+  UT-M4 partly: the producer coordinate (Görlitz with one digit too many), the Bad Muskau address
+  and the street dialog's "Zittau" are gone (placeholders; the street dialog takes the project's
+  place). Tests: `tests/test_project_location.py`.
+
+- Assistant "Neues Projekt" (report section 6, stage 2) — creating a project asked for a parent
+  folder and a name only; location, CRS, climate data and the building source had to be found in
+  four places, an existing name ended in "[WinError 183]" (UT-M17) and two success messages
+  appeared (UT-N). **Done 2026-10-12:** `gui/MainTab/new_project_wizard.py` — page 1 name + folder
+  (`project_name_problem`: empty, forbidden characters, existing folder; "Weiter" stays disabled),
+  page 2 place search (`geocoding.find_place` on a worker thread) → CRS suggestion, bundled-TRY
+  check with DWD link and own TRY file, climate zone, persons per household; page 3 buildings from
+  a table import, OpenStreetMap or by hand. `HeatSystemPresenter.create_new_project(…, choice)`
+  stores the answers, refuses an existing folder itself and creates the building CSV without a
+  second message; the main window shows one summary (`new_project_summary`) and continues with
+  the import, the map (OSM guide) or the empty table. Verified with `scenario_p3_freiburg.py
+  assistant` against Nominatim (Freiburg → EPSG:25832, TRY 590 km "passt nicht", zone 12 in the
+  project tab) and `import_excel geocode_default_crs` through the assistant. Tests:
+  `tests/test_new_project_wizard.py`. Open from the report's page 3: producer location by map click
+  in the assistant, OSMnx as the default network mode.
+
+- UT-H10 — results went stale without notice: a variant copy took over every generator result, and
+  after the buildings, the load profiles or the network changed the comparison still showed the old
+  numbers. File times cannot tell: every project save rewrites the building CSV, the net files and
+  the generator results. **Fixed 2026-10-12:** `utilities/calculation_state.py` — each step records
+  a stamp when it *computes* in `<variant>/Berechnungsstand.json` (id + inputs): the load profiles
+  the fingerprint of the heat-demand columns (`building_data_fingerprint`; addresses/coordinates and
+  number formats do not count) and the climate settings, the net initialisation the profiles' id,
+  the time series the net's id and its file, each generator config the time series' id (only if it
+  read that file). `outdated_results` follows the chain; projects without stamps report nothing.
+  `project_progress.variant_outdated` adds the network check (one house connection per geocoded
+  building); the progress tracker shows "⚠ Veraltet: …" (outdated steps do not count) with the
+  reasons in the details, the comparison marks configs "(veraltet)" with the reason as tooltip.
+  Verified with `scenario_p1_zittau.py … outdated`: nothing after calculating and after "Projekt
+  speichern"; a changed building → steps 2, 4, 5 and all four configs; recomputed profiles → 4, 5.
+  Tests: `tests/test_calculation_state.py`. Open: a re-generated network or pipe edits after the
+  initialisation are not detected (the dimensioned export rewrites the network file).
+- UT-M14 — progress tracker: the street download was a required step although OSMnx loads the
+  streets itself, "Schritt 3" came twice, the texts named old tabs, the generator step only counted
+  after a CSV export (M9). **Fixed 2026-10-12:** `project_progress.default_process_steps` (five steps
+  with the app's tab names; streets mentioned for MST only; any saved generator config counts); the
+  details dialog no longer divides by zero for a step without required files.
+- UT-M13 — two building editors with different templates (project tab 13 columns, heat demand tab 18
+  with an "MFH" example); found while testing H10: "Projekt speichern" wrote the heat demand tab's
+  older table over the project tab's edits (a changed demand 462000 was back to 420000). **Fixed
+  2026-10-12:** the heat demand tab shows the project's building list read-only (no template, no
+  save; "Gebäudeliste neu laden"), reloads it when the file changed (`refresh_buildings`, on project
+  change and when the tab is opened) and is no longer saved by the project save; the project tab
+  saves its edited table when the user leaves it (`save_if_modified`); "CSV erstellen" uses the
+  import's `TARGET_COLUMNS` (incl. the optional BDEW columns). Verified: the changed building
+  survives a project save. Tests: `TestOneBuildingEditor`.
+
+- Welcome screen at 125–150 % display scaling (reported 2026-10-12, an old problem): a maximised
+  window has only ~650–800 logical pixels of height there, the screen needed ~920 (scroll list
+  minimum 400 px, a six-line intro, a row for the theme switcher, 40 px margins) and Qt squeezed the
+  sections below their minimum size — buttons cut off inside their frames, overlapping link buttons;
+  fine at 100 %. **Fixed 2026-10-12:** the page sits in a scroll area, the layout fits at 125 % on
+  1080p without scrolling (smaller margins, list minimum 180 px, intro two to three lines, theme
+  switcher in the title row), project cards size to their content and shorten the path in the
+  middle (`ElidedLabel`, full path as tooltip); the footer labels no longer show as bands. Tests:
+  `tests/test_welcome_screen.py` (no squeezed widget at 100/125/150 %).
+
+**Later stages (see the report, section 6):** UT-M1…M12, M15–M17 (M4, M17 partly done above), UT-N.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

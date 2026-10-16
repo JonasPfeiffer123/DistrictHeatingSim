@@ -19,6 +19,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from districtheatingsim.gui.utilities import convert_to_serializable
 from districtheatingsim.heat_requirement.building_profiles_io import write_building_profiles
 from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
+from districtheatingsim.utilities.project_location import DEFAULT_CLIMATE_ZONE, DEFAULT_PERSONS_PER_HOUSEHOLD
 
 HeatDemandResult = namedtuple(
     "HeatDemandResult",
@@ -28,7 +29,13 @@ HeatDemandResult = namedtuple(
 HeatDemandOutcome = namedtuple("HeatDemandOutcome", ["results", "combined_data", "json_path", "save_error"])
 
 
-def calculate_heat_demand(data: pd.DataFrame, try_filename: str, year: int = 2023) -> HeatDemandResult:
+def calculate_heat_demand(
+    data: pd.DataFrame,
+    try_filename: str,
+    year: int = 2023,
+    climate_zone: str = DEFAULT_CLIMATE_ZONE,
+    persons_per_household: int = DEFAULT_PERSONS_PER_HOUSEHOLD,
+) -> HeatDemandResult:
     """
     Calculate heat demand profiles from building data.
 
@@ -38,6 +45,8 @@ def calculate_heat_demand(data: pd.DataFrame, try_filename: str, year: int = 202
     :type try_filename: str
     :param year: Calculation year for profile generation (BDEW/VDI 4655), defaults to 2023
     :type year: int
+    :param climate_zone: VDI 4655 climate zone of the project ("1" … "15")
+    :param persons_per_household: VDI 4655 persons per household of the project
     :return: Calculated heat demand profiles in kW
     :rtype: HeatDemandResult
     """
@@ -50,7 +59,14 @@ def calculate_heat_demand(data: pd.DataFrame, try_filename: str, year: int = 202
         supply_temperature_curve,
         return_temperature_curve,
         hourly_air_temperatures,
-    ) = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz", year=year)
+    ) = generate_profiles_from_csv(
+        data=data,
+        TRY=try_filename,
+        calc_method="Datensatz",
+        year=year,
+        climate_zone=climate_zone,
+        number_people_household=persons_per_household,
+    )
 
     # Convert from W to kW
     return HeatDemandResult(
@@ -110,7 +126,14 @@ def combine_data_with_results(data: pd.DataFrame, results: dict) -> dict:
     return {str(idx): {**data_dict[idx], **results[str(idx)]} for idx in range(len(data))}
 
 
-def compute_and_save_heat_demand(data: pd.DataFrame, try_filename: str, year: int, json_path: str) -> HeatDemandOutcome:
+def compute_and_save_heat_demand(
+    data: pd.DataFrame,
+    try_filename: str,
+    year: int,
+    json_path: str,
+    climate_zone: str = DEFAULT_CLIMATE_ZONE,
+    persons_per_household: int = DEFAULT_PERSONS_PER_HOUSEHOLD,
+) -> HeatDemandOutcome:
     """
     Run the whole heat demand job: profiles → formatted results → combined data → profiles file.
 
@@ -125,11 +148,14 @@ def compute_and_save_heat_demand(data: pd.DataFrame, try_filename: str, year: in
     :type year: int
     :param json_path: Where to write the building profiles file (Parquet; ``.json`` = legacy JSON)
     :type json_path: str
+    :param climate_zone: VDI 4655 climate zone of the project
+    :param persons_per_household: VDI 4655 persons per household of the project
     :return: Results, combined data, the JSON path and the save error message (or ``None``)
     :rtype: HeatDemandOutcome
     """
     data = data.reset_index(drop=True)
-    results = format_heat_demand_results(calculate_heat_demand(data, try_filename, year), data)
+    profiles = calculate_heat_demand(data, try_filename, year, climate_zone, persons_per_household)
+    results = format_heat_demand_results(profiles, data)
     combined_data = combine_data_with_results(data, results)
     try:
         write_building_profiles(json_path, combined_data)
@@ -150,7 +176,15 @@ class HeatDemandThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, data: pd.DataFrame, try_filename: str, year: int, json_path: str):
+    def __init__(
+        self,
+        data: pd.DataFrame,
+        try_filename: str,
+        year: int,
+        json_path: str,
+        climate_zone: str = DEFAULT_CLIMATE_ZONE,
+        persons_per_household: int = DEFAULT_PERSONS_PER_HOUSEHOLD,
+    ):
         """
         Initialize the HeatDemandThread.
 
@@ -162,17 +196,23 @@ class HeatDemandThread(QThread):
         :type year: int
         :param json_path: Where to write the building profiles file (Parquet; ``.json`` = legacy JSON)
         :type json_path: str
+        :param climate_zone: VDI 4655 climate zone of the project
+        :param persons_per_household: VDI 4655 persons per household of the project
         """
         super().__init__()
         self.data = data.copy()
         self.try_filename = try_filename
         self.year = year
         self.json_path = json_path
+        self.climate_zone = climate_zone
+        self.persons_per_household = persons_per_household
 
     def run(self):
         """Run the heat demand calculation."""
         try:
-            outcome = compute_and_save_heat_demand(self.data, self.try_filename, self.year, self.json_path)
+            outcome = compute_and_save_heat_demand(
+                self.data, self.try_filename, self.year, self.json_path, self.climate_zone, self.persons_per_household
+            )
             self.calculation_done.emit(outcome)
         except Exception as e:
             tb = traceback.format_exc()

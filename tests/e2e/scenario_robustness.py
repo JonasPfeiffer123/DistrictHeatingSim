@@ -19,6 +19,7 @@ import stat
 
 import harness as H
 from PyQt6.QtGui import QCloseEvent
+from PyQt6.QtWidgets import QDialog
 
 from districtheatingsim.gui.MainTab.project_structure import create_variant_structure
 
@@ -100,10 +101,20 @@ def existing_name():
     """R3: create a project with the name of an existing one."""
     H.MSGBOX_ANSWERS.append("Ohne Speichern")
     H.open_project(ZITTAU, variant="Variante 1")
-    H.FILE_ANSWERS.append(H.PROJECTS)
-    H.INPUT_ANSWERS.append(("Zittau_Altstadt", True))
+
+    def existing(wizard):
+        page = wizard.project_page
+        page.folder_edit.setText(H.PROJECTS)
+        page.name_edit.setText("Zittau_Altstadt")
+        H.log("CHECK M17", "assistant: name taken / 'Weiter' enabled", (page.problem(), page.isComplete()))
+        H.shot(wizard, "r3_existing_name")
+        return QDialog.DialogCode.Rejected  # 'Weiter' is disabled: the user can only rename or cancel
+
+    H.DIALOG_HANDLERS["NewProjectWizard"] = [existing]
     H.MSGBOX_ANSWERS.append("Ohne Speichern")
     H.VIEW.on_create_new_project()
+    # The presenter refuses an existing folder on its own too (was "[WinError 183]")
+    H.VIEW.presenter.create_new_project(H.PROJECTS, "Zittau_Altstadt")
 
 
 def energy_without_data():
