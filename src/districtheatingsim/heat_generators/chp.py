@@ -16,6 +16,7 @@ from districtheatingsim.constants import (
     CO2_FACTOR_ELECTRICITY,
     CO2_FACTOR_GAS,
     CO2_FACTOR_WOOD,
+    PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT,
     PRIMARY_ENERGY_FACTOR_GAS,
     PRIMARY_ENERGY_FACTOR_WOOD,
 )
@@ -112,6 +113,7 @@ class CHP(BaseHeatGenerator):
             self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_GAS  # Primary energy factor for gas
 
         self.co2_factor_electricity = CO2_FACTOR_ELECTRICITY  # tCO2/MWh for grid electricity displacement
+        self.primärenergiefaktor_strom = PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT  # credit per MWh electricity
         self.Anteil_Förderung_BEW = BEW_SUBSIDY_SHARE  # BEW subsidy percentage (40%)
 
         # Initialize control strategy
@@ -375,7 +377,9 @@ class CHP(BaseHeatGenerator):
 
         .. note::
            CO2 balance: fuel emissions minus grid displacement savings.
-           Gas: 0.201 tCO2/MWh, Biomass: 0.036 tCO2/MWh
+           Gas: 0.201 tCO2/MWh, Biomass: 0.036 tCO2/MWh.
+           Primary energy: fuel minus the same electricity credit
+           (``PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT``).
         """
         # Calculate CO2 emissions from fuel consumption
         self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel  # tCO2
@@ -389,8 +393,11 @@ class CHP(BaseHeatGenerator):
         # Calculate specific CO2 emissions per unit heat generated
         self.spec_co2_total = self.co2_total / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0  # tCO2/MWh_heat
 
-        # Calculate primary energy consumption
-        self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
+        # Primary energy with the same electricity credit as the CO2 balance (Stromgutschrift):
+        # without it the PEF rose with a CHP while CO2 fell (UT-M15). Can be negative, like CO2.
+        # Configurations saved before carry no factor of their own.
+        credit_factor = getattr(self, "primärenergiefaktor_strom", PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT)
+        self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor - self.Strommenge_MWh * credit_factor
 
     def calculate(self, economic_parameters: dict, duration: float, load_profile: np.ndarray, **kwargs) -> dict:
         """
