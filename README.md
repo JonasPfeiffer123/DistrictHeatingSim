@@ -27,22 +27,39 @@ DistrictHeatingSim was originally developed at the University of Applied Science
 
 ## Features
 
+The user interface is German; a German user guide ("Benutzerhandbuch") walks through a first
+quarter step by step: https://districtheatingsim.readthedocs.io/en/latest/benutzerhandbuch.html
+
 ### User Interface
-- **Project Definition**: Create project folders, your data input and track your project progress
-- **Building Heat Demand Profile Calculation**: Calculate the heat demand profiles for your buildings based on BDEW SLPs (Standard Load Profiles)
-- **Geocoding**: Convert addresses to coordinates and visualize them on a map.
-- **OSM Data Integration**: Download and process OpenStreetMap data for streets and buildings.
-- **Automatic Heat Network Generation**: Generate heating networks based on building and generator locations.
-- **GIS Data Handling**: Uniformly manage and store GIS data in the GeoJSON format.
-- **Thermohydraulic Network Calculation**: Simulate the generated heat networks with [pandapipes](https://github.com/e2nIEE/pandapipes).
-- **Cost Calculation**: Calculate heat generation costs based on [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1) methodology and various cost inputs.
-- **Save/Load Project Results**: Integrated options to save and load calculated results in main parts of the software
+- **New-project assistant**: name and folder, place search with a CRS suggestion, climate data
+  (DWD test reference year, climate zone) and the source of the buildings.
+- **Buildings**: import address tables (CSV or Excel exports, column mapping, value check),
+  convert OpenStreetMap buildings (addresses, estimated demand) or enter them by hand; geocoding
+  with a report of addresses found only to the street or town.
+- **Heat demand**: hourly load profiles per building after BDEW or VDI 4655 with the project's
+  climate data ([pyslpheat](https://github.com/JonasPfeiffer123/pyslpheat)).
+- **Map and network generation**: OpenStreetMap streets, automatic network generation (MST,
+  OSMnx), editing of the supply line with automatic return and house connections, connectivity
+  check; the map editor works offline (only the base map and the OSM downloads need internet).
+- **Thermohydraulic network calculation** with [pandapipes](https://github.com/e2nIEE/pandapipes):
+  pipe sizing by velocity and friction pressure loss, pump design on the worst house station,
+  simplified or detailed yearly time series with progress and cancel.
+- **Generator sizing and economics**: gas and biomass boilers, CHP, solar thermal, heat pumps,
+  power-to-heat and a stratified network storage; costs after
+  [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1),
+  CO₂ and primary energy, optimisation of the plant sizes, sensitivity analysis.
+- **Plausibility traffic light** next to the results (loss share, heat density, pressure loss,
+  storage per collector area) with threshold and source.
+- **Variants and comparison**: several variants per project and several generator
+  configurations per variant; outdated results are marked after inputs change.
 
 ### Technical Capabilities
-- **Heat Requirement Calculation**: Calculate heat demands based on different profiles and weather data.
-- **Economic Scenario Analysis**: Evaluate the economic feasibility of various heating scenarios.
-- **Optimization Algorithms**: Optimize heating network configurations for cost efficiency.
-- **Integration of Renewable Technologies**: Support for solar thermal, biomass, geothermal, and other renewable sources. Also includes the AqvaHeat technology, partly developed by Hochschule Zittau/Görlitz, for efficient heat distribution.
+- Calculation methods, default values and the sources of the thresholds are documented in
+  "Berechnungsmethodik": https://districtheatingsim.readthedocs.io/en/latest/berechnungsmethodik.html
+- Results are stored per project as GeoJSON, CSV, JSON and Parquet; the pandapipes network as
+  JSON.
+- The domain core (`heat_generators`, `net_simulation_pandapipes`, `heat_requirement`, …) runs
+  without the GUI; the `examples/` folder shows it in scripts.
 
 ## Installation
 
@@ -87,43 +104,56 @@ By following these steps, you should be able to successfully install and run Dis
 
 ## Usage
 
-Start DistrictHeatingSim with the `districtheatingsim` command (installed by `pip install .`), or `python -m districtheatingsim`.
+Start DistrictHeatingSim with the `districtheatingsim` command (installed by `pip install .`), or
+`python -m districtheatingsim`. The welcome screen creates a new project with the assistant
+("Neues Projekt") or opens an existing one; the bundled Görlitz example opens as a working copy in
+`Documents/DistrictHeatingSim`. The screenshots below show the Zittau example of the user guide
+(15 buildings of the old town).
+
+### Buildings ("Projektdefinition")
+
+1. **Import** an address table ("Datei → CSV importieren"); tables in another format are mapped
+   column by column, and the values are checked before anything is saved.
+2. **Geocode** the addresses; rows found only to the street or town are marked.
+3. The progress tracker shows which steps are done and which results are outdated.
 
 ![Project Management](images/project_management_tab.png)
 
-### Building Heat Demand Profile Calculation
+### Heat Demand ("Wärmebedarf Gebäude")
 
-1. **Load CSV-File**: Create/Load CSV-file with project specific building informations.
-2. **Choose Profiles**: Choose profiles for these building if not defined previously.
-3. **Calculate Profiles**: Calculate the profiles based on weather data.
-4. **View in Diagram**: Results are shown in the diagramm and saved as JSON
+1. **Calculate** the hourly load profiles of all buildings (BDEW or VDI 4655) with the project's
+   test reference year and climate zone.
+2. **View** the profiles per building in the diagram; they are saved with the project.
 
 ![Building Load Profiles](images/building_load_profiles.png)
 
-### Spatial Analysis
+### Map and Network ("Kartenansicht Wärmenetzgenerierung")
 
-1. **Load Project**: Start the application and select or create a new project.
-2. **Geocoding**: Use the built-in tool to convert address data in CSV format to coordinates.
-3. **OSM Data**: Download and integrate street and building data from OpenStreetMap.
-4. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
+1. **Streets**: download the OpenStreetMap streets around the buildings.
+2. **Network**: generate the supply network with the producer location (MST or OSMnx); house
+   connections and the return line follow automatically.
+3. **Edit** the supply line on the map if needed; "Konnektivität prüfen" finds gaps.
 
 ![Leaflet Map](images/leaflet_map_tab.png)
 
-### Heat Network Calculation
+### Network Calculation ("Wärmenetzberechnung")
 
-1. **Load Data**: Import the generated heat network data into Pandapipes.
-2. **Simulation**: Perform thermohydraulic calculations to simulate the heat network.
-3. **Optimization**: Optimize the network for cost efficiency and operational performance.
-4. **Results**: Visualize the results, including flow rates, pressures, and temperatures.
+1. **Initialise** the network in pandapipes: supply temperatures, pipe type and the sizing limits
+   (velocity and friction pressure loss); the pump is designed for 1 bar at the worst station.
+2. **Time series**: simplified (seconds) or detailed (minutes to hours) over the year.
+3. **Results**: network plot, pipe table, key figures and the plausibility traffic light.
 
 ![Net Simulation Pandapipes](images/net_simulation_tab.png)
 
-### Generator Sizing and Economic Analysis
+### Generator Sizing and Economics ("Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
 
-1. **Define Parameters**: Set up economic parameters and cost factors.
-2. **Generator Configuration**: Configure different types of heat generators and their capacities.
-3. **Simulation**: Simulate the performance and cost of different heating scenarios.
-4. **Results and Export**: Save each generator configuration, export the heat generation time series as CSV and compare variants and configurations in the comparison tab (there is no PDF report).
+1. **Generators**: add generators and storages in the order they serve the load; the schematic
+   shows the plant.
+2. **Costs**: economic parameters and infrastructure costs (estimated from the network until you
+   enter your own).
+3. **Calculate or optimise**: heat generation, heat generation costs, CO₂ and primary energy per
+   generator, the plausibility check; save each configuration and export the time series as CSV.
+4. **Compare** variants and configurations in "Variantenvergleich".
 
 ![Heat Generator Definition](images/heat_generator_definition.png)
 
@@ -154,6 +184,10 @@ GitHub Actions runs the suite on Python 3.11 and 3.12.
     ruff check .
     ```
 
+`tests/e2e/` holds GUI end-to-end scenarios that drive the real main window (see
+`tests/e2e/README.md`); they use live web services and are not part of `pytest`.
+`tests/e2e/docs_screenshots.py` takes the screenshots of this README and of the user guide.
+
 ## Project Structure
 
 - **src/districtheatingsim**: Source code for DistrictHeatingSim
@@ -164,34 +198,32 @@ GitHub Actions runs the suite on Python 3.11 and 3.12.
 - **pyproject.toml**: Project metadata and dependency declarations
 - **README.md**: This README file
 
-## PyInstaller
-Pyinstaller installation works with specific definitions. Reach out to the author for further intructions.
+## Windows Executable (PyInstaller)
+A Windows build without a Python installation is made with PyInstaller (`python build.py`);
+`PYINSTALLER_BUILD_GUIDE_EN.md` describes the prerequisites, the build files and how to check
+the result.
 
 ## Documentation
-The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by running
+The documentation at https://districtheatingsim.readthedocs.io/en/latest/ contains the German
+user guide ("Benutzerhandbuch"), the calculation methods ("Berechnungsmethodik") and the API
+reference generated from the docstrings with [Sphinx](https://www.sphinx-doc.org/en/master/).
+To build it locally:
 
 1. **Install the documentation dependencies** (Sphinx, readthedocs theme, etc.):
     ```sh
     pip install ".[docs]"
     ```
 
-2. **Navigate to the docs folder**:
+2. **Build the HTML documentation**:
     ```sh
     cd docs
-    ```
-
-3. **Generate the .rst-files**:
-    ```sh
-    sphinx-apidoc -f -o source/ ../src/districtheatingsim
-    ```
-
-4. **Build the HTML documentation**:
-    ```sh
     make clean
     make html
     ```
 
-The current version of the documentation can be found under https://districtheatingsim.readthedocs.io/en/latest/. The Sphinx-compatible documentation was created with Copilot using Claude Sonnet 4.5.
+The API pages in `docs/source/districtheatingsim.*.rst` are maintained by hand (a module added to
+the package needs an `automodule` entry there); `sphinx-apidoc -f` would overwrite the curated
+pages.
 
 ### Documentation Style Guide
 

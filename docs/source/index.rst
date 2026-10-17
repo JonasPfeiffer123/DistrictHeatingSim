@@ -49,7 +49,8 @@ DistrictHeatingSim Documentation
    :align: center
    :name: fig-project-management
 
-   **Figure 2:** Project management interface for organizing and managing district heating projects.
+   **Figure 2:** Project definition: the buildings of the Zittau example after the import and the
+   geocoding, with the progress tracker.
 
 .. figure:: _static/images/building_load_profiles.png
    :alt: Building Load Profiles
@@ -57,7 +58,8 @@ DistrictHeatingSim Documentation
    :align: center
    :name: fig-building-load-profiles
 
-   **Figure 3:** Building load profiles based on building data and weather conditions.
+   **Figure 3:** Hourly heat demand profiles of the buildings (BDEW / VDI 4655) with the project's
+   test reference year.
 
 .. figure:: _static/images/leaflet_map_tab.png
    :alt: Leaflet Map
@@ -65,7 +67,7 @@ DistrictHeatingSim Documentation
    :align: center
    :name: fig-leaflet-map
 
-   **Figure 4:** Interactive map visualization of district heating networks using Leaflet.
+   **Figure 4:** The generated network on the map (supply line, house connections, producer).
 
 .. figure:: _static/images/net_simulation_tab.png
    :alt: Network Simulation with pandapipes
@@ -73,7 +75,8 @@ DistrictHeatingSim Documentation
    :align: center
    :name: fig-net-simulation-pandapipes
 
-   **Figure 5:** Thermo-hydraulic simulation of district heating networks using pandapipes.
+   **Figure 5:** Thermo-hydraulic network calculation with pandapipes: network plot, key figures
+   and pipe table.
 
 .. figure:: _static/images/heat_generator_definition.png
    :alt: Heat Generation Definition
@@ -81,7 +84,8 @@ DistrictHeatingSim Documentation
    :align: center
    :name: fig-heat-generation-definition
 
-   **Figure 6:** Definition of heat generation systems including heat pumps and CHP units.
+   **Figure 6:** Generator definition with the plant schematic (solar thermal, biomass boiler, gas
+   boiler).
 
 🛠️ Installation
 -----------------
@@ -106,6 +110,20 @@ After installation, start the application with the entry-point command (or the m
    districtheatingsim
    # equivalently:
    python -m districtheatingsim
+
+📖 Benutzerhandbuch und Methodik
+-----------------------------------
+
+Die Oberfläche ist deutsch; das Benutzerhandbuch führt Schritt für Schritt durch ein erstes
+Quartier, die Berechnungsmethodik beschreibt Verfahren, Standardwerte und die Quellen der
+Grenzwerte.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Benutzung
+
+   benutzerhandbuch
+   berechnungsmethodik
 
 📚 Documentation
 --------------------
