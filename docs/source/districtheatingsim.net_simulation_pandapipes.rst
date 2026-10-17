@@ -26,6 +26,11 @@ Net simulation pandapipes package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.net_simulation_pandapipes.net_io
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.net_simulation_pandapipes.net_migration
    :members:
    :show-inheritance:
