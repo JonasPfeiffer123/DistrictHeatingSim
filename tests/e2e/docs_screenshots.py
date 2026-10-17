@@ -23,7 +23,7 @@ screenshots; a user folder would publish the user name), else ``tests/e2e/_work/
 
 Run: ``python tests/e2e/docs_screenshots.py`` (all steps) or with step names.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os
@@ -423,7 +423,13 @@ def comparison():
 if __name__ == "__main__":
     if os.path.exists(H.RECENT_FILE[0]):
         os.remove(H.RECENT_FILE[0])  # the welcome screen shows no work projects
+    # The app picks the theme by the time of day (dark from 18:00); the documentation is light
+    import districtheatingsim.utilities.utilities as app_utilities
+
+    app_utilities.get_stylesheet_based_on_time = lambda: "light_theme_style_path"
     H.start_app(size=WINDOW_SIZE)
+    H.VIEW.applyTheme("light_theme_style_path")
+    H.VIEW.sync_theme_toggle_state()
     H.run_steps(
         {
             "welcome": welcome,
