@@ -29,6 +29,7 @@
   },
   "diameter_optimization": {
     "v_max_pipe": 1.0,
+    "max_pressure_loss_pa_per_m": 300,
     "material_filter": ["P235GH/PUR/PEHD"],
     "k_mm": 0.1
   }

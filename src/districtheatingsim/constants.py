@@ -41,3 +41,16 @@ PRIMARY_ENERGY_FACTOR_SOLAR = 0.0
 
 #: BEW (Bundesförderung effiziente Wärmenetze) funding share (40 %).
 BEW_SUBSIDY_SHARE = 0.4
+
+
+# ── Network design ────────────────────────────────────────────────────────────
+
+#: Limit of the specific friction pressure loss in the pipe sizing [Pa/m], next to the velocity
+#: limit. Velocity alone (1 m/s for every pipe) gives small pipes high losses: DN 20 loses about
+#: 690 Pa/m at 1 m/s (k = 0.1 mm), DN 100 about 90 Pa/m. Zittau user test (UT-M12), v_max 1 m/s:
+#: without a limit 5.40 bar pump lift (pipes up to 687 Pa/m); 300 Pa/m 3.24 bar for +3.4 % pipe
+#: material and +2.8 % design heat loss; 150 Pa/m 2.89 bar, +11.5 % / +6.1 %; 100 Pa/m 2.23 bar,
+#: +19 % / +9.5 %. 300 takes most of the pump lift for little extra heat loss (which lasts all
+#: year). About 100 Pa/m is the long-standing, conservative practice for service pipes
+#: (Energiforsk report 2021:813).
+MAX_PRESSURE_LOSS_PA_PER_M = 300.0
