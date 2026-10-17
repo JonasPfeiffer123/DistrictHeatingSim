@@ -43,6 +43,13 @@ PRIMARY_ENERGY_FACTOR_SOLAR = 0.0
 PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT = 1.8
 
 
+# ── Generator design ──────────────────────────────────────────────────────────
+
+#: Smallest storage volume per m² solar collector [l/m²] the optimizer may choose, and the green
+#: limit of the plausibility check: a daily storage holds about 50-100 l/m² (UT-M15).
+SOLAR_STORAGE_MIN_L_PER_M2 = 50.0
+
+
 # ── Subsidies ─────────────────────────────────────────────────────────────────
 
 #: BEW (Bundesförderung effiziente Wärmenetze) funding share (40 %).
