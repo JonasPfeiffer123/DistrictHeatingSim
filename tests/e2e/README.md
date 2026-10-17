@@ -35,6 +35,7 @@ Beispielprojekt werden nie verändert.
 | `analysis_net_losses.py` | Rohrverluste mit gespeichertem vs. katalogrichtigem Außendurchmesser | K1 |
 | `analysis_timeseries.py` | Laufzeit und Verlustbilanz der Jahreszeitreihe (detailliert/parallel/vereinfacht) | H1, K1 |
 | `analysis_solar_time.py` | Vorzeichen der Längengrade bei der Solarthermie | M4 |
+| `docs_screenshots.py` | Screenshots für Benutzerhandbuch und README: „Mein erstes Quartier“ (Zittau) vom Assistenten bis zum Variantenvergleich; läuft **sichtbar** (native Plattform mit GPU, 100 % Skalierung), Arbeitsordner unter `C:/Users/Public/Documents`, schreibt `docs/source/_static/images/handbuch/` und die README-Bilder | – |
 | `inputs/` | Eingabedaten der Szenarien (die Excel-Datei bleibt byte-genau cp1252) | – |
 
 Stellen, an denen ein Szenario einen bekannten Fehler umgeht, sind mit `WORKAROUND <Befund>`
@@ -44,7 +45,8 @@ nicht mehr greifen und der Prüfpunkt das korrigierte Verhalten zeigen.
 ## Grenzen
 
 - Plotly-Ansichten (Netzplot, Sankey) rendern im Offscreen-Modus leer; das ist kein Fehler der
-  Anwendung.
+  Anwendung. `docs_screenshots.py` läuft deshalb auf der nativen Plattform mit GPU (der Netzplot
+  braucht WebGL für die Hintergrundkarte).
 - Freies Zeichnen/Editieren auf der Karte wird nur über die JavaScript-Schnittstelle nachgestellt
   (`draw_polygon_on_map`).
 - Unter Windows werden die Systemschriften über `QT_QPA_FONTDIR` eingebunden; in einigen
