@@ -7,38 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Method decisions from the 2026-10-08 user test (UT-M12, UT-M15). They change results:
-re-initialise a network and recalculate the generators to apply them.
+## [2.0.0] - 2026-10-17
 
-### Changed results
-- **Pipe sizing limits the friction pressure loss** (default 300 Pa/m) next to the velocity;
-  by velocity alone small pipes lost up to ~690 Pa/m. Zittau: pump lift 5.40 → 3.24 bar, pump
-  electricity −40 %, pipe material +3.4 %, network losses +2.9 % (simplified yearly series).
-- **CHP primary energy credits the generated electricity** as the CO₂ balance does (1.8 per MWh,
-  the grid-electricity counterpart of the 0.4 t/MWh CO₂ credit); the PEF no longer rises with a CHP.
-- **Optimizer weights are relative importances**: each indicator is divided by its value for the
-  configured system, so with equal weights 10 % less CO₂ counts as much as 10 % lower costs. The
-  default weights (costs only) optimise exactly as before.
-- **Solar thermal optimisation keeps at least 50 l of storage per m² collector** (it could end at
-  the volume's lower bound, e.g. 773 m² with 16 m³).
-- A new network storage starts at the typical cost for its volume (1000 m³: 176 €/m³ instead of a
-  flat 50 €/m³); saved storages keep their value.
-
-### Added
-- **Plausibility traffic light** in the network information and the generator results: loss share,
-  heat density, highest friction pressure loss, storage per m² collector, full-load hours — each with
-  its threshold and source as a tooltip.
-- Dialog field "Maximaler Druckverlust durch Reibung in Pa/m"; the summary after the network
-  initialisation names the highest pressure loss; the storage dialog shows the typical cost.
-
-### Fixed
-- A CHP, biomass boiler or solar thermal plant that delivered no heat left the result view empty
-  (missing investment costs in the cost table).
-
-## [2.0.0] - 2026-10-16
-
-First release since 1.0.3. It bundles the 2026-06 refactoring, the 2026-09 performance audit
-and the fixes from a first-time-user test of the GUI (2026-10-08, four real projects).
+First release since 1.0.3. It bundles the 2026-06 refactoring, the 2026-09 performance audit,
+the fixes from a first-time-user test of the GUI (2026-10-08, four real projects) and the method
+decisions that followed it (pipe sizing by pressure loss, CHP primary energy credit, scaled
+optimizer weights).
 **Several fixes change calculation results** (see *Changed results*): recalculate a project
 before comparing it with numbers from 1.0.x.
 
@@ -69,7 +43,19 @@ before comparing it with numbers from 1.0.x.
 - **Minimum load** (2 %) refers to each house station's own peak instead of the largest
   station's. Small buildings were up to 49 % too high; Görlitz demand 4443.6 → 4155.1 MWh/a.
 - **Pump lift**: the bad-point controller follows the current worst station; it kept the one
-  found before the diameter sizing. Zittau 3.2 → 5.44 bar (one station had been at −1.09 bar).
+  found before the diameter sizing (one Zittau station had been at −1.09 bar).
+- **Pipe sizing limits the friction pressure loss** (default 300 Pa/m) next to the velocity;
+  by velocity alone small pipes lost up to ~690 Pa/m. Zittau: pump lift 5.40 → 3.24 bar, pump
+  electricity −40 %, pipe material +3.4 %, network losses +2.9 % (simplified yearly series).
+- **CHP primary energy credits the generated electricity** as the CO₂ balance does (1.8 per MWh,
+  the grid-electricity counterpart of the 0.4 t/MWh CO₂ credit); the PEF no longer rises with a CHP.
+- **Optimizer weights are relative importances**: each indicator is divided by its value for the
+  configured system, so with equal weights 10 % less CO₂ counts as much as 10 % lower costs. The
+  default weights (costs only) optimise exactly as before.
+- **Solar thermal optimisation keeps at least 50 l of storage per m² collector** (it could end at
+  the volume's lower bound, e.g. 773 m² with 16 m³).
+- A new network storage starts at the typical cost for its volume (1000 m³: 176 €/m³ instead of a
+  flat 50 €/m³); saved storages keep their value.
 - **Solar thermal lost about half its yield after a project was saved and reloaded** (IAM
   table keys; 200 m² vacuum tubes 93.4 vs 46.0 MWh). The storage balance is consistent now
   (±0.1 %).
@@ -126,6 +112,15 @@ before comparing it with numbers from 1.0.x.
 - Pipe type selection by insulation grade, then nominal width; edited pipes are highlighted.
 - New projects get the bundled TRY and COP files.
 - `optimize_mix(seed=…)` for reproducible optimizations.
+- **Plausibility traffic light** in the network information and the generator results: loss share,
+  heat density, highest friction pressure loss, storage per m² collector, full-load hours — each with
+  its threshold and source as a tooltip.
+- Dialog field "Maximaler Druckverlust durch Reibung in Pa/m"; the summary after the network
+  initialisation names the pump lift, the worst station and the highest pressure loss; the storage
+  dialog shows the typical cost for the volume.
+- **Documentation**: German user guide "Benutzerhandbuch" (a first quarter step by step, with
+  screenshots) and "Berechnungsmethodik" (methods, defaults, thresholds and their sources); new
+  README screenshots, taken by `tests/e2e/docs_screenshots.py`.
 
 ### Changed
 - **BREAKING — pandapipes 0.13 → 0.14.** Pinned to `pandapipes==0.14.0`. The legacy
@@ -209,6 +204,8 @@ before comparing it with numbers from 1.0.x.
   export asks for the file.
 - Welcome screen at 125–150 % display scaling.
 - Project file paths on Linux and macOS.
+- A CHP, biomass boiler or solar thermal plant that delivered no heat left the result view empty
+  (missing investment costs in the cost table).
 
 ### Performance
 - Start to the welcome screen 3.7 → 0.5 s (tabs built on first use, heavy imports deferred).
