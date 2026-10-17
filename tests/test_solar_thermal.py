@@ -352,3 +352,12 @@ class TestStorageConstraint:
         weights = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 0.0, "primärenergiefaktor_Gesamt": 0.0}
         best = system.optimize_mix(weights, num_restarts=2, seed=0).technologies[0]
         assert best.vs * 1000.0 / best.bruttofläche_STA >= 50.0 * (1 - 1e-6)
+
+
+def test_cost_data_without_heat(try_data, time_steps):
+    # A collector that delivers nothing still has its investment (the cost table lists it)
+    st = _make()
+    _calculate(st, try_data, time_steps, np.zeros(8760))
+    _name, _dimensions, costs, full_costs = st.extract_tech_data()
+    assert float(full_costs) == pytest.approx(20 * 750 + st.bruttofläche_STA * st.Kosten_STA_spez)
+    assert "Investitionskosten Speicher: 15000.0 €" in costs
