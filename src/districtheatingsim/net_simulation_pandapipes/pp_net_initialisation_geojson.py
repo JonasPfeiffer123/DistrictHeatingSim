@@ -28,7 +28,7 @@ import pandapipes as pp
 import pandas as pd
 from pandapipes.control.run_control import run_control
 
-from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
+from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET, MAX_PRESSURE_LOSS_PA_PER_M
 from districtheatingsim.heat_requirement.building_profiles_io import read_building_profiles
 from districtheatingsim.net_generation.network_connectivity import check_geojson_connectivity
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
@@ -214,6 +214,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         "material_filter": NetworkGenerationData.material_filter_pipe,
         "pipe_creation_mode": "type",
         "k_mm": NetworkGenerationData.k_mm_pipe,
+        "max_pressure_loss_pa_per_m": NetworkGenerationData.max_pressure_loss_pipe,
     }
 
     # Calculate mass flows for secondary producers
@@ -388,7 +389,8 @@ def create_network(
     :type gdf_dict: Dict[str, gpd.GeoDataFrame]
     :param consumer_dict: Heat consumer config (qext_w, min_supply_temperature_heat_consumer, return_temperature_heat_consumer)
     :type consumer_dict: Dict[str, Any]
-    :param pipe_dict: Pipe config (pipetype, v_max_pipe, material_filter, pipe_creation_mode, k_mm)
+    :param pipe_dict: Pipe config (pipetype, v_max_pipe, material_filter, pipe_creation_mode, k_mm,
+        optional max_pressure_loss_pa_per_m)
     :type pipe_dict: Dict[str, Any]
     :param producer_dict: Producer config (supply_temperature, pressures, main_producer_location_index, secondary_producers)
     :type producer_dict: Dict[str, Any]
@@ -426,6 +428,7 @@ def create_network(
         pipe_dict["pipe_creation_mode"],
         pipe_dict["k_mm"],
     )
+    max_pressure_loss = pipe_dict.get("max_pressure_loss_pa_per_m", MAX_PRESSURE_LOSS_PA_PER_M)
 
     # Create empty network and get pipe properties
     net = pp.create_empty_network(fluid="water")
@@ -751,7 +754,13 @@ def create_network(
         logger.warning(f"run_control UserWarning (will be corrected by correct_flow_directions): {e}")
 
     net = correct_flow_directions(net)
-    net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)
+    net = init_diameter_types(
+        net,
+        v_max_pipe=v_max_pipe,
+        material_filter=material_filter,
+        k=k_mm,
+        max_pressure_loss_pa_per_m=max_pressure_loss,
+    )
 
     # Fail loudly at build time if the design state did not converge, instead of
     # letting NaN propagate into the time series (BACKLOG C2).

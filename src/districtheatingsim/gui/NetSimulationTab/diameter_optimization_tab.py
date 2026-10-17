@@ -8,6 +8,8 @@ UI tab for pipe diameter optimization settings in district heating networks.
 
 from PyQt6.QtWidgets import QCheckBox, QComboBox, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
+from districtheatingsim.constants import MAX_PRESSURE_LOSS_PA_PER_M
+
 
 class DiameterOptimizationTab(QWidget):
     """
@@ -68,19 +70,32 @@ class DiameterOptimizationTab(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Eingaben zur Durchmesseroptimierung der Rohrleitungen:"))
 
-        row_layout = QHBoxLayout()
-        self.v_max_pipelabel = QLabel("Maximale Strömungsgeschwindigkeit Leitungen in m/s:")
-        self.v_max_pipeInput = QLineEdit(str(self.dialog_config["diameter_optimization"]["v_max_pipe"]))
+        config = self.dialog_config["diameter_optimization"]
         hint = (
-            "Die Grenze gilt für alle Leitungen, auch für die Hausanschlüsse (DN 20 …).\n"
+            "Jede Leitung bekommt die kleinste Nennweite, die beide Grenzen einhält.\n"
+            "In kleinen Leitungen (Hausanschlüsse, DN 20 …) entscheidet meist der Druckverlust:\n"
+            "DN 20 verliert bei 1 m/s rund 690 Pa/m, DN 100 rund 90 Pa/m.\n"
             "Die Pumpe wird danach so ausgelegt, dass am ungünstigsten Hausanschluss\n"
             "mindestens 1 bar Differenzdruck anliegen."
         )
+
+        row_layout = QHBoxLayout()
+        self.v_max_pipelabel = QLabel("Maximale Strömungsgeschwindigkeit Leitungen in m/s:")
+        self.v_max_pipeInput = QLineEdit(str(config["v_max_pipe"]))
         self.v_max_pipelabel.setToolTip(hint)
         self.v_max_pipeInput.setToolTip(hint)
         row_layout.addWidget(self.v_max_pipelabel)
         row_layout.addWidget(self.v_max_pipeInput)
         layout.addLayout(row_layout)
+
+        loss_layout = QHBoxLayout()
+        self.max_loss_label = QLabel("Maximaler Druckverlust durch Reibung in Pa/m (leer = ohne Grenze):")
+        self.max_loss_input = QLineEdit(str(config.get("max_pressure_loss_pa_per_m", MAX_PRESSURE_LOSS_PA_PER_M)))
+        self.max_loss_label.setToolTip(hint)
+        self.max_loss_input.setToolTip(hint)
+        loss_layout.addWidget(self.max_loss_label)
+        loss_layout.addWidget(self.max_loss_input)
+        layout.addLayout(loss_layout)
 
         self.material_filterInput = QComboBox(self)
         self.material_filterInput.addItems(self.dialog_config["diameter_optimization"]["material_filter"])
@@ -88,8 +103,8 @@ class DiameterOptimizationTab(QWidget):
         self.material_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
         row_layout2 = QHBoxLayout()
-        self.k_mm_Label = QLabel("Rauigkeit der Rohrleitungen:")
-        self.k_mm_Input = QLineEdit(str(self.dialog_config["diameter_optimization"]["k_mm"]))
+        self.k_mm_Label = QLabel("Rauigkeit der Rohrleitungen in mm:")
+        self.k_mm_Input = QLineEdit(str(config["k_mm"]))
         row_layout2.addWidget(self.k_mm_Label)
         row_layout2.addWidget(self.k_mm_Input)
         layout.addLayout(row_layout2)
@@ -105,9 +120,20 @@ class DiameterOptimizationTab(QWidget):
         # Anzeige Optimierungsoptionen
         self.v_max_pipelabel.setVisible(self.DiameterOpt_ckecked)
         self.v_max_pipeInput.setVisible(self.DiameterOpt_ckecked)
+        self.max_loss_label.setVisible(self.DiameterOpt_ckecked)
+        self.max_loss_input.setVisible(self.DiameterOpt_ckecked)
         self.material_filterInput.setVisible(self.DiameterOpt_ckecked)
         self.k_mm_Label.setVisible(self.DiameterOpt_ckecked)
         self.k_mm_Input.setVisible(self.DiameterOpt_ckecked)
+
+    def max_pressure_loss(self) -> float | None:
+        """
+        The pressure loss limit [Pa/m], ``None`` if the field is empty.
+
+        :raises ValueError: If the field holds no number.
+        """
+        text = self.max_loss_input.text().strip().replace(",", ".")
+        return float(text) if text else None
 
     def getValues(self):
         """
@@ -119,6 +145,7 @@ class DiameterOptimizationTab(QWidget):
         return {
             "diameter_optimization_enabled": self.DiameterOptCheckbox.isChecked(),
             "v_max_pipe": float(self.v_max_pipeInput.text()),
+            "max_pressure_loss_pa_per_m": self.max_pressure_loss(),
             "material_filter": self.material_filterInput.currentText(),
             "k_mm": float(self.k_mm_Input.text()),
         }

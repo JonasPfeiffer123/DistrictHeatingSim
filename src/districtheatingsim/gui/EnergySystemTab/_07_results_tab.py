@@ -271,6 +271,18 @@ class ResultsTab(QWidget):
         self.table2_section = CollapsibleHeader("Ergebnisse Wirtschaftlichkeit", self.table2_widget)
         self.scrollLayout.addWidget(self.table2_section)
 
+        # Traffic light next to the numbers: a 773 m² collector with 16 m³ storage went unnoticed (UT-M15)
+        self.plausibilityTable = QTableWidget()
+        self.plausibilityTable.setColumnCount(3)
+        self.plausibilityTable.setHorizontalHeaderLabels(["Kennzahl", "Wert", "Bewertung"])
+        self.plausibilityTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table3_widget = QWidget()
+        table3_layout = QVBoxLayout(self.table3_widget)
+        table3_layout.addWidget(QLabel("Hinweise zu Grenzen und Quellen erscheinen beim Zeigen auf eine Zeile."))
+        table3_layout.addWidget(self.plausibilityTable)
+        self.table3_section = CollapsibleHeader("Plausibilität", self.table3_widget)
+        self.scrollLayout.addWidget(self.table3_section)
+
     def addLabel(self, text):
         """
         Adds a label to the layout.
@@ -333,6 +345,7 @@ class ResultsTab(QWidget):
 
         self.showResultsInTable()
         self.showAdditionalResultsTable()
+        self.showPlausibility()
         self.plotResults()
         self.updatePieChart()
         self.plotStorage()
@@ -440,6 +453,32 @@ class ResultsTab(QWidget):
 
         self.additionalResultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.additionalResultsTable)
+
+    def showPlausibility(self):
+        """
+        Fills the traffic-light table: storage per m² collector, full-load hours.
+        """
+        from PyQt6.QtGui import QColor
+
+        from districtheatingsim.utilities.plausibility import (
+            RATING_COLORS,
+            RATING_LABELS,
+            format_value,
+            generator_checks,
+        )
+
+        checks = generator_checks(self.energy_system.technologies, self.energy_system.results)
+        self.plausibilityTable.setRowCount(len(checks))
+        for row, check in enumerate(checks):
+            items = [QTableWidgetItem(check.name), QTableWidgetItem(format_value(check))]
+            rating = QTableWidgetItem(RATING_LABELS[check.rating])
+            rating.setForeground(QColor(RATING_COLORS[check.rating]))
+            items.append(rating)
+            for column, item in enumerate(items):
+                item.setToolTip(check.hint)
+                self.plausibilityTable.setItem(row, column, item)
+        self.plausibilityTable.resizeColumnsToContents()
+        self.adjustTableSize(self.plausibilityTable)
 
     def plotResults(self):
         """

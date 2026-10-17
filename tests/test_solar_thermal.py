@@ -313,3 +313,51 @@ class TestSolarThermalGenerate:
             )
         assert int(np.sum(st.Stagnation_L)) == 1210
         assert np.sum(st.Wärmeleistung_kW) == pytest.approx(52022.67994981218, rel=REL)
+
+
+class TestStorageConstraint:
+    """UT-M15: bounds alone let the optimizer choose 773 m² of collector with 16 m³ of storage
+    (21 l/m²; a daily storage holds 50-100 l/m²). The optimization keeps at least 50 l/m²."""
+
+    def test_constraint_is_storage_minus_the_minimum(self):
+        st = _make()
+        order = ["P_max_0", "bruttofläche_STA_1", "vs_1"]
+        (constraint,) = st.optimization_constraints(order, "1")
+        assert constraint["type"] == "ineq"
+        assert constraint["fun"]([0.0, 400.0, 20.0]) == pytest.approx(0.0)  # 400 m² x 50 l/m²
+        assert constraint["fun"]([0.0, 773.0, 16.0]) < 0  # the user test's choice is outside
+
+    def test_no_constraint_the_bounds_cannot_meet(self):
+        st = _make()
+        st.opt_area_min, st.opt_volume_max = 1000.0, 20.0  # 20 m³ < 1000 m² x 50 l/m²
+        assert st.optimization_constraints(["bruttofläche_STA_1", "vs_1"], "1") == []
+
+    def test_no_constraint_without_the_variables(self):
+        assert _make().optimization_constraints(["P_max_0"], "1") == []
+
+    @pytest.mark.slow
+    def test_optimum_holds_the_minimum(self, try_data, time_steps):
+        from districtheatingsim.heat_generators.energy_system import EnergySystem
+        from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+
+        load = np.linspace(100.0, 800.0, 8760)
+        system = EnergySystem(
+            time_steps, load, np.full(8760, 85.0), np.full(8760, 55.0), try_data, np.zeros((2, 2)), _ECONOMIC_PARAMS
+        )
+        st = _make()
+        st.name = "Solarthermie_1"
+        st.opt_area_min, st.opt_area_max, st.opt_volume_min, st.opt_volume_max = 100.0, 1000.0, 1.0, 100.0
+        system.add_technology(st)
+        system.add_technology(GasBoiler("Gaskessel_1", thermal_capacity_kW=1000))
+        weights = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 0.0, "primärenergiefaktor_Gesamt": 0.0}
+        best = system.optimize_mix(weights, num_restarts=2, seed=0).technologies[0]
+        assert best.vs * 1000.0 / best.bruttofläche_STA >= 50.0 * (1 - 1e-6)
+
+
+def test_cost_data_without_heat(try_data, time_steps):
+    # A collector that delivers nothing still has its investment (the cost table lists it)
+    st = _make()
+    _calculate(st, try_data, time_steps, np.zeros(8760))
+    _name, _dimensions, costs, full_costs = st.extract_tech_data()
+    assert float(full_costs) == pytest.approx(20 * 750 + st.bruttofläche_STA * st.Kosten_STA_spez)
+    assert "Investitionskosten Speicher: 15000.0 €" in costs

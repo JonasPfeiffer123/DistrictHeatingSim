@@ -182,7 +182,7 @@ _DEFAULTS = {
             "advection_scheme": "tvd",
             "buoyancy": True,
             "lambda_eff_factor": 5.0,
-            "spez_Investitionskosten": 50.0,
+            "spez_Investitionskosten": 176.0,  # typical cost at 1000 m³ (was a flat 50, UT-M15)
             "hours": 8760,
             "T_charge": 90.0,
             "T_discharge_return": 50.0,

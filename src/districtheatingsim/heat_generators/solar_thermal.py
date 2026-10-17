@@ -17,7 +17,12 @@ from typing import Any
 
 import numpy as np
 
-from districtheatingsim.constants import BEW_SUBSIDY_SHARE, CO2_FACTOR_SOLAR, PRIMARY_ENERGY_FACTOR_SOLAR
+from districtheatingsim.constants import (
+    BEW_SUBSIDY_SHARE,
+    CO2_FACTOR_SOLAR,
+    PRIMARY_ENERGY_FACTOR_SOLAR,
+    SOLAR_STORAGE_MIN_L_PER_M2,
+)
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 
@@ -548,13 +553,13 @@ class SolarThermal(BaseHeatGenerator):
         """
         self.load_economic_parameters(economic_parameters)
 
-        if self.Wärmemenge_MWh == 0:
-            return float("inf")
-
-        # Calculate investment costs
+        # Investment costs also for a plant that delivers nothing (the cost table lists them)
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
+
+        if self.Wärmemenge_MWh == 0:
+            return float("inf")
 
         # Calculate standard annuity without subsidies
         self.A_N = self.annuity(
@@ -1120,6 +1125,33 @@ class SolarThermal(BaseHeatGenerator):
         ]
 
         return initial_values, variables_order, bounds
+
+    def optimization_constraints(self, variables_order: list[str], idx) -> list[dict[str, Any]]:
+        """
+        Storage of at least ``SOLAR_STORAGE_MIN_L_PER_M2`` per m² collector in the optimization.
+
+        Bounds alone let the optimizer pick 773 m² of collector with a 16 m³ storage (21 l/m², a
+        daily storage holds about 50-100 l/m²) in the user test (UT-M15). Left out when the bounds
+        cannot meet it (largest volume below the minimum for the smallest area).
+
+        :param variables_order: All variable names of the optimization, in order.
+        :param idx: Technology index used in the variable names.
+        :return: One scipy inequality constraint, or none.
+        :rtype: list[dict]
+        """
+        area_name, volume_name = f"bruttofläche_STA_{idx}", f"vs_{idx}"
+        if area_name not in variables_order or volume_name not in variables_order:
+            return []
+        litres = SOLAR_STORAGE_MIN_L_PER_M2 / 1000.0
+        if self.opt_volume_max < litres * self.opt_area_min:
+            logger.warning(
+                "%s: the volume bounds cannot hold %.0f l/m² for the area bounds; no storage constraint",
+                self.name,
+                SOLAR_STORAGE_MIN_L_PER_M2,
+            )
+            return []
+        area, volume = variables_order.index(area_name), variables_order.index(volume_name)
+        return [{"type": "ineq", "fun": lambda x: x[volume] - litres * x[area]}]
 
     def get_display_text(self) -> str:
         """

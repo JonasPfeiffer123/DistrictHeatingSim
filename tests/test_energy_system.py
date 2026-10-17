@@ -208,6 +208,51 @@ class TestOptimizerPlateau:
         assert not usable(dummy, SimpleNamespace(fun=float("inf"), success=True, status=0))
 
 
+class TestObjectiveScales:
+    """UT-M15: the indicators entered the objective unscaled (WGK ≈ 100 €/MWh, CO₂ ≈ 0.2 t/MWh,
+    PEF ≈ 1), so equal weights optimised practically the costs only. Each indicator is now divided
+    by its value for the configured system; the weights are relative importances."""
+
+    _EQUAL = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 1.0, "primärenergiefaktor_Gesamt": 1.0}
+    _COSTS_ONLY = {"WGK_Gesamt": 1.0, "specific_emissions_Gesamt": 0.0, "primärenergiefaktor_Gesamt": 0.0}
+
+    def test_scales_are_the_magnitudes_of_the_reference(self):
+        from districtheatingsim.heat_generators.energy_system import objective_scales
+
+        reference = {"WGK_Gesamt": 120.0, "specific_emissions_Gesamt": -0.25, "primärenergiefaktor_Gesamt": 0.01}
+        # A CHP credit can make CO₂ negative; a PEF near zero is floored instead of blowing up its term
+        assert objective_scales(reference) == {
+            "WGK_Gesamt": 120.0,
+            "specific_emissions_Gesamt": 0.25,
+            "primärenergiefaktor_Gesamt": 0.1,
+        }
+
+    def test_typical_scales_without_a_reference(self):
+        from districtheatingsim.heat_generators.energy_system import TYPICAL_OBJECTIVE_SCALES, objective_scales
+
+        assert objective_scales(None) == TYPICAL_OBJECTIVE_SCALES
+
+    def test_scales_come_from_the_configured_system(self):
+        from districtheatingsim.heat_generators.energy_system import EnergySystemOptimizer
+
+        system = TestOptimizerPlateau._system(configured_kw=300)
+        configured = system.copy().calculate_mix()
+        optimizer = EnergySystemOptimizer(system, self._EQUAL, num_restarts=1, seed=0)
+        optimizer.optimize()
+        for key in self._EQUAL:
+            assert optimizer.scales[key] == pytest.approx(abs(configured[key]))
+
+    def test_costs_only_objective_is_the_wgk(self):
+        # The sum is expressed in €/MWh of the configured system: with the default weights the
+        # objective is the WGK (plus the unmet-demand penalty), exactly as before the scaling
+        from districtheatingsim.heat_generators.energy_system import EnergySystemOptimizer
+
+        optimizer = EnergySystemOptimizer(TestOptimizerPlateau._system(), self._COSTS_ONLY, num_restarts=1, seed=0)
+        best = optimizer.optimize().calculate_mix()
+        unmet = max(best["Restwärmebedarf"], 0.0) / best["Jahreswärmebedarf"]
+        assert optimizer.best_objective_value == pytest.approx(best["WGK_Gesamt"] + 1e6 * unmet, rel=1e-9)
+
+
 class TestEnergySystemRobustness:
     """C21: domain-core edge cases that used to fail silently or opaquely."""
 

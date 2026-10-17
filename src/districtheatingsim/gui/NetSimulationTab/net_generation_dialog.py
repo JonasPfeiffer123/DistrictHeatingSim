@@ -118,6 +118,7 @@ class NetGenerationDialog(QDialog):
             pipetype = self.network_config_tab.selected_pipe_type()
 
             v_max_pipe = float(self.diameter_optimization_tab.v_max_pipeInput.text())
+            max_pressure_loss = self.diameter_optimization_tab.max_pressure_loss()
             material_filter = self.diameter_optimization_tab.material_filterInput.currentText()
             k_mm = float(self.diameter_optimization_tab.k_mm_Input.text())
 
@@ -181,6 +182,7 @@ class NetGenerationDialog(QDialog):
             max_velocity_pipe=v_max_pipe,
             material_filter_pipe=material_filter,
             k_mm_pipe=k_mm,
+            max_pressure_loss_pipe=max_pressure_loss,
             main_producer_location_index=main_producer_location_index,
             secondary_producers=[SecondaryProducer(**sp) for sp in secondary_producers],
         )
