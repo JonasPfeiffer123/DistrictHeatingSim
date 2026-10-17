@@ -2227,6 +2227,14 @@ IDs below are the report's IDs with a `UT-` prefix.
      primary energy (`primärenergie = Brennstoffbedarf × primärenergiefaktor`). Consistent would be a
      credit in both (Stromgutschrift, e.g. AGFW FW 309-1 / GEG with a displacement factor) or in
      neither; which method and factor is a decision.
+     **Decided + done 2026-10-16 (`feat/methodik`): credit in both, on the basis the CO₂ credit
+     already uses** — `primärenergie = Brennstoff × fP − Strom × PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT`
+     (1.8 = GEG grid electricity, the PE counterpart of `CO2_FACTOR_ELECTRICITY` 0.4; may go negative,
+     like CO₂; CHPs saved before take the constant). Test CHP: 1572.1 → 723.2 MWh. **Still open:** the
+     normative credit method (AGFW FW 309-1, GEG Anlage 4 Nr. 11) uses the displacement mix for both
+     — fP 2.8 and 860 g CO₂/kWh — and floors the overall factor at 0; a reported switch of the GEG to
+     the Carnot method (from 2027) is not verified. Switching means changing both constants and adding
+     the floor.
   2. *Optimizer weights are unscaled:* the objective is `w·WGK + w·CO₂ + w·PEF` with WGK ≈ 100 €/MWh,
      CO₂ ≈ 0.2 t/MWh, PEF ≈ 1 — equal weights optimise practically the costs only (now explained in
      the dialog). Normalising (e.g. by the start values) would change every optimisation.
@@ -2239,8 +2247,28 @@ IDs below are the report's IDs with a `UT-` prefix.
   3. *773 m² collector with 16 m³ storage:* ~21 l/m², far below the usual 50–100 l/m² for daily
      storage; a plausibility check (storage per m² collector, full-load hours, loss share, heat
      density — report stage 4 "Plausibilitätsampel") or tighter optimisation bounds.
+     **Done 2026-10-16 (`feat/methodik`), both:** (a) the optimizer keeps at least
+     `constants.SOLAR_STORAGE_MIN_L_PER_M2 = 50` l/m² (`SolarThermal.optimization_constraints`, an
+     SLSQP inequality; left out when the bounds cannot meet it; `BaseHeatGenerator` returns none).
+     Reproduced first: bounds only → 134 m² / 1 m³ = 7 l/m² (volume at its lower bound), with the
+     constraint 137 m² / 6.8 m³ = 50 l/m² for +0.18 €/MWh. (b) Traffic light
+     `utilities/plausibility.py` — network: loss share (QM Holzheizwerke ≤ 10 % green, ≤ 20 % yellow;
+     only for a full-year series), heat density (≥ 1.8 MWh/(m·a) QM Holzheizwerke green, ≥ 0.5 former
+     KfW funding yellow), max. friction pressure loss vs. the sizing limit; generators: storage per m²
+     collector (≥ 50 green, ≥ 25 yellow), full-load hours (heat / highest hourly output) as information
+     only — no reliable threshold found. Shown as cards in the network info panel and as section
+     "Plausibilität" in the generator results tab (hint with threshold and source as tooltip). Tests:
+     `tests/test_plausibility.py`, `TestStorageConstraint`.
   4. *Storage costs:* the thermal network storage defaults to 50 €/m³ (a large pit storage value) at
      1000 m³, the generator buffer storages to 750 €/m³ — size-dependent defaults would fit both.
+     **Done 2026-10-16 (`feat/methodik`):** `thermal_storage.typical_storage_cost_eur_per_m3`,
+     c(V) = 750 €/m³ · (V / 20 m³)^−0.37 — through the buffer/solar default (750 at 20 m³), tank
+     storages (store4grid: ~150–100 €/m³ at 1,500–2,500 m³) and Danish pits (Dronninglund 60,000 m³
+     38 €/m³, Vojens 210,000 m³ 24 €/m³). A new network storage starts at the curve value (1000 m³:
+     176 €/m³; `ThermalStorageAdapter(spez_Investitionskosten=None)`), the dialog shows the value for
+     the entered volume; saved storages keep theirs. Tests: `tests/test_storage_costs.py`.
+     **Still open:** the cost stays linear in the volume once set, so the optimizer does not see the
+     economy of scale of a larger solar storage (its `kosten_speicher_spez` is fixed per m³).
 
 **Later stages (see the report, section 6):** stage 4 plausibility indicators; stage 5 e2e as
 `pytest -m e2e` with mocked services, user handbook.
