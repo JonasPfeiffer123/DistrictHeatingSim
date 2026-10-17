@@ -19,7 +19,7 @@ from pandapower.timeseries import DFData
 from scipy.interpolate import RegularGridInterpolator
 from shapely.geometry import LineString
 
-from districtheatingsim.constants import KELVIN_OFFSET
+from districtheatingsim.constants import KELVIN_OFFSET, MAX_PRESSURE_LOSS_PA_PER_M
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_simulation_pandapipes.controllers import (
     BadPointPressureLiftController,
@@ -505,11 +505,46 @@ def optimize_diameter_parameters(
     return net
 
 
+def specific_pressure_loss_pa_per_m(net) -> np.ndarray:
+    """
+    Friction pressure loss per metre of every pipe [Pa/m], from the last pipeflow.
+
+    Friction only: the geodetic part of ``p_from - p_to`` is no sizing criterion. pandapipes
+    reports ``res_pipe.dp_friction_loss_bar`` as the *mean over the pipe's internal sections*, so
+    the loss of the whole pipe is that value times ``sections`` (the nets here use 5 sections).
+
+    :param net: A pandapipes net after a pipeflow.
+    :return: One value per pipe row (0 for a pipe without length).
+    :rtype: numpy.ndarray
+    """
+    length_m = net.pipe["length_km"].to_numpy(dtype=float) * 1000.0
+    sections = net.pipe["sections"].to_numpy(dtype=float) if "sections" in net.pipe.columns else 1.0
+    loss_pa = np.abs(net.res_pipe["dp_friction_loss_bar"].to_numpy(dtype=float)) * sections * 1e5
+    safe_length = np.where(length_m > 0, length_m, 1.0)
+    return np.where(length_m > 0, loss_pa / safe_length, 0.0)
+
+
+def within_sizing_limits(velocity: float, loss_pa_per_m: float, v_max: float, max_loss: float | None) -> bool:
+    """
+    Whether a pipe meets the sizing limits: velocity and, if set, specific pressure loss.
+
+    :param velocity: Mean velocity [m/s].
+    :param loss_pa_per_m: Specific friction pressure loss [Pa/m].
+    :param v_max: Velocity limit [m/s].
+    :param max_loss: Pressure loss limit [Pa/m]; ``None`` or 0 = velocity only.
+    """
+    return abs(velocity) <= v_max and (not max_loss or loss_pa_per_m <= max_loss)
+
+
 def init_diameter_types(
-    net, v_max_pipe: float = 1.0, material_filter: str = "P235GH/PUR/PEHD", k: float = 0.1
+    net,
+    v_max_pipe: float = 1.0,
+    material_filter: str = "P235GH/PUR/PEHD",
+    k: float = 0.1,
+    max_pressure_loss_pa_per_m: float | None = MAX_PRESSURE_LOSS_PA_PER_M,
 ) -> pp.pandapipesNet:
     """
-    Initialize pipe diameters using standard pipe types based on velocity requirements.
+    Initialize pipe diameters using standard pipe types based on velocity and pressure loss.
 
     :param net: Pandapipes network to initialize
     :type net: pandapipes.pandapipesNet
@@ -519,11 +554,15 @@ def init_diameter_types(
     :type material_filter: str
     :param k: Pipe roughness coefficient [mm]
     :type k: float
+    :param max_pressure_loss_pa_per_m: Maximum specific friction pressure loss [Pa/m];
+        ``None`` or 0 sizes by velocity only.
+    :type max_pressure_loss_pa_per_m: float | None
     :return: Network with initialized standard pipe types
     :rtype: pp.pandapipesNet
 
     .. note::
-       Selects closest available standard type from filtered catalog based on required diameter.
+       Selects the smallest catalogue type of the pipe's insulation grade that meets both limits.
+       The pressure loss limit decides in small pipes, the velocity limit in large ones.
     """
     start_time = time.time()
 
@@ -541,22 +580,29 @@ def init_diameter_types(
     if filtered_by_material.empty:
         raise ValueError(f"No standard pipe types found for material filter: {material_filter}")
 
-    # Initialize pipe diameters based on velocity requirements
+    # Initialize pipe diameters based on velocity and pressure loss requirements
     logger.info(
-        "Initializing diameters of %d pipes (v_max_pipe = %s m/s, material = %s)",
+        "Initializing diameters of %d pipes (v_max_pipe = %s m/s, max. pressure loss = %s Pa/m, material = %s)",
         len(net.pipe),
         v_max_pipe,
+        max_pressure_loss_pa_per_m,
         material_filter,
     )
     logger.debug("Available types: %s", filtered_by_material.index.tolist())
 
+    losses = specific_pressure_loss_pa_per_m(net)
     for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
         # pandapipes >=0.14: the pipe diameter column is inner_diameter_mm [mm]
         # (diameter_m was removed). Work in metres locally.
         current_diameter = net.pipe.at[pipe_idx, "inner_diameter_mm"] / 1000
 
-        # Calculate required diameter using continuity equation
-        required_diameter = current_diameter * (velocity / v_max_pipe) ** 0.5
+        # At constant flow the velocity scales with 1/d² (continuity) and the friction loss with
+        # about 1/d⁵ (Darcy-Weisbach, friction factor taken as constant)
+        required_diameter = current_diameter * (abs(velocity) / v_max_pipe) ** 0.5
+        if max_pressure_loss_pa_per_m:
+            required_diameter = max(
+                required_diameter, current_diameter * (losses[pipe_idx] / max_pressure_loss_pa_per_m) ** 0.2
+            )
 
         # Size the pipe *within its own insulation grade* — only the bore may change.
         # An unrestricted selection would tie-break across grades (identical inner
@@ -665,7 +711,11 @@ def select_std_type_within_grade(filtered_by_material, grade: str, required_diam
 
 
 def optimize_diameter_types(
-    net, v_max: float = 1.0, material_filter: str = "P235GH/PUR/PEHD", k: float = 0.1
+    net,
+    v_max: float = 1.0,
+    material_filter: str = "P235GH/PUR/PEHD",
+    k: float = 0.1,
+    max_pressure_loss_pa_per_m: float | None = MAX_PRESSURE_LOSS_PA_PER_M,
 ) -> pp.pandapipesNet:
     """
     Optimize pipe diameters using discrete standard pipe types through iterative adjustment.
@@ -678,11 +728,15 @@ def optimize_diameter_types(
     :type material_filter: str
     :param k: Pipe surface roughness [mm]
     :type k: float
+    :param max_pressure_loss_pa_per_m: Maximum specific friction pressure loss [Pa/m];
+        ``None`` or 0 sizes by velocity only.
+    :type max_pressure_loss_pa_per_m: float | None
     :return: Network with optimized standard pipe types
     :rtype: pp.pandapipesNet
 
     .. note::
-       Iteratively adjusts standard types: upsize pipes exceeding v_max, attempt downsizing below v_max.
+       Iteratively adjusts standard types: upsize pipes outside the limits (velocity, pressure
+       loss), attempt downsizing of pipes within them.
     """
     start_time = time.time()
 
@@ -699,8 +753,16 @@ def optimize_diameter_types(
     ladders = build_diameter_ladders(filtered_by_material)
 
     # Initial system state calculation
-    logger.info("Optimizing pipe diameters (v_max = %s m/s, material = %s)", v_max, material_filter)
+    logger.info(
+        "Optimizing pipe diameters (v_max = %s m/s, max. pressure loss = %s Pa/m, material = %s)",
+        v_max,
+        max_pressure_loss_pa_per_m,
+        material_filter,
+    )
     logger.debug("Available types: %s", filtered_by_material.index.tolist())
+
+    def within_limits(pipe_idx: int, velocity: float, losses) -> bool:
+        return within_sizing_limits(velocity, losses[pipe_idx], v_max, max_pressure_loss_pa_per_m)
 
     # Calculate current state (assumes init_diameter_types was called before)
     pp.pipeflow(net, mode="bidirectional", iter=100)
@@ -720,17 +782,18 @@ def optimize_diameter_types(
 
         logger.debug("Diameter optimization iteration %d", iteration_count + 1)
 
+        losses = specific_pressure_loss_pa_per_m(net)
         for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
             # Skip already optimized pipes within limits
-            if net.pipe.at[pipe_idx, "optimized"] and velocity <= v_max:
+            if net.pipe.at[pipe_idx, "optimized"] and within_limits(pipe_idx, velocity, losses):
                 pipes_within_target += 1
                 continue
 
             current_type = net.pipe.at[pipe_idx, "std_type"]
             pipe_name = net.pipe.at[pipe_idx, "name"] if "name" in net.pipe.columns else f"Pipe {pipe_idx}"
 
-            # Upsize pipes exceeding velocity limit (next bigger bore, same grade)
-            if velocity > v_max:
+            # Upsize pipes outside the limits (next bigger bore, same grade)
+            if not within_limits(pipe_idx, velocity, losses):
                 new_type = neighbor_std_type(current_type, ladders, larger=True)
                 if new_type is None:
                     # Already at the largest available bore for this insulation grade.
@@ -740,7 +803,12 @@ def optimize_diameter_types(
                 properties = filtered_by_material.loc[new_type]
 
                 logger.debug(
-                    "%s: upsize v=%.3f > %s m/s | %s -> %s", pipe_name, velocity, v_max, current_type, new_type
+                    "%s: upsize v=%.3f m/s, %.0f Pa/m | %s -> %s",
+                    pipe_name,
+                    velocity,
+                    losses[pipe_idx],
+                    current_type,
+                    new_type,
                 )
 
                 apply_pipe_std_type(net, pipe_idx, new_type, properties, k_mm=k)
@@ -767,27 +835,26 @@ def optimize_diameter_types(
                 # Step 2: Adjust pump if needed
                 run_control(net, mode="bidirectional", iter=100)
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
+                new_losses = specific_pressure_loss_pa_per_m(net)
 
-                if new_velocity <= v_max:
+                if within_limits(pipe_idx, new_velocity, new_losses):
                     logger.debug(
-                        "%s: downsize v=%.3f <= %s m/s | %s -> %s (new v=%.3f)",
+                        "%s: downsize %s -> %s (new v=%.3f m/s, %.0f Pa/m)",
                         pipe_name,
-                        velocity,
-                        v_max,
                         current_type,
                         new_type,
                         new_velocity,
+                        new_losses[pipe_idx],
                     )
                     change_made = True
                 else:
                     logger.debug(
-                        "%s: revert v=%.3f -> %.3f > %s m/s | %s -> %s",
+                        "%s: revert %s -> %s (v=%.3f m/s, %.0f Pa/m outside the limits)",
                         pipe_name,
-                        velocity,
-                        new_velocity,
-                        v_max,
                         new_type,
                         current_type,
+                        new_velocity,
+                        new_losses[pipe_idx],
                     )
                     # Revert to previous size and mark as optimized
                     properties = filtered_by_material.loc[current_type]
@@ -948,7 +1015,9 @@ def _de(value: float, digits: int) -> str:
     return f"{value:.{digits}f}".replace(".", ",")
 
 
-def initialisation_summary(net, given_lift_bar: float | None, v_max: float | None = None) -> str:
+def initialisation_summary(
+    net, given_lift_bar: float | None, v_max: float | None = None, max_loss: float | None = None
+) -> str:
     """
     German summary of an initialised net: how the pump was designed and why (UT-M12).
 
@@ -958,6 +1027,7 @@ def initialisation_summary(net, given_lift_bar: float | None, v_max: float | Non
     :param net: The initialised pandapipes net.
     :param given_lift_bar: The pump lift entered in the dialog [bar].
     :param v_max: The velocity limit of the diameter sizing [m/s], if it was used.
+    :param max_loss: The pressure loss limit of the diameter sizing [Pa/m], if it was used.
     """
     from districtheatingsim.net_simulation_pandapipes.controllers import BadPointPressureLiftController
 
@@ -987,6 +1057,10 @@ def initialisation_summary(net, given_lift_bar: float | None, v_max: float | Non
                 )
     if hasattr(net, "res_pipe") and len(net.res_pipe):
         v_peak = float(np.nanmax(np.abs(net.res_pipe["v_mean_m_per_s"].to_numpy(dtype=float))))
-        limit = f" (Grenze der Durchmesserauslegung {_de(v_max, 1)} m/s, gilt für alle Leitungen)" if v_max else ""
+        limit = f" (Grenze der Durchmesserauslegung {_de(v_max, 1)} m/s)" if v_max else ""
         lines.append(f"Höchste Strömungsgeschwindigkeit: {_de(v_peak, 2)} m/s{limit}.")
+        if "dp_friction_loss_bar" in net.res_pipe.columns:
+            loss_peak = float(np.nanmax(specific_pressure_loss_pa_per_m(net)))
+            limit = f" (Grenze {max_loss:.0f} Pa/m)" if v_max and max_loss else ""
+            lines.append(f"Höchster Druckverlust durch Reibung: {loss_peak:.0f} Pa/m{limit}.")
     return "\n".join(lines)

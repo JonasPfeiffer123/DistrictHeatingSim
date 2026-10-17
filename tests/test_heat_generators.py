@@ -136,7 +136,25 @@ class TestCHP:
         assert r["Brennstoffbedarf"] == pytest.approx(1429.189475, rel=REL)
         assert r["WGK"] == pytest.approx(88.901016, rel=REL)
         assert r["spec_co2_total"] == pytest.approx(0.121053, rel=REL)
-        assert r["primärenergie"] == pytest.approx(1572.108423, rel=REL)
+        # UT-M15: the electricity is credited for primary energy as for CO₂ (it was 1572.108423)
+        assert r["primärenergie"] == pytest.approx(1572.108423 - 471.632527 * 1.8, rel=REL)
+
+    def test_primary_energy_credit_matches_the_co2_credit(self, economic_parameters, load_profile):
+        from districtheatingsim.constants import CO2_FACTOR_ELECTRICITY, PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT
+
+        chp = self._make()
+        r = chp.calculate(economic_parameters, 1, load_profile)
+        assert chp.co2_savings == pytest.approx(r["Strommenge"] * CO2_FACTOR_ELECTRICITY)
+        assert r["primärenergie"] == pytest.approx(
+            r["Brennstoffbedarf"] * chp.primärenergiefaktor - r["Strommenge"] * PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT
+        )
+
+    def test_configuration_saved_before_gets_the_credit(self, economic_parameters, load_profile):
+        # from_dict skips __init__; a CHP saved before the credit has no factor of its own
+        chp = self._make()
+        del chp.primärenergiefaktor_strom
+        r = chp.calculate(economic_parameters, 1, load_profile)
+        assert r["primärenergie"] == pytest.approx(1572.108423 - 471.632527 * 1.8, rel=REL)
 
     def test_arbitrary_name_defaults_to_gas(self, economic_parameters, load_profile):
         # C6 fixed: a CHP not named BHKW/Holzgas-BHKW no longer crashes with an
@@ -230,3 +248,18 @@ class TestGeothermalElectricity:
         extraction = q * (1 - 1 / 4.0)
         assert el < extraction
         assert el == pytest.approx(geo.Wärmeleistung_kW[0] / geo.COP[0])
+
+
+class TestIdleGeneratorCosts:
+    """A generator that delivers no heat (a higher-priority one covers everything) skipped its
+    investment costs; the cost table then failed with an AttributeError on
+    ``Investitionskosten_Speicher`` and the result view stayed empty (found in the Zittau GUI run)."""
+
+    @pytest.mark.parametrize("factory", [lambda: TestCHP._make(), lambda: TestBiomassBoiler._make()])
+    def test_cost_data_without_heat(self, factory, economic_parameters):
+        generator = factory()
+        result = generator.calculate(economic_parameters, 1, np.zeros(8760))
+        assert result["Wärmemenge"] == 0
+        name, _dimensions, costs, full_costs = generator.extract_tech_data()
+        assert float(full_costs) > 0  # an installed plant has an investment, operated or not
+        assert "Investitionskosten" in costs

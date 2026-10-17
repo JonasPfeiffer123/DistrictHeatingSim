@@ -337,12 +337,12 @@ class NetSimulationTab(QWidget):
         self._refresh_all_widgets()
         # The pump lift changed silently (1.5 -> 3.3 bar); say how it was designed and why (UT-M12)
         try:
+            sized = getattr(network_data, "diameter_optimization_pipe_checked", False)
             summary = initialisation_summary(
                 network_data.net,
                 getattr(network_data, "lift_pressure_pump", None),
-                getattr(network_data, "max_velocity_pipe", None)
-                if getattr(network_data, "diameter_optimization_pipe_checked", False)
-                else None,
+                getattr(network_data, "max_velocity_pipe", None) if sized else None,
+                getattr(network_data, "max_pressure_loss_pipe", None) if sized else None,
             )
         except Exception:
             logger.exception("Zusammenfassung der Netzinitialisierung nicht möglich")

@@ -122,6 +122,15 @@ class NetworkInfoPanel(QWidget):
             if key not in self._PRIORITY_KEYS and value is not None:
                 self._cards_layout.addWidget(self._make_card(key, value))
 
+        checks = self._plausibility_checks(network_data, results)
+        if checks:
+            heading = QLabel("Plausibilität")
+            heading.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+            heading.setStyleSheet("color: #2c3e50; padding-top: 6px;")
+            self._cards_layout.addWidget(heading)
+            for check in checks:
+                self._cards_layout.addWidget(self._make_check_card(check))
+
         self._cards_layout.addStretch()
 
     # ------------------------------------------------------------------
@@ -148,13 +157,40 @@ class NetworkInfoPanel(QWidget):
         results["Anschlussdichte ohne Hausanschlüsse [kW/m]"] = (peak / without) if (peak and without) else None
         return results
 
+    @staticmethod
+    def _plausibility_checks(network_data, results):
+        """Traffic-light checks of the network (loss share, heat density, pressure loss)."""
+        from districtheatingsim.net_simulation_pandapipes.utilities import specific_pressure_loss_pa_per_m
+        from districtheatingsim.utilities.plausibility import network_checks
+
+        net = getattr(network_data, "net", None)
+        max_loss = None
+        res_pipe = getattr(net, "res_pipe", None)
+        if res_pipe is not None and len(res_pipe) and "dp_friction_loss_bar" in res_pipe.columns:
+            max_loss = float(specific_pressure_loss_pa_per_m(net).max())
+        sized = getattr(network_data, "diameter_optimization_pipe_checked", False)
+        limit = getattr(network_data, "max_pressure_loss_pipe", None) if sized else None
+        return network_checks(results, max_loss, limit)
+
+    def _make_check_card(self, check) -> QFrame:
+        from districtheatingsim.utilities.plausibility import RATING_COLORS, RATING_LABELS, format_value
+
+        card = self._make_card(check.name, format_value(check), value_color="#2c3e50")
+        card.setToolTip(check.hint)
+        rating = QLabel(RATING_LABELS[check.rating])
+        rating.setFont(QFont("Arial", 9, QFont.Weight.Bold))
+        rating.setStyleSheet(f"color: {RATING_COLORS[check.rating]};")
+        rating.setAlignment(Qt.AlignmentFlag.AlignRight)
+        card.layout().addWidget(rating, 1)
+        return card
+
     def _clear_cards(self):
         while self._cards_layout.count():
             child = self._cards_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
-    def _make_card(self, title: str, value) -> QFrame:
+    def _make_card(self, title: str, value, value_color: str = "#27ae60") -> QFrame:
         card = QFrame()
         card.setFrameStyle(QFrame.Shape.Box)
         card.setStyleSheet("""
@@ -187,7 +223,7 @@ class NetworkInfoPanel(QWidget):
 
         val_lbl = QLabel(value_text)
         val_lbl.setFont(QFont("Arial", 9, QFont.Weight.Bold))
-        val_lbl.setStyleSheet("color: #27ae60;")
+        val_lbl.setStyleSheet(f"color: {value_color};")
         val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
         row.addWidget(val_lbl, 1)
 

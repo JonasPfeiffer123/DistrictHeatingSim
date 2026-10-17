@@ -2,7 +2,8 @@
 Pump design after the net initialisation (user test 2026-10-08, UT-M12).
 
 The bad-point controller raised the given pump lift of 1.5 bar to 3.3 bar without a word; the
-velocity limit of the diameter sizing applies to the house connections too. The summary says both.
+limits of the diameter sizing (velocity, friction pressure loss) apply to the house connections too.
+The summary says both.
 """
 
 from types import SimpleNamespace
@@ -31,7 +32,19 @@ def test_raised_lift_is_explained():
         "Pumpe: Förderhöhe 3,30 bar (vorgegeben 1,50 bar).\n"
         "Die Differenzdruckregelung im Schlechtpunkt hat sie angepasst, damit am ungünstigsten Hausanschluss "
         "mindestens 1,0 bar anliegen (jetzt 1,05 bar).\n"
-        "Höchste Strömungsgeschwindigkeit: 0,97 m/s (Grenze der Durchmesserauslegung 1,0 m/s, gilt für alle Leitungen)."
+        "Höchste Strömungsgeschwindigkeit: 0,97 m/s (Grenze der Durchmesserauslegung 1,0 m/s)."
+    )
+
+
+def test_pressure_loss_and_its_limit_are_named():
+    """Velocity alone made DN 20 house connections lose ~690 Pa/m; the summary shows the friction loss."""
+    net = _net()
+    net.pipe = pd.DataFrame({"length_km": [0.1, 0.02, 0.05]})
+    net.res_pipe["dp_friction_loss_bar"] = [0.05, -0.028, 0.01]  # 50, 140 and 20 Pa/m
+    lines = initialisation_summary(net, 1.5, 1.0, 150.0).splitlines()
+    assert lines[-1] == "Höchster Druckverlust durch Reibung: 140 Pa/m (Grenze 150 Pa/m)."
+    assert initialisation_summary(net, 1.5, None, None).splitlines()[-1] == (
+        "Höchster Druckverlust durch Reibung: 140 Pa/m."
     )
 
 

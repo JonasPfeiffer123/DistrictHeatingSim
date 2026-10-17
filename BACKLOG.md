@@ -1252,6 +1252,16 @@ kept its count: with `Gaskessel_1, BHKW_1, BHKW_2` loaded, the next added gas bo
 `Gaskessel_1` again (verified). The reset now runs once before the loop.
 Test: `tests/test_technology_tab_counters.py`.
 
+### C46. A generator without heat crashed the cost table (fixed 2026-10-16)
+Found in the Zittau GUI run of the `feat/methodik` changes: a solar thermal plant behind a CHP that
+covered the load delivered nothing, `calculate_heat_generation_costs` returned before the
+investment costs, and `CostTab.updateTechDataTable` → `extract_tech_data` failed with
+`AttributeError: 'SolarThermal' object has no attribute 'Investitionskosten_Speicher'` — the result
+view stayed empty. Same pattern in the CHP and the biomass boiler; gas boiler and power-to-heat set
+their investment to 0 when idle and did not crash. **Fixed:** CHP, biomass boiler and solar thermal
+compute their investment before the no-heat return (an installed plant costs its investment,
+operated or not). Tests: `TestIdleGeneratorCosts`, `test_cost_data_without_heat` (fail on the old code).
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -2163,10 +2173,28 @@ IDs below are the report's IDs with a `UT-` prefix.
   worst station and the highest velocity with the sizing limit (`utilities.initialisation_summary`);
   the v_max field has its unit and says it applies to all pipes. Tests:
   `tests/test_initialisation_summary.py`.
-  **Open – needs a decision:** the 5.4 bar come from ~2 bar loss each way at 1 m/s in small pipes.
-  Sizing by velocity only (1 m/s for DN20 house connections as for mains) gives high specific
-  pressure losses in small DN; a DN-dependent limit or a pressure-loss criterion (Pa/m) would change
-  the results of every project.
+  **Decided 2026-10-16 – pressure loss criterion next to v_max (branch `feat/methodik`):** sizing by
+  velocity alone left small pipes at up to 687 Pa/m in Zittau (DN 20 at ~1 m/s). `init_diameter_types`
+  and `optimize_diameter_types` now take the smallest type of the grade that meets both limits
+  (`within_sizing_limits`; `specific_pressure_loss_pa_per_m` = friction only, without the geodetic
+  part). Default `constants.MAX_PRESSURE_LOSS_PA_PER_M = 300` (dialog field "Maximaler Druckverlust
+  durch Reibung in Pa/m", empty = velocity only; nets saved before get the default). Comparison
+  (v_max 1 m/s, init + optimisation; pump lift / pipe material m·mm / design heat loss):
+  | limit | Zittau | Görlitz |
+  |---|---|---|
+  | none | 5.40 bar / 285 460 / 52.7 kW | 2.32 bar / 221 421 / 25.6 kW |
+  | 300 Pa/m | 3.24 bar / +3.4 % / +2.8 % | 2.19 bar / +0.5 % / +0.7 % |
+  | 200 Pa/m | 3.20 bar / +8.0 % / +4.6 % | 2.02 bar / +0.6 % / +0.9 % |
+  | 150 Pa/m | 2.89 bar / +11.5 % / +6.1 % | 2.12 bar / +0.6 % / +0.9 % |
+  | 100 Pa/m | 2.23 bar / +19.1 % / +9.5 % | 1.66 bar / +3.2 % / +3.6 % |
+  300 takes most of the lift for little extra heat loss (which lasts all year); 100 Pa/m is the
+  long-standing conservative practice for service pipes (Energiforsk 2021:813). **Gotcha found on
+  the way:** pandapipes reports `res_pipe.dp_friction_loss_bar` as the *mean over the internal
+  sections*; the nets use 5 sections, so the pipe loss is 5× that value (a first comparison read
+  1/5 of the real losses and wrongly concluded the limit changes nothing). Golden master re-pinned
+  (it sizes with v_max 2 m/s: lift 2.22 → 1.39 bar, pumpstrom −29.6 %). Tests:
+  `TestSpecificPressureLoss`, `test_optimisation_keeps_the_pressure_loss_limit`,
+  `test_pressure_loss_and_its_limit_are_named`.
 - UT-M2 — missing units and English leftovers. **Fixed 2026-10-12:** Qt's German translation is
   installed at start (`gui/qt_translation.py`: "OK/Abbrechen/Ja/Nein", file dialogs, file tree
   "Name/Größe/Typ/Änderungsdatum"; the e2e harness does the same); the thermal storage dialog is
@@ -2209,14 +2237,48 @@ IDs below are the report's IDs with a `UT-` prefix.
      primary energy (`primärenergie = Brennstoffbedarf × primärenergiefaktor`). Consistent would be a
      credit in both (Stromgutschrift, e.g. AGFW FW 309-1 / GEG with a displacement factor) or in
      neither; which method and factor is a decision.
+     **Decided + done 2026-10-16 (`feat/methodik`): credit in both, on the basis the CO₂ credit
+     already uses** — `primärenergie = Brennstoff × fP − Strom × PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT`
+     (1.8 = GEG grid electricity, the PE counterpart of `CO2_FACTOR_ELECTRICITY` 0.4; may go negative,
+     like CO₂; CHPs saved before take the constant). Test CHP: 1572.1 → 723.2 MWh. **Still open:** the
+     normative credit method (AGFW FW 309-1, GEG Anlage 4 Nr. 11) uses the displacement mix for both
+     — fP 2.8 and 860 g CO₂/kWh — and floors the overall factor at 0; a reported switch of the GEG to
+     the Carnot method (from 2027) is not verified. Switching means changing both constants and adding
+     the floor.
   2. *Optimizer weights are unscaled:* the objective is `w·WGK + w·CO₂ + w·PEF` with WGK ≈ 100 €/MWh,
      CO₂ ≈ 0.2 t/MWh, PEF ≈ 1 — equal weights optimise practically the costs only (now explained in
      the dialog). Normalising (e.g. by the start values) would change every optimisation.
+     **Decided + done 2026-10-16 (`feat/methodik`):** each indicator is divided by its value for the
+     configured system (`energy_system.objective_scales`; magnitudes, floors 10 €/MWh / 0.02 t/MWh /
+     0.1 against near-zero references, typical magnitudes if the configured system cannot be
+     evaluated or covers nothing). The sum is expressed in €/MWh of the configured system, so the
+     solver tolerance and the unmet-demand penalty keep their calibration and the default weights
+     (costs only) give exactly the old objective. Dialog text updated. Tests: `TestObjectiveScales`.
   3. *773 m² collector with 16 m³ storage:* ~21 l/m², far below the usual 50–100 l/m² for daily
      storage; a plausibility check (storage per m² collector, full-load hours, loss share, heat
      density — report stage 4 "Plausibilitätsampel") or tighter optimisation bounds.
+     **Done 2026-10-16 (`feat/methodik`), both:** (a) the optimizer keeps at least
+     `constants.SOLAR_STORAGE_MIN_L_PER_M2 = 50` l/m² (`SolarThermal.optimization_constraints`, an
+     SLSQP inequality; left out when the bounds cannot meet it; `BaseHeatGenerator` returns none).
+     Reproduced first: bounds only → 134 m² / 1 m³ = 7 l/m² (volume at its lower bound), with the
+     constraint 137 m² / 6.8 m³ = 50 l/m² for +0.18 €/MWh. (b) Traffic light
+     `utilities/plausibility.py` — network: loss share (QM Holzheizwerke ≤ 10 % green, ≤ 20 % yellow;
+     only for a full-year series), heat density (≥ 1.8 MWh/(m·a) QM Holzheizwerke green, ≥ 0.5 former
+     KfW funding yellow), max. friction pressure loss vs. the sizing limit; generators: storage per m²
+     collector (≥ 50 green, ≥ 25 yellow), full-load hours (heat / highest hourly output) as information
+     only — no reliable threshold found. Shown as cards in the network info panel and as section
+     "Plausibilität" in the generator results tab (hint with threshold and source as tooltip). Tests:
+     `tests/test_plausibility.py`, `TestStorageConstraint`.
   4. *Storage costs:* the thermal network storage defaults to 50 €/m³ (a large pit storage value) at
      1000 m³, the generator buffer storages to 750 €/m³ — size-dependent defaults would fit both.
+     **Done 2026-10-16 (`feat/methodik`):** `thermal_storage.typical_storage_cost_eur_per_m3`,
+     c(V) = 750 €/m³ · (V / 20 m³)^−0.37 — through the buffer/solar default (750 at 20 m³), tank
+     storages (store4grid: ~150–100 €/m³ at 1,500–2,500 m³) and Danish pits (Dronninglund 60,000 m³
+     38 €/m³, Vojens 210,000 m³ 24 €/m³). A new network storage starts at the curve value (1000 m³:
+     176 €/m³; `ThermalStorageAdapter(spez_Investitionskosten=None)`), the dialog shows the value for
+     the entered volume; saved storages keep theirs. Tests: `tests/test_storage_costs.py`.
+     **Still open:** the cost stays linear in the volume once set, so the optimizer does not see the
+     economy of scale of a larger solar storage (its `kosten_speicher_spez` is fixed per m³).
 
 **Later stages (see the report, section 6):** stage 4 plausibility indicators; stage 5 e2e as
 `pytest -m e2e` with mocked services, user handbook.

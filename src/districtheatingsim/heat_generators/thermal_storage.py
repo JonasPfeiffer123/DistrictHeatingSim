@@ -33,6 +33,28 @@ logger = logging.getLogger(__name__)
 # Keys that identify an old (pre-1D) saved config – used for migration detection.
 _OLD_CONFIG_KEYS = {"storage_type", "dimensions", "lambda_top", "lambda_side", "lambda_bottom"}
 
+#: Typical specific investment cost of a hot-water storage by volume, c(V) = 750 €/m³ ·
+#: (V / 20 m³)^-0.37. Fitted to the app's buffer default (750 €/m³ at 20 m³), tank storages of
+#: 1,500-2,500 m³ (about 150-100 €/m³, store4grid study 2015) and Danish pit storages
+#: (Dronninglund 60,000 m³: 38 €/m³, Vojens 210,000 m³: 24 €/m³). The network storage default
+#: was a flat 50 €/m³ at 1000 m³ - a large pit's value next to 750 €/m³ for the buffers (UT-M15).
+STORAGE_COST_REFERENCE_VOLUME_M3 = 20.0
+STORAGE_COST_REFERENCE_EUR_PER_M3 = 750.0
+STORAGE_COST_EXPONENT = -0.37
+
+
+def typical_storage_cost_eur_per_m3(volume_m3: float) -> float:
+    """
+    Typical specific investment cost of a hot-water storage of ``volume_m3`` [€/m³].
+
+    :param volume_m3: Storage volume [m³].
+    :return: The cost per m³ from the size curve (the reference value for a volume <= 0).
+    :rtype: float
+    """
+    if not volume_m3 or volume_m3 <= 0:
+        return STORAGE_COST_REFERENCE_EUR_PER_M3
+    return STORAGE_COST_REFERENCE_EUR_PER_M3 * (volume_m3 / STORAGE_COST_REFERENCE_VOLUME_M3) ** STORAGE_COST_EXPONENT
+
 
 class ThermalStorageAdapter(BaseHeatGenerator):
     """
@@ -79,8 +101,9 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         ``"tvd"`` (default) or ``"upwind"``.
     buoyancy : bool
         Enable convective mixing correction (default True).
-    spez_Investitionskosten : float
-        Specific investment cost [€/m³] for cost calculation.
+    spez_Investitionskosten : float or None
+        Specific investment cost [€/m³] for cost calculation; ``None`` (default) takes the
+        typical cost for the volume (:func:`typical_storage_cost_eur_per_m3`).
     hours : int
         Simulation horizon [h] (default 8760).
     """
@@ -110,7 +133,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         advection_scheme: str = "tvd",
         buoyancy: bool = True,
         lambda_eff_factor: float = 5.0,
-        spez_Investitionskosten: float = 50.0,
+        spez_Investitionskosten: float | None = None,
         Nutzungsdauer: int = 30,
         f_Inst: float = 1.0,
         f_W_Insp: float = 1.0,
@@ -143,7 +166,9 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         self.advection_scheme = advection_scheme
         self.buoyancy = buoyancy
         self.lambda_eff_factor = lambda_eff_factor
-        self.spez_Investitionskosten = spez_Investitionskosten
+        self.spez_Investitionskosten = (
+            typical_storage_cost_eur_per_m3(volume) if spez_Investitionskosten is None else spez_Investitionskosten
+        )
         # VDI 2067 cost factors. f_W_Insp is the annual maintenance/inspection cost as a
         # percentage of the investment (folded into the annuity by annuity()).
         self.Nutzungsdauer = Nutzungsdauer

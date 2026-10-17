@@ -252,10 +252,7 @@ class BiomassBoiler(BaseHeatGenerator):
         """
         self.load_economic_parameters(economic_parameters)
 
-        if self.Wärmemenge_MWh == 0:
-            return float("inf")
-
-        # Calculate component investment costs
+        # Investment costs also for a boiler that delivers nothing (the cost table lists them)
         self.Investitionskosten_Kessel = self.spez_Investitionskosten * self.thermal_capacity_kW
         self.Investitionskosten_Holzlager = self.spez_Investitionskosten_Holzlager * self.Größe_Holzlager
         if self.speicher_aktiv:
@@ -265,6 +262,9 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Investitionskosten = (
             self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
         )
+
+        if self.Wärmemenge_MWh == 0:
+            return float("inf")
 
         # Calculate standard annuity without subsidies
         self.A_N = self.annuity(
