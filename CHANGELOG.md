@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Method decisions from the 2026-10-08 user test (UT-M12, UT-M15). They change results:
+re-initialise a network and recalculate the generators to apply them.
+
+### Changed results
+- **Pipe sizing limits the friction pressure loss** (default 300 Pa/m) next to the velocity;
+  by velocity alone small pipes lost up to ~690 Pa/m. Zittau: pump lift 5.40 → 3.24 bar, pump
+  electricity −40 %, pipe material +3.4 %, network losses +2.9 % (simplified yearly series).
+- **CHP primary energy credits the generated electricity** as the CO₂ balance does (1.8 per MWh,
+  the grid-electricity counterpart of the 0.4 t/MWh CO₂ credit); the PEF no longer rises with a CHP.
+- **Optimizer weights are relative importances**: each indicator is divided by its value for the
+  configured system, so with equal weights 10 % less CO₂ counts as much as 10 % lower costs. The
+  default weights (costs only) optimise exactly as before.
+- **Solar thermal optimisation keeps at least 50 l of storage per m² collector** (it could end at
+  the volume's lower bound, e.g. 773 m² with 16 m³).
+- A new network storage starts at the typical cost for its volume (1000 m³: 176 €/m³ instead of a
+  flat 50 €/m³); saved storages keep their value.
+
+### Added
+- **Plausibility traffic light** in the network information and the generator results: loss share,
+  heat density, highest friction pressure loss, storage per m² collector, full-load hours — each with
+  its threshold and source as a tooltip.
+- Dialog field "Maximaler Druckverlust durch Reibung in Pa/m"; the summary after the network
+  initialisation names the highest pressure loss; the storage dialog shows the typical cost.
+
+### Fixed
+- A CHP, biomass boiler or solar thermal plant that delivered no heat left the result view empty
+  (missing investment costs in the cost table).
+
 ## [2.0.0] - 2026-10-16
 
 First release since 1.0.3. It bundles the 2026-06 refactoring, the 2026-09 performance audit
