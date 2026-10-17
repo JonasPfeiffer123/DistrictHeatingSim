@@ -304,10 +304,6 @@ class CHP(BaseHeatGenerator):
         """
         self.load_economic_parameters(economic_parameters)
 
-        if self.Wärmemenge_MWh == 0:
-            self.WGK = float("inf")
-            return float("inf")
-
         # Determine technology-specific costs and fuel prices by fuel type (not name).
         if self._resolve_fuel_type() == "wood_gas":
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
@@ -316,10 +312,14 @@ class CHP(BaseHeatGenerator):
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_GBHKW  # €/kW
             self.Brennstoffpreis = self.Gaspreis
 
-        # Calculate component investment costs
+        # Investment costs also for a CHP that delivers nothing (the cost table lists them)
         self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_kW
         self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen_BHKW
         self.Investitionskosten = self.Investitionskosten_BHKW + self.Investitionskosten_Speicher
+
+        if self.Wärmemenge_MWh == 0:
+            self.WGK = float("inf")
+            return float("inf")
 
         # Calculate electricity revenue
         self.Stromeinnahmen = self.Strommenge_MWh * self.Strompreis

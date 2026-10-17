@@ -1252,6 +1252,16 @@ kept its count: with `Gaskessel_1, BHKW_1, BHKW_2` loaded, the next added gas bo
 `Gaskessel_1` again (verified). The reset now runs once before the loop.
 Test: `tests/test_technology_tab_counters.py`.
 
+### C46. A generator without heat crashed the cost table (fixed 2026-10-16)
+Found in the Zittau GUI run of the `feat/methodik` changes: a solar thermal plant behind a CHP that
+covered the load delivered nothing, `calculate_heat_generation_costs` returned before the
+investment costs, and `CostTab.updateTechDataTable` → `extract_tech_data` failed with
+`AttributeError: 'SolarThermal' object has no attribute 'Investitionskosten_Speicher'` — the result
+view stayed empty. Same pattern in the CHP and the biomass boiler; gas boiler and power-to-heat set
+their investment to 0 when idle and did not crash. **Fixed:** CHP, biomass boiler and solar thermal
+compute their investment before the no-heat return (an installed plant costs its investment,
+operated or not). Tests: `TestIdleGeneratorCosts`, `test_cost_data_without_heat` (fail on the old code).
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,

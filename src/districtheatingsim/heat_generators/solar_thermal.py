@@ -553,13 +553,13 @@ class SolarThermal(BaseHeatGenerator):
         """
         self.load_economic_parameters(economic_parameters)
 
-        if self.Wärmemenge_MWh == 0:
-            return float("inf")
-
-        # Calculate investment costs
+        # Investment costs also for a plant that delivers nothing (the cost table lists them)
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
+
+        if self.Wärmemenge_MWh == 0:
+            return float("inf")
 
         # Calculate standard annuity without subsidies
         self.A_N = self.annuity(

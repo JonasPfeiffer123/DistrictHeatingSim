@@ -248,3 +248,18 @@ class TestGeothermalElectricity:
         extraction = q * (1 - 1 / 4.0)
         assert el < extraction
         assert el == pytest.approx(geo.Wärmeleistung_kW[0] / geo.COP[0])
+
+
+class TestIdleGeneratorCosts:
+    """A generator that delivers no heat (a higher-priority one covers everything) skipped its
+    investment costs; the cost table then failed with an AttributeError on
+    ``Investitionskosten_Speicher`` and the result view stayed empty (found in the Zittau GUI run)."""
+
+    @pytest.mark.parametrize("factory", [lambda: TestCHP._make(), lambda: TestBiomassBoiler._make()])
+    def test_cost_data_without_heat(self, factory, economic_parameters):
+        generator = factory()
+        result = generator.calculate(economic_parameters, 1, np.zeros(8760))
+        assert result["Wärmemenge"] == 0
+        name, _dimensions, costs, full_costs = generator.extract_tech_data()
+        assert float(full_costs) > 0  # an installed plant has an investment, operated or not
+        assert "Investitionskosten" in costs
