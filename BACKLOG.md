@@ -2163,10 +2163,28 @@ IDs below are the report's IDs with a `UT-` prefix.
   worst station and the highest velocity with the sizing limit (`utilities.initialisation_summary`);
   the v_max field has its unit and says it applies to all pipes. Tests:
   `tests/test_initialisation_summary.py`.
-  **Open – needs a decision:** the 5.4 bar come from ~2 bar loss each way at 1 m/s in small pipes.
-  Sizing by velocity only (1 m/s for DN20 house connections as for mains) gives high specific
-  pressure losses in small DN; a DN-dependent limit or a pressure-loss criterion (Pa/m) would change
-  the results of every project.
+  **Decided 2026-10-16 – pressure loss criterion next to v_max (branch `feat/methodik`):** sizing by
+  velocity alone left small pipes at up to 687 Pa/m in Zittau (DN 20 at ~1 m/s). `init_diameter_types`
+  and `optimize_diameter_types` now take the smallest type of the grade that meets both limits
+  (`within_sizing_limits`; `specific_pressure_loss_pa_per_m` = friction only, without the geodetic
+  part). Default `constants.MAX_PRESSURE_LOSS_PA_PER_M = 300` (dialog field "Maximaler Druckverlust
+  durch Reibung in Pa/m", empty = velocity only; nets saved before get the default). Comparison
+  (v_max 1 m/s, init + optimisation; pump lift / pipe material m·mm / design heat loss):
+  | limit | Zittau | Görlitz |
+  |---|---|---|
+  | none | 5.40 bar / 285 460 / 52.7 kW | 2.32 bar / 221 421 / 25.6 kW |
+  | 300 Pa/m | 3.24 bar / +3.4 % / +2.8 % | 2.19 bar / +0.5 % / +0.7 % |
+  | 200 Pa/m | 3.20 bar / +8.0 % / +4.6 % | 2.02 bar / +0.6 % / +0.9 % |
+  | 150 Pa/m | 2.89 bar / +11.5 % / +6.1 % | 2.12 bar / +0.6 % / +0.9 % |
+  | 100 Pa/m | 2.23 bar / +19.1 % / +9.5 % | 1.66 bar / +3.2 % / +3.6 % |
+  300 takes most of the lift for little extra heat loss (which lasts all year); 100 Pa/m is the
+  long-standing conservative practice for service pipes (Energiforsk 2021:813). **Gotcha found on
+  the way:** pandapipes reports `res_pipe.dp_friction_loss_bar` as the *mean over the internal
+  sections*; the nets use 5 sections, so the pipe loss is 5× that value (a first comparison read
+  1/5 of the real losses and wrongly concluded the limit changes nothing). Golden master re-pinned
+  (it sizes with v_max 2 m/s: lift 2.22 → 1.39 bar, pumpstrom −29.6 %). Tests:
+  `TestSpecificPressureLoss`, `test_optimisation_keeps_the_pressure_loss_limit`,
+  `test_pressure_loss_and_its_limit_are_named`.
 - UT-M2 — missing units and English leftovers. **Fixed 2026-10-12:** Qt's German translation is
   installed at start (`gui/qt_translation.py`: "OK/Abbrechen/Ja/Nein", file dialogs, file tree
   "Name/Größe/Typ/Änderungsdatum"; the e2e harness does the same); the thermal storage dialog is

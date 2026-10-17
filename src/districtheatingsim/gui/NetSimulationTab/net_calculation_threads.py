@@ -74,6 +74,7 @@ class NetInitializationThread(QThread):
                     self.NetworkGenerationData.max_velocity_pipe,
                     self.NetworkGenerationData.material_filter_pipe,
                     self.NetworkGenerationData.k_mm_pipe,
+                    self.NetworkGenerationData.max_pressure_loss_pipe,
                 )
 
             # Compute KPIs here (off the UI thread) so the info panel just renders them.

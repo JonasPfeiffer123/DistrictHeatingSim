@@ -334,6 +334,53 @@ class TestSelectStdTypeWithinGrade:
         assert chosen in self._catalog().index
 
 
+class TestSpecificPressureLoss:
+    """The sizing limits the friction loss per metre next to the velocity: by velocity alone a
+    DN 20 house connection at 1 m/s loses ~690 Pa/m (UT-M12)."""
+
+    @staticmethod
+    def _one_pipe(height_to_m=0.0, sections=5):
+        import pandapipes as pp
+
+        net = pp.create_empty_network(fluid="water")
+        j1 = pp.create_junction(net, pn_bar=5, tfluid_k=353.15, height_m=0.0)
+        j2 = pp.create_junction(net, pn_bar=5, tfluid_k=353.15, height_m=height_to_m)
+        pp.create_ext_grid(net, j1, p_bar=5, t_k=353.15)
+        pp.create_pipe(net, j1, j2, std_type="ISOPLUS_DRE20_2x", length_km=0.1, k_mm=0.1, sections=sections)
+        pp.create_sink(net, j2, mdot_kg_per_s=0.33)
+        pp.pipeflow(net)
+        return net
+
+    def test_every_section_counts(self):
+        # pandapipes reports dp_friction_loss_bar as the mean over the internal sections; the whole
+        # pipe loses sections times that (the first version read 1/5 of the real loss)
+        from districtheatingsim.net_simulation_pandapipes.utilities import specific_pressure_loss_pa_per_m
+
+        net = self._one_pipe(sections=5)
+        flat_drop = (net.res_pipe.at[0, "p_from_bar"] - net.res_pipe.at[0, "p_to_bar"]) * 1e5 / 100.0
+        assert specific_pressure_loss_pa_per_m(net)[0] == pytest.approx(flat_drop, rel=1e-6)
+        assert 550 < flat_drop < 800  # DN 20 near 1 m/s
+        assert specific_pressure_loss_pa_per_m(self._one_pipe(sections=1))[0] == pytest.approx(flat_drop, rel=1e-3)
+
+    def test_geodetic_part_is_not_counted(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import specific_pressure_loss_pa_per_m
+
+        flat = specific_pressure_loss_pa_per_m(self._one_pipe())[0]
+        uphill = self._one_pipe(height_to_m=10.0)
+        assert specific_pressure_loss_pa_per_m(uphill)[0] == pytest.approx(flat, rel=1e-3)
+        drop = (uphill.res_pipe.at[0, "p_from_bar"] - uphill.res_pipe.at[0, "p_to_bar"]) * 1e5 / 100.0
+        assert drop > flat + 900  # ~ρ·g·10 m over 100 m
+
+    def test_limits(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import within_sizing_limits
+
+        assert within_sizing_limits(0.9, 140.0, 1.0, 150.0)
+        assert not within_sizing_limits(0.9, 160.0, 1.0, 150.0)  # loss too high
+        assert not within_sizing_limits(-1.1, 50.0, 1.0, 150.0)  # velocity, either direction
+        assert within_sizing_limits(0.9, 690.0, 1.0, None)  # velocity only
+        assert within_sizing_limits(0.9, 690.0, 1.0, 0)
+
+
 def _design_state(qext=7.5):
     return {
         "Heizentrale Haupteinspeisung": {
@@ -1017,6 +1064,18 @@ class TestNetworkInitialization:
 
         net = optimize_diameter_types(self._build_and_init(), v_max=1.0, k=0.1)
         self._assert_catalogue_heat_loss(net)
+
+    def test_optimisation_keeps_the_pressure_loss_limit(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import (
+            optimize_diameter_types,
+            specific_pressure_loss_pa_per_m,
+        )
+
+        by_velocity = optimize_diameter_types(self._build_and_init(), v_max=1.5, k=0.1, max_pressure_loss_pa_per_m=None)
+        assert specific_pressure_loss_pa_per_m(by_velocity).max() > 150.0  # the limit matters here
+        limited = optimize_diameter_types(self._build_and_init(), v_max=1.5, k=0.1, max_pressure_loss_pa_per_m=150.0)
+        assert specific_pressure_loss_pa_per_m(limited).max() <= 150.0
+        assert np.abs(limited.res_pipe["v_mean_m_per_s"]).max() <= 1.5
 
     def test_recalculate_net_reconverges_after_pipe_edit(self):
         # The domain step behind the GUI "recalculate" button (extracted from the view,

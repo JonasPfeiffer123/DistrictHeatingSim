@@ -22,6 +22,8 @@ from typing import Any
 
 import numpy as np
 
+from districtheatingsim.constants import MAX_PRESSURE_LOSS_PA_PER_M
+
 
 def json_default(obj):
     """``json.dump`` fallback that serialises numpy arrays losslessly as lists.
@@ -104,6 +106,9 @@ class NetworkGenerationData:
     :vartype material_filter_pipe: str
     :ivar k_mm_pipe: Pipe roughness [mm]
     :vartype k_mm_pipe: float
+    :ivar max_pressure_loss_pipe: Maximum specific friction pressure loss of the sizing [Pa/m];
+        ``None`` or 0 sizes by velocity only
+    :vartype max_pressure_loss_pipe: Optional[float]
     :ivar main_producer_location_index: Main heat producer index in GeoJSON
     :vartype main_producer_location_index: int
     :ivar secondary_producers: List of secondary producers
@@ -154,6 +159,9 @@ class NetworkGenerationData:
     # Producer configuration
     main_producer_location_index: int
     secondary_producers: list[SecondaryProducer]
+
+    # Pressure loss limit of the sizing; nets saved before it existed get the default
+    max_pressure_loss_pipe: float | None = MAX_PRESSURE_LOSS_PA_PER_M
 
     # External data file paths
     COP_filename: str | None = None

@@ -149,9 +149,11 @@ class TestGoerlitzGoldenMaster:
         # the DN100 start type's, which had inflated their heat loss (pandapipes uses
         # u * pi * outer diameter); generation dropped 2.0 %, pumpstrom 4.7 %.
         # Re-pinned for UT-K8 (per-station minimum load): generation -2.6 %, pumpstrom -4.4 %.
+        # Re-pinned for the pressure loss limit (300 Pa/m next to v_max; this test sizes with
+        # v_max 2 m/s): pump lift 2.22 -> 1.39 bar, pumpstrom -29.6 %, generation +0.06 %.
         _, k = goerlitz_run
-        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(5.9167, rel=1e-2)
-        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0033425, rel=2e-2)
+        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(5.9204, rel=1e-2)
+        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0023542, rel=2e-2)
         # Distribution loss = generation − demand (negative here: an 8-step generation
         # is compared against the annual demand — a known partial-range artifact).
         assert k["Verteilverluste [MWh]"] == pytest.approx(
