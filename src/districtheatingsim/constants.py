@@ -36,6 +36,12 @@ PRIMARY_ENERGY_FACTOR_ELECTRICITY_PTH = 2.4  #: power-to-heat (grid mix)
 PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP = 1.8  #: heat pumps
 PRIMARY_ENERGY_FACTOR_SOLAR = 0.0
 
+#: Credit per MWh of CHP electricity (Stromgutschrift), on the same basis as the CO₂ credit
+#: ``CO2_FACTOR_ELECTRICITY`` (grid mix): 1.8 = GEG grid electricity. The credit method of
+#: AGFW FW 309-1 / GEG Anlage 4 uses the displacement mix instead (2.8, with 0.86 t CO₂/MWh for
+#: the CO₂ credit, and an overall factor of at least 0); change both together.
+PRIMARY_ENERGY_FACTOR_ELECTRICITY_CREDIT = 1.8
+
 
 # ── Subsidies ─────────────────────────────────────────────────────────────────
 
