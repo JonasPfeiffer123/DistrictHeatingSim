@@ -8,7 +8,7 @@ in ``pipeflow`` (``'DataFrame' object has no attribute 'inner_diameter_mm'``) an
 GUI still shows the obsolete KMR names. ``migrate_loaded_net`` upgrades such a net in
 place so old projects open and recalculate.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

@@ -4,7 +4,7 @@ Energy System Module
 
 Multi-technology energy system modeling with optimization and visualization.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import copy

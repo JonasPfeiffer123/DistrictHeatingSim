@@ -1,6 +1,6 @@
 """
 Filename: PyQt5_Leaflet.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-09-19
 Description: Contains the LeafTab class for displaying a Leaflet map in a PyQt5 application.
 """

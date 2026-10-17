@@ -10,7 +10,7 @@ no-console exe (BACKLOG G10).
 Environment overrides: ``DISTRICTHEATINGSIM_LOG_LEVEL`` (e.g. ``DEBUG``) and
 ``DISTRICTHEATINGSIM_LOG_DIR``.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

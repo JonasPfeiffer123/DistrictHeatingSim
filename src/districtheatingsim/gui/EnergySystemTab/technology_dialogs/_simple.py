@@ -4,7 +4,7 @@ Schema-driven dialogs for the simple single-block technologies.
 GasBoiler, PowerToHeat and WasteHeatPump are plain QLineEdit forms with no
 storage section; they reduce to a class attribute pointing at their field schema.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import _schemas as S

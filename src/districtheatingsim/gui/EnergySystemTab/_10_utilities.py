@@ -2,7 +2,7 @@
 Energy System Tab Utilities Module
 ===================================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Utility classes for Energy System Tab, including collapsible sections, checkable combo boxes, and custom JSON encoding.
 """

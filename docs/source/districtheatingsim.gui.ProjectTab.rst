@@ -1,6 +1,11 @@
 ProjectTab package
 =========================================
 
+.. automodule:: districtheatingsim.gui.ProjectTab.csv_import_dialog
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.ProjectTab.project_tab
    :members:
    :show-inheritance:

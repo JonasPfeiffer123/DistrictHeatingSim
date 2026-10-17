@@ -7,7 +7,7 @@ Python structures, so the rendering layer (``interactive_network_plot``) no long
 mixes pandapipes queries with Plotly trace building (BACKLOG B1/B3). Being Plotly- and
 GUI-free, this layer is unit-testable through the network test seam.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from dataclasses import dataclass

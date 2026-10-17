@@ -1,6 +1,6 @@
 """
 Filename: 03b_example_bdew_subtype_comparison.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2026-03-04
 Description: Vergleicht die verschiedenen Subtypen für building_type "HMF" nach BDEW und stellt die Ergebnisse interaktiv dar.
 Usage:

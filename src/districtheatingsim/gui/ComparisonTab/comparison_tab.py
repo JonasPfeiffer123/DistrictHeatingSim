@@ -4,7 +4,7 @@ Variant comparison module for district heating project analysis.
 Provides automatic variant discovery, KPI dashboards, and comparative
 visualization of economic and technical metrics.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

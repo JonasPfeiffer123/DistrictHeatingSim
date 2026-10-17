@@ -3,7 +3,7 @@
 
 Initial welcome screen with project management, recent projects, and quick actions.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os
@@ -653,7 +653,7 @@ class WelcomeScreen(QWidget):
         info_layout.addWidget(project_details)
 
         # Developer info
-        developer_info = QLabel("Entwickelt von Dipl.-Ing. (FH) Jonas Pfeiffer, Hochschule Zittau/Görlitz")
+        developer_info = QLabel("Entwickelt von M.Eng. Jonas Pfeiffer, Hochschule Zittau/Görlitz")
         developer_info.setObjectName("fundingDetails")
         developer_info.setFont(details_font)
         info_layout.addWidget(developer_info)

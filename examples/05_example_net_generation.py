@@ -1,6 +1,6 @@
 """
 Filename: 05_example_net_generation_test.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-11-19
 Description: Script for testing the net generation functions.
 Usage: Run the script to generate a heat network based on the given inputs.

@@ -4,8 +4,8 @@ sys.path.insert(0, os.path.abspath('../../src'))
 
 # -- Project information -----------------------------------------------------
 project = 'DistrictHeatingSim'
-copyright = '2025, Dipl.-Ing. (FH) Jonas Pfeiffer'
-author = 'Dipl.-Ing. (FH) Jonas Pfeiffer'
+copyright = '2025, M.Eng. Jonas Pfeiffer'
+author = 'M.Eng. Jonas Pfeiffer'
 release = '2.0.0'
 version = '2.0.0'
 

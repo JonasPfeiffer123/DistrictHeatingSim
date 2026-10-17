@@ -2,7 +2,7 @@
 Save and load a project's pandapipes network.
 =============================================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 The network used to be stored with ``pp.to_pickle``. Pickles are tied to the library versions
 that wrote them (cf. the 0.13 → 0.14 migration, BACKLOG C11) and unpickling a file from someone

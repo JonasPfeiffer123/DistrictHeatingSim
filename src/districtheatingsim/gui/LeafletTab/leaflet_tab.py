@@ -5,7 +5,7 @@ Leaflet Tab Module
 This module provides Leaflet map integration for district heating network
 visualization and interactive network generation.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

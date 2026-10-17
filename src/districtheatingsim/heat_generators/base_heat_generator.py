@@ -4,7 +4,7 @@ Base Heat Generator Module
 
 Abstract base classes for heat generation technologies.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

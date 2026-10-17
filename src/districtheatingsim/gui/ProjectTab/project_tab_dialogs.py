@@ -4,7 +4,7 @@ Project Tab Dialogs Module
 
 Dialog windows for project tab functionality including data input and progress display.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from geopy.geocoders import Nominatim

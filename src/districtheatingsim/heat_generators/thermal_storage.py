@@ -5,7 +5,7 @@ Thermal Storage Adapter Module
 Wrapper around ThermalStorage1D from the thermal-energy-storage-1d package,
 exposing the interface required by EnergySystem and the GUI.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

@@ -10,7 +10,7 @@ next to the numbers instead of being taken at face value (user test 2026-10-08, 
 Ratings: ``"ok"`` (green), ``"warn"`` (yellow), ``"bad"`` (red) and ``"info"`` (no rating,
 where no reliable threshold exists).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from dataclasses import dataclass

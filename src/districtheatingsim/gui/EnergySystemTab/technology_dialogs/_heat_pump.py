@@ -6,7 +6,7 @@ RiverHeatPump is schema-driven for its four plain numeric fields
 import button and overrides ``getInputs`` to emit ``Temperatur_FW_WP`` (scalar /
 array / CSV). AqvaHeat currently has no inputs (empty schema).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import numpy as np

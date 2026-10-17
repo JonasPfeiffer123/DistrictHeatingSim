@@ -5,7 +5,7 @@ Network Plot Widget
 Interactive Plotly/WebEngine network visualization with pipe click detection
 and parameter overlay dropdown.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

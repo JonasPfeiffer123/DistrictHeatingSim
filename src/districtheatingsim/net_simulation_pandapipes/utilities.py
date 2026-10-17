@@ -2,7 +2,7 @@
 Pandapipes network utility functions for district heating simulation, optimization,
 and analysis including heat pump calculations, controller creation, and diameter optimization.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

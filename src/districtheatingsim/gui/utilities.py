@@ -3,7 +3,7 @@
 
 Custom GUI widgets and utility functions for DistrictHeatingSim application.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from datetime import datetime

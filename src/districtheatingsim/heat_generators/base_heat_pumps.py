@@ -4,7 +4,7 @@ Base Heat Pump Classes
 
 Base classes for heat pump modeling with COP calculations and economic analysis.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

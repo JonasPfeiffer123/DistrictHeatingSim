@@ -3,7 +3,7 @@
 
 Dialog for configuring time series calculation parameters.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

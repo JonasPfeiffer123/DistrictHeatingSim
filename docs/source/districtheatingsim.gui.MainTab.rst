@@ -15,3 +15,13 @@ MainTab package
    :members:
    :show-inheritance:
    :undoc-members:
+
+.. automodule:: districtheatingsim.gui.MainTab.new_project_wizard
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.MainTab.project_structure
+   :members:
+   :show-inheritance:
+   :undoc-members:

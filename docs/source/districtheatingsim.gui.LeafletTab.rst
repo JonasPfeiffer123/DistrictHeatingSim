@@ -20,3 +20,8 @@ LeafletTab package
    :members:
    :show-inheritance:
    :undoc-members:
+
+.. automodule:: districtheatingsim.gui.LeafletTab.osm_dialogs_base
+   :members:
+   :show-inheritance:
+   :undoc-members:

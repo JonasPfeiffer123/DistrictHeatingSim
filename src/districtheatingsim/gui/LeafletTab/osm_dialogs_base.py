@@ -9,12 +9,13 @@ dialogs in ``osm_dialogs.py`` keep only their distinct UI, validation and worker
 logic.
 
 Subclasses must provide:
+
 - ``self._download_button``: the start/download QPushButton (set in ``initUI``),
   used by the cancel/error handlers to re-enable the button.
 - ``_temp_polygon_filename``: class attribute naming the temp file for a polygon
   captured from the map.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

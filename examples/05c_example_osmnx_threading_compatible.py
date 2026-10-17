@@ -1,6 +1,6 @@
 """
 Filename: 05c_example_osmnx_threading_compatible.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-11-22
 Description: 
     Example demonstrating the threading-compatible OSMnx network generation function.

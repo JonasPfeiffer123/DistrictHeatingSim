@@ -2,7 +2,7 @@
 Cost Tab Module
 ===============
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Displaying and managing cost-related data for heat generation project components.
 """

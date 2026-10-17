@@ -3,7 +3,7 @@
 This module provides helper functions for resource path resolution,
 global exception handling, and theme management.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

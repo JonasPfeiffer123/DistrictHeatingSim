@@ -16,7 +16,7 @@ upstream stamp for every later step::
 :func:`outdated_results` compares the stamps with the current state. Projects saved before this
 file existed have no stamps; nothing is reported for them rather than guessed.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import datetime

@@ -5,7 +5,7 @@ Network Info Panel
 Scrollable KPI card panel for displaying district heating
 network simulation results.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from PyQt6.QtCore import Qt

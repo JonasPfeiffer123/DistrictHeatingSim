@@ -2,7 +2,7 @@
 Energy System Dialogs Module
 =============================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Dialogs for the Energy System Tab, including economic parameters input, cost calculation, and weight settings for optimization.
 """

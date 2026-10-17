@@ -1,6 +1,6 @@
 """
 Filename: 08_example_complex_pandapipes_timeseries.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-01-12
 Description: Script for testing the pandapipes net simulation functions. Aims to simulate a district heating network using GeoJSON files for the network layout and a JSON file for the building load profile. The script includes functions to create and initialize the network, perform time series calculations, and plot the results.
 Usage: Run the script in the main directory of the repository.

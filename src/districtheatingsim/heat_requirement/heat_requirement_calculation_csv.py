@@ -4,7 +4,7 @@ Heat demand profile generation from CSV building data.
 Integrates VDI 4655 and BDEW calculation methods for batch processing
 of building portfolios with temperature curves for district heating design.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

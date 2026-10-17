@@ -31,7 +31,7 @@ Erzeugte Plots:
     3. Differenzdruck VL-RL je Verbraucher
     4. Mindestdrucknachweis (Abstand zum Mindestdruck)
 
-Autor: Dipl.-Ing. (FH) Jonas Pfeiffer
+Autor: M.Eng. Jonas Pfeiffer
 """
 
 import sys

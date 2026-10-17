@@ -5,7 +5,7 @@ Network Generation Data Class Module
 This module provides data structures for comprehensive district heating network simulation
 and analysis.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 It defines the core data classes used throughout the simulation workflow,
 including network configuration parameters, input/output data management, and result

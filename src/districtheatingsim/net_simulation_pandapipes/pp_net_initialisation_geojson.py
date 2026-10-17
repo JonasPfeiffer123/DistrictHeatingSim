@@ -5,7 +5,7 @@ Pandapipes Network Initialization Module
 This module provides comprehensive network initialization capabilities for district heating
 systems using GeoJSON-based geographic data.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 It handles the complete workflow from GeoJSON
 data processing to pandapipes network creation, including heat demand integration, temperature

@@ -10,7 +10,7 @@ The God-Class ``CalculationTab`` has been split into focused sub-widgets
 This module re-exports ``NetSimulationTab`` under the old name so that
 existing code (e.g. ``main_view.py``) keeps working without modification.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from districtheatingsim.gui.NetSimulationTab.net_simulation_tab import NetSimulationTab as CalculationTab  # noqa: F401

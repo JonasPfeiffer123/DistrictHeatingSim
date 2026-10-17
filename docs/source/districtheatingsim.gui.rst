@@ -17,6 +17,11 @@ GUI package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.gui.qt_translation
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.utilities
    :members:
    :show-inheritance:
