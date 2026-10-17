@@ -16,6 +16,11 @@ Net generation package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.net_generation.nearest
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.net_generation.net_generation
    :members:
    :show-inheritance:
