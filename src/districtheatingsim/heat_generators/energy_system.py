@@ -1166,6 +1166,10 @@ class EnergySystemOptimizer:
                     variables_mapping[var] = tech.name
 
             variables_order = list(variables_mapping.keys())
+            constraints = []
+            for tech in self.energy_system_copy.technologies:
+                idx = tech.name.split("_")[-1] if "_" in tech.name else "0"
+                constraints.extend(tech.optimization_constraints(variables_order, idx))
 
             if not initial_values:
                 logger.warning("No optimization parameters found. Skipping optimization.")
@@ -1224,13 +1228,13 @@ class EnergySystemOptimizer:
             # load), the objective is flat: SLSQP stops after one iteration and reports success
             # although nothing is covered. Such a restart is retried once from the configured
             # values instead of competing with its "no demand covered" result (BACKLOG C41).
-            result = self._run_slsqp(objective_function, random_initial_values, bounds, restart)
+            result = self._run_slsqp(objective_function, random_initial_values, bounds, restart, constraints)
             if result is not None and self._covers_no_demand(result.x, variables_order):
                 logger.warning(
                     "Restart %d covers no demand (flat objective); retrying from the configured values", restart + 1
                 )
                 configured_start = np.clip(initial_values, [b[0] for b in bounds], [b[1] for b in bounds]).tolist()
-                result = self._run_slsqp(objective_function, configured_start, bounds, restart)
+                result = self._run_slsqp(objective_function, configured_start, bounds, restart, constraints)
                 if result is not None and self._covers_no_demand(result.x, variables_order):
                     logger.warning("Restart %d covers no demand from the configured values either", restart + 1)
                     result = None
@@ -1268,7 +1272,7 @@ class EnergySystemOptimizer:
     _USABLE_SLSQP_STATUS = frozenset({8, 9})
 
     @staticmethod
-    def _run_slsqp(objective_function, start, bounds, restart):
+    def _run_slsqp(objective_function, start, bounds, restart, constraints=()):
         """Run SLSQP from ``start``; return the result, or ``None`` if it raised."""
         try:
             return scipy_minimize(
@@ -1276,6 +1280,7 @@ class EnergySystemOptimizer:
                 start,
                 method="SLSQP",
                 bounds=bounds,
+                constraints=list(constraints),
                 options={"maxiter": 1000, "ftol": 1e-6},
             )
         except Exception as e:

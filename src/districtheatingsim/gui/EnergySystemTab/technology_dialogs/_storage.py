@@ -11,10 +11,13 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QGroupBox,
+    QLabel,
     QLineEdit,
     QVBoxLayout,
     QWidget,
 )
+
+from districtheatingsim.heat_generators.thermal_storage import typical_storage_cost_eur_per_m3
 
 # German labels for the model's keys; the dialog was entirely English (UT-M2)
 GEOMETRIES = {"cylinder": "Zylinder", "truncated_cone": "Kegelstumpf", "truncated_pyramid": "Pyramidenstumpf"}
@@ -209,13 +212,44 @@ class ThermalStorage1DDialog(QWidget):
         cost_box = QGroupBox("Kosten")
         cost_layout = QFormLayout()
 
-        self.spez_cost_input = QLineEdit(self._field("spez_Investitionskosten", "50"))
+        # The default was a flat 50 €/m³ (a large pit storage) next to 750 €/m³ for the buffers;
+        # new storages start at the typical cost for their volume (UT-M15)
+        default_cost = round(typical_storage_cost_eur_per_m3(self._volume_or(1000.0)))
+        self.spez_cost_input = QLineEdit(self._field("spez_Investitionskosten", default_cost))
         cost_layout.addRow("Spez. Investitionskosten (€/m³):", self.spez_cost_input)
+        self.cost_hint = QLabel()
+        self.cost_hint.setWordWrap(True)
+        self.cost_hint.setStyleSheet("color: #555555;")
+        cost_layout.addRow("", self.cost_hint)
+        self.volume_input.textChanged.connect(self._update_cost_hint)
+        self._update_cost_hint()
 
         cost_box.setLayout(cost_layout)
         main_layout.addWidget(cost_box)
 
         self.setLayout(main_layout)
+
+    def _volume_or(self, fallback: float) -> float:
+        """The entered volume [m³], ``fallback`` while the field holds no number."""
+        try:
+            return float(self.volume_input.text().replace(",", "."))
+        except ValueError:
+            return fallback
+
+    def _update_cost_hint(self):
+        volume = self._volume_or(0.0)
+        if volume <= 0:
+            self.cost_hint.setText("")
+            return
+        typical = typical_storage_cost_eur_per_m3(volume)
+
+        def de(value: float) -> str:
+            return f"{value:,.0f}".replace(",", ".")
+
+        self.cost_hint.setText(
+            f"Richtwert für {de(volume)} m³: etwa {de(typical)} €/m³ (Größenkurve von Pufferspeichern über "
+            "Behälterspeicher bis zu Erdbeckenspeichern; große Speicher sind je m³ deutlich günstiger)."
+        )
 
     def _update_loss_visibility(self, loss_type: str):
         self._loss_constant_widget.setVisible(loss_type == "constant")

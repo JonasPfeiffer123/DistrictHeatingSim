@@ -132,6 +132,17 @@ class BaseHeatGenerator:
         """
         raise NotImplementedError("add_optimization_parameters must be implemented in the derived class.")
 
+    def optimization_constraints(self, variables_order: list[str], idx) -> list[dict[str, Any]]:
+        """
+        Inequality constraints between this technology's optimization variables.
+
+        :param variables_order: All variable names of the optimization, in order.
+        :param idx: Technology index used in the variable names.
+        :return: scipy constraint dicts (``{"type": "ineq", "fun": f}``, ``f(x) >= 0``); none by default.
+        :rtype: list[dict]
+        """
+        return []
+
     def update_parameters(self, optimized_values: list[float], variables_order: list[str]) -> None:
         """
         Update technology parameters from optimization results.
