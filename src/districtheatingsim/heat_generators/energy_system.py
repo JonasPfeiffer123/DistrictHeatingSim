@@ -1006,6 +1006,42 @@ class EnergySystem:
             raise ValueError(f"Error loading energy system file: {e}") from e
 
 
+#: Indicators of the optimisation objective, each with a weight.
+OBJECTIVE_KEYS = ("WGK_Gesamt", "specific_emissions_Gesamt", "primärenergiefaktor_Gesamt")
+
+#: Typical magnitudes of the indicators (€/MWh, t/MWh, -); scales when the configured system
+#: cannot be evaluated.
+TYPICAL_OBJECTIVE_SCALES = {"WGK_Gesamt": 100.0, "specific_emissions_Gesamt": 0.2, "primärenergiefaktor_Gesamt": 1.0}
+
+#: Smallest scale per indicator: a reference near zero (solar and wood with PEF ≈ 0, a CHP whose
+#: electricity credit pushes CO₂ to zero) would blow its term up.
+OBJECTIVE_SCALE_FLOORS = {"WGK_Gesamt": 10.0, "specific_emissions_Gesamt": 0.02, "primärenergiefaktor_Gesamt": 0.1}
+
+
+def objective_scales(reference_results: dict | None) -> dict[str, float]:
+    """
+    Scale of each indicator in the optimisation objective: its value for the configured system.
+
+    The indicators entered the weighted sum unscaled (WGK ≈ 100 €/MWh, CO₂ ≈ 0.2 t/MWh, PEF ≈ 1),
+    so equal weights optimised practically the costs only (UT-M15). Divided by their value for the
+    configured system, the weights mean relative importance: with equal weights, 10 % less CO₂
+    counts as much as 10 % lower costs.
+
+    :param reference_results: Results of the configured system, ``None`` if it could not be
+        evaluated (then the typical magnitudes are used).
+    :return: ``{indicator: scale}``, every scale positive.
+    :rtype: dict[str, float]
+    """
+    scales = {}
+    for key in OBJECTIVE_KEYS:
+        value = reference_results.get(key) if reference_results else None
+        if value is None or not np.isfinite(value):
+            scales[key] = TYPICAL_OBJECTIVE_SCALES[key]
+        else:
+            scales[key] = max(abs(float(value)), OBJECTIVE_SCALE_FLOORS[key])
+    return scales
+
+
 class EnergySystemOptimizer:
     """
     Multi-objective optimizer for energy system configuration.
@@ -1018,7 +1054,9 @@ class EnergySystemOptimizer:
     :type num_restarts: int, optional
 
     .. note::
-       Uses SLSQP with random restarts for multi-objective optimization.
+       Uses SLSQP with random restarts for multi-objective optimization. Each indicator is
+       divided by its value for the configured system (:func:`objective_scales`), so the weights
+       are relative importances.
     """
 
     def __init__(
@@ -1093,6 +1131,14 @@ class EnergySystemOptimizer:
                 "(z. B. Leistung, Kollektorfläche oder Speichervolumen mit min./max. Wert)."
             )
 
+        self.reference_results = self._configured_results()
+        self.scales = objective_scales(self.reference_results)
+        # The weighted sum is expressed in €/MWh of the configured system, so the solver tolerance
+        # and the unmet-demand penalty keep their calibration; with the default weights (costs only)
+        # the objective is exactly the WGK, as before.
+        factors = {key: self.scales["WGK_Gesamt"] / self.scales[key] for key in OBJECTIVE_KEYS}
+        logger.info("Objective scales (configured system): %s", self.scales)
+
         for restart in range(self.num_restarts):
             logger.info("Starting optimization run %d/%d", restart + 1, self.num_restarts)
 
@@ -1161,11 +1207,9 @@ class EnergySystemOptimizer:
                     jahresbedarf = results["Jahreswärmebedarf"]
                     unmet_fraction = max(results["Restwärmebedarf"], 0.0) / jahresbedarf if jahresbedarf > 0 else 0.0
 
-                    # Calculate weighted multi-objective value
+                    # Weighted sum of the scaled indicators
                     weighted_sum = (
-                        self.weights["WGK_Gesamt"] * results["WGK_Gesamt"]
-                        + self.weights["specific_emissions_Gesamt"] * results["specific_emissions_Gesamt"]
-                        + self.weights["primärenergiefaktor_Gesamt"] * results["primärenergiefaktor_Gesamt"]
+                        sum(self.weights[key] * results[key] * factors[key] for key in OBJECTIVE_KEYS)
                         + self.unmet_demand_penalty * unmet_fraction
                     )
 
@@ -1255,6 +1299,31 @@ class EnergySystemOptimizer:
         except Exception:
             return False
         return results["Restwärmebedarf"] >= results["Jahreswärmebedarf"] * (1 - 1e-9)
+
+    def _configured_results(self) -> dict | None:
+        """
+        Results of the configured system (its values clipped to the bounds), the reference of the
+        objective scales; ``None`` if it cannot be evaluated or covers no demand.
+        """
+        values, order, lows, highs = [], [], [], []
+        for tech in self.initial_energy_system.technologies:
+            idx = tech.name.split("_")[-1] if "_" in tech.name else "0"
+            tech_values, tech_variables, tech_bounds = tech.add_optimization_parameters(idx)
+            if not tech_values or not tech_variables or not tech_bounds:
+                continue
+            values.extend(tech_values)
+            order.extend(tech_variables)
+            lows.extend(b[0] for b in tech_bounds)
+            highs.extend(b[1] for b in tech_bounds)
+        try:
+            results = self.initial_energy_system.copy().calculate_mix(np.clip(values, lows, highs).tolist(), order)
+        except Exception as e:
+            logger.warning("Configured system could not be evaluated; typical objective scales used: %s", e)
+            return None
+        if results["Restwärmebedarf"] >= results["Jahreswärmebedarf"] * (1 - 1e-9):
+            logger.warning("Configured system covers no demand; typical objective scales used")
+            return None
+        return results
 
     def get_optimization_summary(self) -> dict[str, float | int | bool]:
         """

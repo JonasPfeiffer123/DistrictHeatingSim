@@ -2230,6 +2230,12 @@ IDs below are the report's IDs with a `UT-` prefix.
   2. *Optimizer weights are unscaled:* the objective is `w·WGK + w·CO₂ + w·PEF` with WGK ≈ 100 €/MWh,
      CO₂ ≈ 0.2 t/MWh, PEF ≈ 1 — equal weights optimise practically the costs only (now explained in
      the dialog). Normalising (e.g. by the start values) would change every optimisation.
+     **Decided + done 2026-10-16 (`feat/methodik`):** each indicator is divided by its value for the
+     configured system (`energy_system.objective_scales`; magnitudes, floors 10 €/MWh / 0.02 t/MWh /
+     0.1 against near-zero references, typical magnitudes if the configured system cannot be
+     evaluated or covers nothing). The sum is expressed in €/MWh of the configured system, so the
+     solver tolerance and the unmet-demand penalty keep their calibration and the default weights
+     (costs only) give exactly the old objective. Dialog text updated. Tests: `TestObjectiveScales`.
   3. *773 m² collector with 16 m³ storage:* ~21 l/m², far below the usual 50–100 l/m² for daily
      storage; a plausibility check (storage per m² collector, full-load hours, loss share, heat
      density — report stage 4 "Plausibilitätsampel") or tighter optimisation bounds.
