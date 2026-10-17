@@ -6,7 +6,7 @@ This module implements the Model layer of the MVP pattern, providing three core 
 - DataManager: Central data storage for analysis results
 - ProjectFolderManager: Project folder structure and navigation
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

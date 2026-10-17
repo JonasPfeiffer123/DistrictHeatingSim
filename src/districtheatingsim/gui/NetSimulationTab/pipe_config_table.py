@@ -6,7 +6,7 @@ QWidget wrapping a QTableWidget for editing district heating pipe parameters.
 Emits :attr:`pipe_highlight_requested` when the user selects a row, so the
 network plot widget can highlight the corresponding pipe.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

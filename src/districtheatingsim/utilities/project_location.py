@@ -7,7 +7,7 @@ new-project assistant or taken from the geocoded buildings - against which the T
 climate zone and persons per household are project settings, and the solar thermal location is
 taken from it.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import math

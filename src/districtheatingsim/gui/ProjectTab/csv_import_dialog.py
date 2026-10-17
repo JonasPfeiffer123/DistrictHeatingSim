@@ -11,7 +11,7 @@ Tables come as Excel writes them on a German Windows: Windows-1252, decimal comm
 cells. The module functions read and normalise them and check the values before anything is
 saved (BACKLOG UT-H5).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import csv

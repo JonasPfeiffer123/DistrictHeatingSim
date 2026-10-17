@@ -4,7 +4,7 @@ Gas Boiler System Module
 
 Gas-fired boiler system with economic analysis and environmental assessment.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import numpy as np

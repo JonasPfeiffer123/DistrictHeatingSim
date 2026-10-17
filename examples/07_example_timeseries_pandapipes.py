@@ -1,6 +1,6 @@
 """
 Filename: 07_example_timeseries_pandapipes.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-05-12
 Description: Script for testing the pandapipes net simulation functions.
 Usage: Run the script to generate a simple pandapipes network.

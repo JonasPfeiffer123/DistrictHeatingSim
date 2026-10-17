@@ -4,7 +4,7 @@ Solar Thermal Collector System Module
 
 Solar thermal collector modeling with flat-plate and vacuum tube technologies.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 .. note::
     Based on Scenocalc 2.0 solar thermal model (https://www.scfw.de)

@@ -5,7 +5,7 @@ Layer Generation Dialog Module
 This module provides dialog interfaces for heat network layer generation,
 including OSM data handling and building coordinate management.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

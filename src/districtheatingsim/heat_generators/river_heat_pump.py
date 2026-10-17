@@ -4,7 +4,7 @@ River Water Heat Pump System Module
 
 River water heat pump modeling with temperature-dependent performance and intake costs.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

@@ -1,7 +1,7 @@
 """
 Unified GeoJSON schema for district heating networks with layered data model.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 """
 
 import json

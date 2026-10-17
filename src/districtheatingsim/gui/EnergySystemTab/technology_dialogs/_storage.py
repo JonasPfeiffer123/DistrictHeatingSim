@@ -3,7 +3,7 @@
 sections and a collapsible advanced solver block). Moved verbatim from
 ``_04_technology_dialogs.py``; not yet schema-driven.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from PyQt6.QtWidgets import (

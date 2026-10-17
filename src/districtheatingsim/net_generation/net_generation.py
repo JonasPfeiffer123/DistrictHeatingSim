@@ -4,7 +4,7 @@ Network generation for district heating using graph algorithms.
 Implements MST, Advanced MST, and Steiner tree algorithms for cost-optimal
 network topologies with street alignment and parallel line generation.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import math

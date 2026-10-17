@@ -21,7 +21,7 @@ This module reproduces that exact-match topology *before* generation and reports
 It is deliberately PyQt- and geopandas-free (plain coordinate sequences) so it can
 be unit-tested without a display; the Leaflet tab adapts its features to/from here.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import math

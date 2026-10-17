@@ -3,7 +3,7 @@
 This module provides functions to locate data directories correctly
 in both development and PyInstaller frozen builds.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

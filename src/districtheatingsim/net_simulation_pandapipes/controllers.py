@@ -5,7 +5,7 @@ Controllers Module
 This module provides specialized controllers for district heating network operation using
 the pandapipes framework.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 It implements advanced control strategies for pressure management,
 temperature regulation, and system optimization to ensure efficient and reliable network

@@ -5,7 +5,7 @@ Time Series Widget
 Full-width matplotlib canvas with a checkable dropdown for
 displaying network simulation time series results.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import matplotlib.gridspec as gridspec

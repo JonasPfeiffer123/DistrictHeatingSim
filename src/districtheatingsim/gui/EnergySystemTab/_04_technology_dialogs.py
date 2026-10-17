@@ -2,7 +2,7 @@
 Technology Input Dialogs Module — compatibility façade.
 ========================================================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 The dialog classes were extracted into the ``technology_dialogs`` package
 (schema-driven base + one module per technology family; BACKLOG B1). This module

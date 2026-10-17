@@ -2,7 +2,7 @@
 OSMnx-based district heating network generation using OpenStreetMap data,
 Steiner Tree optimization, and edge-splitting algorithms for optimal street-based routing.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

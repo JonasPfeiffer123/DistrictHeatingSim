@@ -1,6 +1,6 @@
 """
 Filename: stanet_import_pandapipes.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2026-04-30
 Description: Script to import a STANET district heating net to a pandapipes net.
 

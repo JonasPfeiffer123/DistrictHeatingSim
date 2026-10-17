@@ -1,6 +1,6 @@
 """
 Filename: 14_example_photovoltaics.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-11-21
 Description: 
 

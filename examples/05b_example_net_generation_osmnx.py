@@ -1,6 +1,6 @@
 """
 Filename: 05b_example_net_generation_osmnx.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-11-22
 Description: 
     Example script demonstrating OSMnx-based district heating network generation.

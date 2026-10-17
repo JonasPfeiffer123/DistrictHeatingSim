@@ -1,6 +1,6 @@
 """
 Filename: 06_benchmark_synthetic_net_generation.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-05-27
 Description: Benchmarks the net generation for synthetic GIS data with varying building counts.
 """

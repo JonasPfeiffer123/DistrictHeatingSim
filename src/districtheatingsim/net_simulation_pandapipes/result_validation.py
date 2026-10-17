@@ -8,7 +8,7 @@ post-processing. This module surfaces the failure as a clear ``RuntimeError``
 instead (BACKLOG C2). Kept dependency-light (numpy only) so it imports and unit-
 tests without pulling in pandapipes.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

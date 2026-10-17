@@ -1,6 +1,6 @@
 """
 Filename: 10_example_heat_generation_optimization.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-07-12
 Description: Example for the optimization of a heat generator mix
 

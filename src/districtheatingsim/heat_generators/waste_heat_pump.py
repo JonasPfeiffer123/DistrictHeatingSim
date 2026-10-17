@@ -4,7 +4,7 @@ Waste Heat Pump Module
 
 Waste heat pump modeling with variable source temperatures and heat recovery.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging
