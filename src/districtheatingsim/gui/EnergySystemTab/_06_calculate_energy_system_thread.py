@@ -2,7 +2,7 @@
 Calculate Energy System Thread Module
 ======================================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Thread for calculating heat generation mix in district heating simulation, running calculations in a separate thread.
 """

@@ -7,7 +7,7 @@ Orchestrator widget for district heating network simulation.
 Wires together :class:`NetworkPlotWidget`, :class:`NetworkInfoPanel`,
 :class:`PipeConfigTable`, and :class:`TimeSeriesWidget`.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import csv

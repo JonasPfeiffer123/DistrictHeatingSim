@@ -4,7 +4,7 @@ Interactive Network Plot Module
 
 Modern interactive visualization for pandapipes district heating networks using Plotly.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Features:
 

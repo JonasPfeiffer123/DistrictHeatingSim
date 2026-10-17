@@ -7,7 +7,7 @@ inconsistent) across the codebase (BACKLOG D3): the water heat capacity (`cp` wa
 both 4.18 and 4.2 kJ/kgK), the Kelvin offset (hard-coded ~20×), and the CO₂ /
 primary-energy / subsidy factors duplicated across heat generators.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 # ── Physical constants ────────────────────────────────────────────────────────

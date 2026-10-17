@@ -13,7 +13,7 @@ download threads no longer touch the GUI: a missing CSV column now raises
 ``ValueError`` (caught by the download thread → error signal) instead of calling
 ``QMessageBox`` from a worker thread.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 # Rough metres-per-degree near central Europe, used to convert a metric buffer to

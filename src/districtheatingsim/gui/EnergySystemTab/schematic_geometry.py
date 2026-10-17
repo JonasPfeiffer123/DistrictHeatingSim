@@ -8,7 +8,7 @@ functions over floats so they can be unit-tested without a QApplication; the sce
 methods are thin adapters that convert to/from ``QPointF`` and supply a collision
 predicate.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from collections.abc import Callable

@@ -7,7 +7,7 @@ quirks are reproduced on purpose and pinned by ``tests/test_technology_dialogs.p
 (see BACKLOG): the capacity read/write key asymmetry (``in_key``) and the CHP
 storage-cost default of ``"0.8"`` (Biomass uses ``"750"``).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (

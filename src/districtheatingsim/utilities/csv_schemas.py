@@ -11,7 +11,7 @@ missing column up front. Generalizes the ad-hoc ``UTM_X``/``UTM_Y`` checks.
 
 GUI-free and pandas-free at import (the DataFrame is duck-typed via ``.columns``).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 #: Required (and known-optional) columns per CSV kind. ``optional`` is documentation

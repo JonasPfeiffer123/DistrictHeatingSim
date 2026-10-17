@@ -4,7 +4,7 @@ OpenStreetMap data import and GeoJSON conversion module.
 Provides Overpass API integration for downloading OSM data and converting
 it to GeoJSON format for district heating network planning.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

@@ -6,7 +6,7 @@ Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and
 
 The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt6-GUI.
 
-DistrictHeatingSim was originally developed at the University of Applied Science Zittau/Görlitz by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The work is now being continued within an EFRE-ESF founded Junior Research Group "Energy Storage" at the University of Applied Science Zittau/Görlitz.
+DistrictHeatingSim was originally developed at the University of Applied Science Zittau/Görlitz by M.Eng. Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The work is now being continued within an EFRE-ESF founded Junior Research Group "Energy Storage" at the University of Applied Science Zittau/Görlitz.
 
 ## Table of Contents
 1. [Features](#features)
@@ -328,7 +328,7 @@ This project was funded by the Free State of Saxony as part of the SMWK-NEUES TG
 
 For further information, questions, or feedback, please contact the project maintainer:
 
-Dipl.-Ing. (FH) Jonas Pfeiffer
+M.Eng. Jonas Pfeiffer
 
 [GitHub Profile](https://github.com/JonasPfeiffer123)  
 

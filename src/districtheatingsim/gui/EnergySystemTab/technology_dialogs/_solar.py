@@ -6,7 +6,7 @@ Fields come from :data:`_schemas.SOLAR_SECTIONS` via :class:`SchemaDialog`; this
 module adds the matplotlib canvas and the live visualization, which reads the
 azimuth / tilt values from ``self._widgets``.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import matplotlib.pyplot as plt

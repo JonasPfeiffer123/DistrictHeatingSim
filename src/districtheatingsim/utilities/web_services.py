@@ -9,7 +9,7 @@ failure into :class:`ServiceUnavailableError`, whose message is meant for the us
 
 GUI-free; the HTTP libraries are imported lazily.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import http.client

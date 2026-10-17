@@ -13,7 +13,7 @@ overriding ``_build()`` and ``getInputs()`` (see ``_solar.py`` / ``_heat_pump.py
 The 1D thermal-storage dialog (dynamic loss-model sections + conditional output)
 stays fully hand-written — it is unique, not duplicated, so the schema buys nothing.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from collections.abc import Callable

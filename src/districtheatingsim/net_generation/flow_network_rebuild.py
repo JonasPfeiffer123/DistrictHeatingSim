@@ -20,7 +20,7 @@ networks that manual four-layer editing produced.
 
 GUI-free (geopandas/shapely only); the Leaflet save path calls this before writing.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import geopandas as gpd

@@ -5,7 +5,7 @@ The numeric fields come from :data:`_schemas.GEOTHERMAL` via :class:`SchemaDialo
 this module only adds the matplotlib canvas and the live visualization, which
 reads the relevant values from ``self._widgets``.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import matplotlib.pyplot as plt

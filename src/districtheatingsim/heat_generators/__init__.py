@@ -4,7 +4,7 @@ Heat Generators Module
 
 This file is used to import all heat generators and to provide a registry for the heat generators.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from .aqvaheat_heat_pump import AqvaHeat

@@ -4,7 +4,7 @@ CRS (Coordinate Reference System) utilities for DistrictHeatingSim.
 Provides automatic CRS suggestion based on geographic location and a curated
 list of common projected coordinate systems.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 # Curated list of common projected CRS options (epsg_code, display_label)

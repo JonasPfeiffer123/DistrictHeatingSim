@@ -5,7 +5,7 @@ Net Generation Threads Module
 This module provides threading classes for network generation, file import,
 and geocoding operations to maintain GUI responsiveness.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import traceback

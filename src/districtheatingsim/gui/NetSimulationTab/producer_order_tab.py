@@ -3,7 +3,7 @@
 
 Tab for selecting and ordering heat producers in district heating networks.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

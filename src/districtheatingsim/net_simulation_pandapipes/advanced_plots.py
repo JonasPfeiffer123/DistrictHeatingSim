@@ -6,7 +6,7 @@ Funktionsfähige erweiterte Plot-Funktionen für pandapipes Netzwerke.
 Diese Version umgeht die API-Limitierungen der pandapipes Collection-Funktionen
 und bietet robuste, produktionsreife Plotting-Alternativen.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Features:
 

@@ -5,7 +5,7 @@ The worker threads showed raw, often English tracebacks ("Unknown building types
 "unsupported operand type(s) … 'NoneType'", "No optimization parameters available"). They now
 log the traceback and show what failed, why and what to do; the traceback is in the log file.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

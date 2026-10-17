@@ -15,7 +15,7 @@ Subclasses must provide:
 - ``_temp_polygon_filename``: class attribute naming the temp file for a polygon
   captured from the map.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

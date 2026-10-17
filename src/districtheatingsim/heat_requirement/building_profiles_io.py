@@ -2,7 +2,7 @@
 Read and write the building load profiles file ("Gebäude Lastgang").
 =====================================================================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 The file used to be indented JSON (~1.75 MB per building). It is now written in the
 array-store Parquet format (``utilities/array_store``, ~8× smaller, faster to load) with the

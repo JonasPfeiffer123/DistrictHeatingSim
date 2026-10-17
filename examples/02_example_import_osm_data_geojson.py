@@ -1,6 +1,6 @@
 """
 Filename: 02_example_import_osm_data_geojson.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-11-18
 Description: This script runs the OSM data import process to download street and building data.
 The script imports the `build_query`, `download_data`, and `save_to_file` functions

@@ -5,7 +5,7 @@ This module provides a PyQt6-based GUI application for planning and optimizing
 district heating networks. It implements the Model-View-Presenter (MVP) pattern
 with clear separation between data management, business logic, and user interface.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 The application provides:
 

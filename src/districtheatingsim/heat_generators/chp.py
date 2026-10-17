@@ -4,7 +4,7 @@ Combined Heat and Power (CHP) System Module
 
 CHP system modeling with thermal/electrical efficiency, storage integration and electricity revenue calculation.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

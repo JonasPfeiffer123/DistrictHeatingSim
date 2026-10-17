@@ -4,7 +4,7 @@ Geothermal Heat Pump System Module
 
 Geothermal heat pump modeling with borehole field design and drilling cost analysis.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

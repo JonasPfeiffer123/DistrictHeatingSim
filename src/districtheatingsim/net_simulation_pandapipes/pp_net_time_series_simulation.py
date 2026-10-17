@@ -2,7 +2,7 @@
 Pandapipes time series simulation for district heating networks including controller updates,
 temperature control, and result processing.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import contextlib

@@ -9,7 +9,7 @@ record is the single source of truth; the legacy German ``results`` lists
 serialization. Appending one record keeps every projected list in lockstep, so the
 divergence bugs that motivated this are structurally impossible.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from dataclasses import dataclass

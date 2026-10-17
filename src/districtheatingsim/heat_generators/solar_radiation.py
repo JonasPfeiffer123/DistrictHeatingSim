@@ -4,7 +4,7 @@ Solar Radiation Calculation Module
 
 Solar radiation calculations for tilted collectors using Test Reference Year data.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 # Import libraries

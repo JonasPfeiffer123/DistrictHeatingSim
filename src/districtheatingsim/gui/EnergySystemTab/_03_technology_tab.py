@@ -2,7 +2,7 @@
 Technology Tab Module
 =====================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Managing and displaying technologies in district heating simulation, including add, edit, remove, and schematic visualization.
 """

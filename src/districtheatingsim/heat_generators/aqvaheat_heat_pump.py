@@ -4,7 +4,7 @@ AqvaHeat Heat Pump Module
 
 Vacuum ice slurry generator with heat pump.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import numpy as np

@@ -12,7 +12,7 @@ the std-type table therefore gets NaN for ISOPLUS pipes.
 converting the per-length value the same way pandapipes does internally
 (``u_w_per_m2k = u_w_per_mk / (π · outer_diameter)``).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import math

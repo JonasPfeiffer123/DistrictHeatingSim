@@ -4,7 +4,7 @@ Geocoding module for address to coordinate transformation.
 Provides Nominatim-based geocoding with coordinate system transformation
 from WGS84 to UTM Zone 33N (ETRS89).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import csv

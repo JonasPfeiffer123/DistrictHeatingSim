@@ -1,6 +1,6 @@
 """
 Filename: 01_example_geocoding.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-11-18
 Description: This script runs the geocoding process on a given CSV file containing addresses.
 The script imports the `process_data` function from the `geocodingETRS89` module

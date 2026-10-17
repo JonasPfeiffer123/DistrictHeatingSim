@@ -12,7 +12,7 @@ so it is unit-testable without Qt (BACKLOG B1/B2). The Qt widgets in
 * :func:`format_kpi_range` — summarise one KPI across the compared variants.
 * :func:`clean_variant_name` — shorten a variant's display name for chart labels.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

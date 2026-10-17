@@ -3,7 +3,7 @@
 
 Threaded network initialization and calculation functionality.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import copy

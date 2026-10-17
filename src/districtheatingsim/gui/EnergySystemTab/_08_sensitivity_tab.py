@@ -2,7 +2,7 @@
 Sensitivity Tab Module
 ======================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Performing sensitivity analysis on heat generation costs based on varying parameters, with 3D visualization.
 """

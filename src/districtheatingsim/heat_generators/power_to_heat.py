@@ -4,7 +4,7 @@ Power-to-Heat System Module
 
 Electric heating system modeling with storage integration and control strategies.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from typing import Any

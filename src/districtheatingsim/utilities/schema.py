@@ -14,7 +14,7 @@ block holding the **schema version** (drives migration) and the **app version**
 Deliberately GUI-free and dependency-light (stdlib only) so the domain core
 (``heat_generators``) can use it without dragging in PyQt6 (BACKLOG B5).
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

@@ -5,7 +5,7 @@ BiomassBoiler, CHP and HolzgasCHP share an identical 9-field generator-storage
 panel (toggled by the "Speicher aktiv" checkbox); only three keys and one default
 differ, parametrised via ``_schemas.storage_fields``.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import _schemas as S
