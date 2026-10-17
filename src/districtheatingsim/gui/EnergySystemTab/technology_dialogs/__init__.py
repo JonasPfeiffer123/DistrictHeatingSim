@@ -9,7 +9,7 @@ and 1D thermal-storage dialogs remain hand-written in their own modules.
 The legacy module ``_04_technology_dialogs`` re-exports everything from here so
 existing import paths keep working.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (

@@ -8,8 +8,8 @@ version = "2.0.0"
 description = "A simulation tool for district heating systems"
 readme = "README.md"
 license = {file = "LICENSE"}
-authors = [{name = "Dipl.-Ing. (FH) Jonas Pfeiffer", email = "jonas.pfeiffer@hszg.de"}]
-maintainers = [{name = "Dipl.-Ing. (FH) Jonas Pfeiffer", email = "jonas.pfeiffer@hszg.de"}]
+authors = [{name = "M.Eng. Jonas Pfeiffer", email = "jonas.pfeiffer@hszg.de"}]
+maintainers = [{name = "M.Eng. Jonas Pfeiffer", email = "jonas.pfeiffer@hszg.de"}]
 requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3.11",

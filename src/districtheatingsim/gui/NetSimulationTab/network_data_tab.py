@@ -3,7 +3,7 @@
 
 Tab for network data file selection and preview visualization.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

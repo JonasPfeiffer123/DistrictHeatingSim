@@ -27,6 +27,16 @@ Das EnergySystemTab-Paket enthält die GUI-Komponenten für die Konfiguration un
    :undoc-members:
    :special-members: __init__
 
+.. automodule:: districtheatingsim.gui.EnergySystemTab.config_naming
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.EnergySystemTab.infrastructure_costs
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.EnergySystemTab.technology_dialogs._base
    :members:
    :show-inheritance:

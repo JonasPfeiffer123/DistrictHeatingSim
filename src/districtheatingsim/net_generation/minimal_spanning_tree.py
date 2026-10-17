@@ -4,7 +4,7 @@ Minimum Spanning Tree generation and road alignment optimization.
 Implements MST algorithms for district heating network layout with iterative
 road alignment adjustment while maintaining connectivity.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

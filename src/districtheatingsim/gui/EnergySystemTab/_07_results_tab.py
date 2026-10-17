@@ -2,7 +2,7 @@
 Results Tab Module
 ==================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Displaying results of energy system calculations with diagrams and tables, including stack plots, pie charts, and result tables.
 """

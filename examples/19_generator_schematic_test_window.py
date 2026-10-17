@@ -1,6 +1,6 @@
 """
 Filename: generator_schematic_test_window.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-09-27
 Description: Test window for the schematic scene with buttons to add components.
 """

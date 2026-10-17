@@ -1,6 +1,6 @@
 """
 Filename: 15_example_annuity.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-11-19
 Description: Example for the calculation of the annuity of a heat generator
 

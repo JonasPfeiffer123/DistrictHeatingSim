@@ -5,7 +5,7 @@ Without a translation Qt shows its built-in English texts: "OK"/"Cancel"/"Yes"/"
 message box and dialog, "Name"/"Size"/"Type"/"Date Modified" in the project tab's file tree,
 "Open"/"Save" in the file dialogs. PyQt6 ships the German translation; it is installed at start.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

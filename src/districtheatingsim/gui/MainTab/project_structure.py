@@ -10,7 +10,7 @@ A project directory contains one or more *variant* sub-folders ("Variante 1",
 "Variante 2", …) alongside shared input folders; the variant is the unit the
 user switches between.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

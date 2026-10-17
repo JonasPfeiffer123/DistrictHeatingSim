@@ -5,7 +5,7 @@ Implements the Presenter component of the MVP pattern, handling business logic
 for project management, variant creation, and coordination between view and
 data management layers.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

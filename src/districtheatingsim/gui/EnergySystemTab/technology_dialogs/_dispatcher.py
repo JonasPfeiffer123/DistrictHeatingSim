@@ -5,7 +5,7 @@ sub-dialog and wraps it with OK/Cancel buttons.
 Dispatch logic (prefix matching, order) is preserved verbatim from the original
 ``_04_technology_dialogs.py``.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout

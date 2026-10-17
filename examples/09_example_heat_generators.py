@@ -1,6 +1,6 @@
 """
 Filename: 09_example_heat_generators.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-07-12
 Description: Script for testing the heat generator functions.
 """

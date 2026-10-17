@@ -4,7 +4,7 @@ Photovoltaics Module
 
 Photovoltaic power generation modeling based on EU PVGIS methodology.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

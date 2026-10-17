@@ -5,7 +5,7 @@ Config Plot Module
 This module provides comprehensive visualization capabilities for district heating network
 analysis and presentation.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 It combines pandapipes network plotting with interactive features,
 contextual basemaps, and detailed component annotations to create professional-quality

@@ -8,7 +8,7 @@ objects). Lives here — not in the ``gui`` package — so that
 ``energy_system.save_to_json`` does not drag PyQt6 into the GUI-free domain core
 (BACKLOG B5). The GUI re-exports it from ``EnergySystemTab/_10_utilities.py``.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

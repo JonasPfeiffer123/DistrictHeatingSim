@@ -1,6 +1,6 @@
 """
 Filename: 04_example_data_heat_requirement.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2024-11-19
 Description: Contains the heat requirement functions necessary to calculate the heat requirement of a building.
 Usage:

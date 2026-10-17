@@ -2280,8 +2280,21 @@ IDs below are the report's IDs with a `UT-` prefix.
      **Still open:** the cost stays linear in the volume once set, so the optimizer does not see the
      economy of scale of a larger solar storage (its `kosten_speicher_spez` is fixed per m³).
 
-**Later stages (see the report, section 6):** stage 4 plausibility indicators; stage 5 e2e as
-`pytest -m e2e` with mocked services, user handbook.
+**Later stages (see the report, section 6):** ~~stage 4 plausibility indicators~~ (done, UT-M15);
+stage 5 e2e as `pytest -m e2e` with mocked services; ~~user handbook~~ (done, below).
+
+**Documentation for 2.0.0 (2026-10-17, branch `feature/dokumentation`):** German user guide
+`docs/source/benutzerhandbuch.rst` ("Mein erstes Quartier", Zittau, 22 screenshots) and
+`docs/source/berechnungsmethodik.rst` (methods, defaults, thresholds with sources); README features
+and usage rewritten (AqvaHeat is no feature, both demand methods, generator optimisation, exe build
+guide; `sphinx-apidoc -f` no longer recommended — it would overwrite the curated pages); 23 modules
+added to the API pages. The screenshots come from `tests/e2e/docs_screenshots.py` — run it again
+before a release. **Gotchas of the screenshot run:** the native platform with the GPU is needed
+(offscreen renders no WebEngine content, and the network plot's base map needs WebGL), and the
+scale must be set with `QT_SCALE_FACTOR` = 96 / display DPI — `QT_ENABLE_HIGHDPI_SCALING=0` keeps
+the fonts at the display DPI and cuts labels off. **Seen in the screenshots, not fixed:** the toggle
+"Erweiterte OSMnx-Einstellungen" in the network generation dialog is nearly invisible (light text on
+a light background); the plant schematic draws "Speicher 1" over the "Vorlauf" label.
 
 ## Suggested order
 **Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1

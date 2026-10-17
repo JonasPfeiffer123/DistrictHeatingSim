@@ -2,7 +2,7 @@
 Energy System Main Tab Module
 ==============================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Main tab for managing energy system design, including technology definitions, cost calculations, and results display.
 """

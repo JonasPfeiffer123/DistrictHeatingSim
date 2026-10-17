@@ -3,7 +3,7 @@
 
 Dialog windows for user input and configuration.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 from PyQt6.QtCore import Qt

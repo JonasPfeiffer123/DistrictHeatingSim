@@ -2,7 +2,7 @@
 Generator Schematic Module
 ===========================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Custom QGraphicsScene and QGraphicsView for generator schematic editor with custom items and connections.
 """

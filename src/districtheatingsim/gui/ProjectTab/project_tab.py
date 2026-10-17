@@ -3,7 +3,7 @@
 
 Project management tab with MVP architecture for CSV file editing and project tracking.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import csv

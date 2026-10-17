@@ -3,7 +3,7 @@
 
 Dialog for configuring network generation parameters with tabbed interface.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

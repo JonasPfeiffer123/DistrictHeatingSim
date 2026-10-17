@@ -1,5 +1,5 @@
 // Filename: main.js
-// Author: Dipl.-Ing. (FH) Jonas Pfeiffer  
+// Author: M.Eng. Jonas Pfeiffer  
 // Date: 2025-01-26
 // Description: JavaScript-File for the main functionality of the Leaflet map
 

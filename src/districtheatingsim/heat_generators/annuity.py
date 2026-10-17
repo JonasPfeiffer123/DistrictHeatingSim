@@ -4,7 +4,7 @@ Annuity Calculation Module
 
 Economic evaluation module for technical installations according to VDI 2067.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 This module provides comprehensive economic analysis capabilities for district heating
 systems following the German VDI 2067 standard for economic evaluation of technical

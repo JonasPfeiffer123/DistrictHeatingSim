@@ -1,6 +1,6 @@
 """
 Filename: 18_stanet_to_pandapipes.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-05-21
 Description: This script demonstrates how to use the `create_net_from_stanet_csv` function from the `feature_develop.stanet_import_pandapipes` module.
 

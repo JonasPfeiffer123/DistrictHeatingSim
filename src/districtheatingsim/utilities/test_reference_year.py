@@ -4,7 +4,7 @@ Test Reference Year (TRY) import module for German weather data.
 This module provides functionality to import and parse standardized meteorological
 data files used for building energy simulations and district heating calculations.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import pandas as pd

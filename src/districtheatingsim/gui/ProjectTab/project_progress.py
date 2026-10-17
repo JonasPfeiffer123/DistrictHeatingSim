@@ -8,7 +8,7 @@ are done is pure filesystem/CSV logic; it was buried inside
 here so it is unit-testable without a QApplication. The presenter is now a thin
 caller that pushes the result into the view.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import csv

@@ -15,7 +15,7 @@ Output (projects, screenshots, logs, a private recent-projects list) goes to
 ``$DHS_E2E_WORKDIR`` or, if unset, ``tests/e2e/_work`` (git-ignored). The user's real
 recent-projects list and the bundled example project are never touched.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

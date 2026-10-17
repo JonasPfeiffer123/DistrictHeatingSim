@@ -1,7 +1,7 @@
 """
 Nearest-geometry lookup for network generation.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 The street snapping steps (building connections, MST road alignment) looked up the nearest
 street for every point by computing the distance to *every* street — per point and, in the

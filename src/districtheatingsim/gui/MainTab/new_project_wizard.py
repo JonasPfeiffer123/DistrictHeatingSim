@@ -15,7 +15,7 @@ for all of it on three pages:
 The page logic that needs no widgets (name check) is a plain function; the rest is exercised by
 ``tests/test_new_project_wizard.py`` with the place search replaced.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

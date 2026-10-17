@@ -13,7 +13,7 @@ Features:
 - Dashboard-Ansichten
 - Drop-in config_plot Ersatz
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Author: M.Eng. Jonas Pfeiffer
 Date: 2025-08-14
 Version: 1.0 (Production Ready)
 """

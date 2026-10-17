@@ -2,7 +2,7 @@
 Compact file format for JSON-like data with large arrays.
 =========================================================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Project results were written as indented JSON, where every hourly time series (8760 values)
 is text and identical series are repeated — ``Gebäude Lastgang.json`` took ~1.75 MB per

@@ -21,6 +21,11 @@ NetSimulationTab package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.gui.NetSimulationTab.net_simulation_tab
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.NetSimulationTab.network_config_tab
    :members:
    :show-inheritance:
@@ -31,12 +36,27 @@ NetSimulationTab package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.gui.NetSimulationTab.network_info_panel
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.NetSimulationTab.pipe_config_table
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.NetSimulationTab.producer_order_tab
    :members:
    :show-inheritance:
    :undoc-members:
 
 .. automodule:: districtheatingsim.gui.NetSimulationTab.network_plot_widget
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.gui.NetSimulationTab.time_series_widget
    :members:
    :show-inheritance:
    :undoc-members:

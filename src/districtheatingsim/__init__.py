@@ -11,4 +11,4 @@ This package provides tools for:
 """
 
 __version__ = "2.0.0"
-__author__ = "Dipl.-Ing. (FH) Jonas Pfeiffer"
+__author__ = "M.Eng. Jonas Pfeiffer"

@@ -4,7 +4,7 @@ Building data management and heat demand calculation module.
 Provides MVP architecture for building heat requirement calculations using
 BDEW profiles and Test Reference Year (TRY) climate data.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

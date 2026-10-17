@@ -4,7 +4,7 @@ Biomass Boiler System Module
 
 Biomass boiler system with storage integration, economic analysis and BEW subsidy support.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

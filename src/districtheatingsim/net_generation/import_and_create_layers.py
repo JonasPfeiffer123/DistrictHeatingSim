@@ -4,7 +4,7 @@ Data import and layer processing for district heating network generation.
 Handles integration of OpenStreetMap street networks, building locations, and
 heat generator coordinates into geospatial layers for network optimization.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

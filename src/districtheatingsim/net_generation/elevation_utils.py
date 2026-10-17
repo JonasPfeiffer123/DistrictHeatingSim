@@ -7,7 +7,7 @@ the OpenTopoData REST API as an online fallback.  The elevation values are then
 written as Z-coordinates into Shapely/GeoPandas geometries so that pandapipes
 can use them as ``height_m`` on network junctions.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

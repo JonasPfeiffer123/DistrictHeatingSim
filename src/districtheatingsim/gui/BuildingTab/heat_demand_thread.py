@@ -2,7 +2,7 @@
 Heat Demand Thread Module
 =========================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Worker thread for the building heat demand calculation. Generating the profiles, formatting
 them and writing the (large) building profiles file used to run on the UI thread and froze the

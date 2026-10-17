@@ -5,7 +5,7 @@ OSM Dialogs Module
 This module provides dialog interfaces for OSM data download and building
 queries through interactive user interfaces.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import os

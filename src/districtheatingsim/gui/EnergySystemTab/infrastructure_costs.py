@@ -7,7 +7,7 @@ into every generator calculation unless "Kosten aus geoJSON berechnen" was click
 from the network as soon as one exists (only where the table still holds the placeholder), the
 remaining flat values are named as such.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import json

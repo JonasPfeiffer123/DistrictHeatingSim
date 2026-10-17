@@ -5,7 +5,7 @@ This module implements the main window with a multi-tab interface for district
 heating system simulation. Follows the View component of the MVP pattern,
 managing UI elements, menu system, theme management, and tab coordination.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import logging

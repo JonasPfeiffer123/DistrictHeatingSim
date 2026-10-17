@@ -3,7 +3,7 @@
 
 Tab for network configuration parameters in district heating systems.
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 """
 
 import pandapipes as pp

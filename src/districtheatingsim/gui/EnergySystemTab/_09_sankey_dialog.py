@@ -2,7 +2,7 @@
 Sankey Dialog Module
 ====================
 
-:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+:author: M.Eng. Jonas Pfeiffer
 
 Displaying Sankey diagram using Plotly to visualize energy flows in district heating systems.
 """
