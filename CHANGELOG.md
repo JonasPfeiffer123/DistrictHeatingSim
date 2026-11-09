@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Repository
+- **The Git history was rewritten (November 2026).** Removed from the history: large data files
+  that are not part of any release (old project data, LOD2 raw data, accidentally committed
+  PyInstaller builds), compiled `.pyc` caches, two STANET network files (`Binova`, `Nicolai`) and a
+  Windows shortcut. Local user paths and a user name in the data were replaced by `username`, and the
+  author e-mail address was unified. A fresh clone shrinks from about 480 MiB to about 54 MiB.
+- Every commit hash and every tag changed. Apart from the replaced user paths, v1.0.0 and all later
+  commits keep their content; six early commits that only touched removed files were dropped.
+- **Clones and forks from before the rewrite must be cloned again** (forks on GitHub: *Sync fork →
+  Discard commits*). Do not merge the old history into the new one, as that would bring back the old
+  commits and the large files. To move your own commits over, rebase them onto the new `main`.
+
+### Added
+- README section *Data Sources and Licenses*: attribution for the GeoSN LoD2 building models,
+  OpenStreetMap, the DWD test reference years and the Saxon river water data, plus a note that the
+  heat demands at real addresses in the example and test data are fictitious.
+
 ## [2.0.0] - 2026-10-17
 
 First release since 1.0.3. It bundles the 2026-06 refactoring, the 2026-09 performance audit,

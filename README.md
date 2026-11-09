@@ -1,5 +1,10 @@
 # DistrictHeatingSim
 
+> **Note (November 2026): the Git history of this repository was rewritten** to remove large data
+> files that are not part of any release. If you cloned or forked the repository before this change,
+> please clone it again (forks: *Sync fork → Discard commits*) and do not merge the old history into
+> the new one. Details are in the [changelog](CHANGELOG.md#unreleased).
+
 ## Introduction
 
 Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines.
@@ -22,8 +27,9 @@ DistrictHeatingSim was originally developed at the University of Applied Science
 7. [Documentation](#documentation)
 8. [Publication](#publication)
 9. [Contribution Guidelines](#contribution-guidelines)
-10. [License](#license)
-11. [Contact Information](#contact-information)
+10. [Data Sources and Licenses](#data-sources-and-licenses)
+11. [License](#license)
+12. [Contact Information](#contact-information)
 
 ## Features
 
@@ -313,6 +319,25 @@ Please ensure that your contributions align with the project's coding standards 
 
 For a list of known issues, planned features, and ongoing development tasks, please refer to:
 - [GitHub Issues](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues)
+
+## Data Sources and Licenses
+
+The example data, the Görlitz example project and the bundled default data contain third-party data:
+
+| Data | Location | Source and license |
+|---|---|---|
+| 3D building models (LoD2) | `examples/data/LOD2/` | © Staatsbetrieb Geobasisinformation und Vermessung Sachsen (GeoSN), [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0) |
+| Buildings and streets from OpenStreetMap | `examples/data/osm_*.geojson`, `examples/data/streets.geojson`, `examples/data/osmnx_steiner_output/`, `src/districtheatingsim/project_data/Görlitz/Eingangsdaten allgemein/Straßen.geojson` | © OpenStreetMap contributors, [ODbL 1.0](https://www.openstreetmap.org/copyright) |
+| Test reference years (TRY) | `examples/data/TRY/`, `src/districtheatingsim/data/TRY/`, `src/districtheatingsim/project_data/Görlitz/Klimadaten/` | [Deutscher Wetterdienst (DWD)](https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html) |
+| River water temperatures | `src/districtheatingsim/data/Water data/`, `src/districtheatingsim/project_data/Görlitz/Eingangsdaten allgemein/` | [Gewässergütemessnetz Sachsen](https://www.wasser.sachsen.de/gewaesserguetemessnetz-18251.html) |
+
+Files derived from these sources, such as heat demands calculated from the LoD2 models or networks
+generated along OpenStreetMap streets, carry the same attribution.
+
+**The heat demands in the example and test data are fictitious.** Files such as
+`examples/data/Quartier IST.csv` or `tests/e2e/inputs/zittau_quartier.csv` assign them to real
+addresses so that the examples look realistic, but the values do not describe the actual consumption
+of these buildings.
 
 ## License
 
