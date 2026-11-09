@@ -1,6 +1,6 @@
 # Anwendertest DistrictHeatingSim – Volltest aus Erstnutzer-Sicht
 
-Stand: 2026-10-08 · Version 2.0.0 (`main`, Commit 194b774) · Windows 11, Python 3.12
+Stand: 2026-10-08 · Version 2.0.0 (`main`, Commit ace0574) · Windows 11, Python 3.12
 
 ## 1. Kurzfazit
 

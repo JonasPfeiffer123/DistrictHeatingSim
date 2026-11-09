@@ -1451,11 +1451,11 @@ badge in `docs/source/index.rst`); the CHANGELOG header is now `[2.0.0] - 2026-0
 empty `[Unreleased]`. Verified: all four sites read 2.0.0 and `districtheatingsim.__version__`
 imports as `2.0.0`. (The bare `pip install districtheatingsim` in `index.rst:91` is left to F5.)
 ### F4. CI now gating but the run status is unconfirmed
-**Severity: pre-release.** `HEAD == origin/main == b03bf77` — everything is pushed, so the
+**Severity: pre-release.** `HEAD == origin/main == b5079e7` — everything is pushed, so the
 gating `ci.yml` (pytest 3.11/3.12 + `ruff check` + `ruff format --check`) triggered on the
 last push. The earlier CLAUDE.md/BACKLOG note "main is ahead of origin / CI never run" is
 **stale** and should be corrected. The risky step is `pip install -e .[dev]` (2 git clones +
-heavy scientific stack on Ubuntu). Check the GitHub Actions result for `b03bf77`; if red, fix
+heavy scientific stack on Ubuntu). Check the GitHub Actions result for `b5079e7`; if red, fix
 before tagging. (`rasterio`/elevation extra is *not* a CI failure point — imported lazily,
 not at test-collection time.)
 ### F5. Docs sweep (done 2026-06-16)
@@ -1536,7 +1536,7 @@ Backslash entry path is now OS-agnostic (`os.path.join`), though the build remai
 ### F7. Read the Docs build broken — config referenced removed requirements files (fixed 2026-06-22)
 **Severity: pre-release (the public docs site `districtheatingsim.readthedocs.io` had not built in a
 while).** RTD failed at `pip install … -r requirements.txt` (exit 1): the `pyproject.toml` migration
-(`d6f105a`) deleted both `requirements.txt` and `documentation_requirements.txt`, but `.readthedocs.yaml`
+(`a67a066`) deleted both `requirements.txt` and `documentation_requirements.txt`, but `.readthedocs.yaml`
 still pointed at them. **Fixed:** `.readthedocs.yaml` now installs the package with its `[docs]` extra
 straight from `pyproject.toml` (`method: pip` / `path: .` / `extra_requirements: [docs]`) — single
 source of truth, no standalone requirements files.
