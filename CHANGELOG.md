@@ -24,6 +24,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   OpenStreetMap, the DWD test reference years and the Saxon river water data, plus a note that the
   heat demands at real addresses in the example and test data are fictitious.
 
+### Changed results
+- **Storage state of charge** (thermal-energy-storage-1d 2.1.0, see below): with
+  temperature-dependent water properties a storage at `T_max` now has SOC = 1 (was 0.99); the SOC
+  is up to 1 percentage point higher. Storage temperatures, losses, the energy mix and the WGK of a
+  network storage are unchanged (`examples/17` and 18 storage configurations bit-identical). CHP and
+  biomass buffers switch on their SOC, so single switching hours shift: `examples/18` heat amounts
+  −0.14 %, WGK 77.10 → 77.07 €/MWh.
+
+### Build / Packaging
+- Dependency thermal-energy-storage-1d pinned to v2.1.0 (was v1.1.0). It is MIT-licensed since
+  2.1.0 (was GPL-3.0); the API used here is unchanged.
+
 ## [2.0.0] - 2026-10-17
 
 First release since 1.0.3. It bundles the 2026-06 refactoring, the 2026-09 performance audit,
