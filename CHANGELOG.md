@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-16
+
+Dependency update (pandapipes 0.17, pyslpheat 0.6 with corrected BDEW profiles,
+thermal-energy-storage-1d 2.1) and fixes to the detailed network time series: time-dependent
+building temperatures and cold networks work, and the minimum supply temperature control is up to
+~80× faster and no longer aborts the time series. First release after the history rewrite.
+
+### Upgrading from 2.0.0
+- Reinstall the dependencies (`pip install -e .`): pandapipes 0.17.0, pyslpheat v0.6.0,
+  thermal-energy-storage-1d v2.1.0.
+- Saved projects and networks load unchanged. Building heat demands keep their profiles until they
+  are recalculated; recalculate them to get the corrected BDEW profiles and heating curves that do
+  not go below 20 °C (the time series applies that limit to saved curves anyway).
+- Re-run detailed time series with a minimum supply temperature or with time-dependent building
+  temperatures; their results change (see below). A cold network needs a fixed house-station
+  return temperature below the network supply temperature.
+
 ### Repository
 - **The Git history was rewritten (November 2026).** Removed from the history: large data files
   that are not part of any release (old project data, LOD2 raw data, accidentally committed

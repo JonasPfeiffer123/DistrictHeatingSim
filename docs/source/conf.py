@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath('../../src'))
 project = 'DistrictHeatingSim'
 copyright = '2025, M.Eng. Jonas Pfeiffer'
 author = 'M.Eng. Jonas Pfeiffer'
-release = '2.0.0'
+release = '2.1.0'
 version = '2.0.0'
 
 # -- General configuration ---------------------------------------------------
