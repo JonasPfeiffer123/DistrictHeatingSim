@@ -1262,6 +1262,88 @@ their investment to 0 when idle and did not crash. **Fixed:** CHP, biomass boile
 compute their investment before the no-heat return (an installed plant costs its investment,
 operated or not). Tests: `TestIdleGeneratorCosts`, `test_cost_data_without_heat` (fail on the old code).
 
+### C47. Time series crashes with time-dependent building temperatures (fixed 2026-11-16)
+Found while verifying pandapipes 0.17 (independent of the version, same on 0.14). With
+"Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen" (`building_temperature_checked`)
+`time_series_preprocessing` read `supply_temperature_buildings_curve` /
+`return_temperature_buildings_curve`, but `initialize_geojson` sets `supply_temperature_building_curve`
+/ `return_temperature_building_curve` (`NetworkDataClass.py:173-174`) → `AttributeError` for normal
+and cold networks. The names had drifted apart in the `NetworkGenerationData` refactor (May 2025);
+no test covered the option (the Parquet test in `test_simulation_golden_master.py` checked the
+misspelt name behind a `hasattr` guard, i.e. nothing). **Fixed:** the curves are read under their
+real names (clear `ValueError` if a saved net lacks them). Normal network: HAST return = building
+return curve + dT_RL; a set minimum supply temperature is raised to building supply curve + dT_RL
+where that is higher (tooltip: "Ist eine Mindestvorlauftemperatur vorgegeben wird diese
+berücksichtigt"; without one the net has no controllers for it, so none is added). Secondary
+producers' mass flows use each hour's mean return temperature. Two more bugs surfaced once it ran
+(Görlitz, minimum supply 60 °C):
+- `MinimumSupplyTemperatureController.time_step` restored the *first* step's return temperature in
+  every step. Its ConstControl for `treturn_k` writes first (same level/order; pandapower sorts with
+  a non-stable `argsort`, so that order is not guaranteed either), so every hour ran with the first
+  hour's return temperature. It now skips the restore when a return-temperature ConstControl drives
+  the consumer (that one resets the step's setpoint anyway); static returns: same results.
+- pandapower's control loop stops at `max_iter=30` and raises `ControllerNotConverged`, before the
+  controller's own `max_iterations=100`. The controller raises the return temperature by 1 K per
+  iteration; with summer return temperatures of 15–20 °C, weak stations need up to 55 iterations
+  (Görlitz, July; hours 5007–5009: 36–53) → the whole time series aborted. `thermohydraulic_time_series_net` now
+  passes `max_iter=CONTROL_MAX_ITER` (120). Runs that converged before are unchanged. Such hours are
+  slow, see G11.
+Tests: `TestBuildingTemperaturePreprocessing`, `TestMinimumSupplyTemperatureControllerWithReturnProfile`
+(`test_net_simulation.py`), `test_time_series_with_building_temperatures_and_minimum_supply_temperature`
+(slow, Görlitz: January returns follow the curves, a July hour with 53 control iterations runs and
+holds 65 °C). All fail on the old code.
+
+### C48. Cold network time series crashes without building temperatures (fixed 2026-11-16)
+Found together with C47 (same on pandapipes 0.14). For `netconfiguration == "kaltes Netz"` without
+time-dependent building temperatures, `time_series_preprocessing` divided `waerme_hast_ges_W`
+(buildings × hours) by the per-building `cop` (buildings,) →
+`ValueError: operands could not be broadcast together with shapes (9,8760) (9,)`. Together with C47
+the cold-network time series failed in both modes. Behind the crash: the COP was applied twice
+(`initialize_geojson` had already taken the heat pump electricity off `waerme_hast_ges_W`), and
+every re-run of a saved net would have applied it once more. With building temperatures the branch
+also overwrote the HAST return temperature with the building return curve + dT_RL (a hot-network
+copy; ~35 °C return in a 10 °C network) and used that as the heat pump source temperature. The
+original (pre-refactor) code kept the network temperatures. **Fixed:** new
+`utilities.heat_pump_split` splits the *buildings'* demand (`waerme_gebaeude_ges_W`) into network
+heat and heat pump electricity, so the heat pumps are applied once and a re-run gives the same
+values. Sink = building supply temperature (VLT_max, or its curve with the option, COP per hour),
+source = HAST return temperature. The network temperatures stay as initialised in both modes.
+Görlitz (10/5 °C, 24 h January): COP 2.5 static, 3.8–4.1 with the heating curve; network heat + electricity = building
+demand to 10⁻¹¹ W. Tests: `TestColdNetworkPreprocessing`, `TestHeatPumpSplit`,
+`test_cold_network_time_series[static|building_curves]` (slow, Görlitz). All fail on the old code.
+
+### C49. Net generation dialog: temperatures reset, cold-network defaults infeasible (fixed 2026-11-16)
+Found with C48. `NetworkConfigTab.updateInputFieldsVisibility` runs on every checkbox toggle and
+on every switch of the supply temperature control, and each time it set the maximum/minimum
+supply temperature and the HAST return temperature back to the defaults of the network type, so
+values typed in before ticking e.g. "Rücklauftemperatur für alle HA-Stationen festlegen" were
+lost without notice. A switch of the network type, on the other hand, kept the building minimum
+supply temperature and dT_RL of the previous type. The cold-network defaults
+(`dialog_config.json`) could not be initialised: return 20 °C in a 10 °C network, building
+minimum 30 + 5 °C, and without a fixed return the building returns (+ dT_RL) are far above the
+network temperature anyway (English message without a hint). **Fixed:** the defaults are applied
+only when the network type changes, then for all its fields (`apply_netconfiguration_defaults`);
+cold-network defaults 10/8 °C supply, 5 °C return, building minimum 2 °C (HAST 7 °C); the
+initialisation messages are German, name the values, and for a cold network without a fixed return
+point to the option. Tests: `tests/test_network_config_tab.py` (2 of 3 fail on the old code),
+`test_dialog_defaults_pass_the_initialisation_checks`, `test_cold_network_with_the_dialog_defaults`
+(slow, Görlitz with the cold defaults), `test_infeasible_temperatures_are_rejected_at_initialisation`.
+
+### C50. Building heating curves far below room temperature in summer (fixed 2026-11-16)
+Found while profiling G11. `calculate_temperature_curves` (`heat_requirement_calculation_csv.py`)
+extends the heating curve `VLT_max − slope · (T_out − T_design)` linearly without a lower bound and
+sets the return a constant `VLT_max − RLT_max` below it. Görlitz (VLT_max 70 °C, RLT_max 55 °C,
+slope 1.5, design −15 °C): supply down to 1.9 °C, return down to −13.1 °C, return below 20 °C in
+4570 of 8760 hours. Only the time-dependent building temperatures (C47) use the curves in a
+calculation: summer HAST returns of −8 °C to 15 °C gave large spreads and small mass flows, so the
+minimum supply temperature needed large return raises (a large part of G11). Cold networks were not
+affected (`COP_WP` raises the sink to 35 °C), the building tab plots the curves. **Fixed:** both
+curves are not below `constants.ROOM_TEMPERATURE_C` (20 °C), at the source and, for heat demands
+calculated before, when the time series reads them (`_building_temperature_curves`). Tests:
+`test_heating_curves_stay_at_or_above_room_temperature` (`test_heat_requirement_csv.py`),
+`test_building_curves_below_room_temperature_are_raised_to_it`. The model keeps the constant spread
+(at part load a radiator's spread shrinks); 20 °C is only the physical floor.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1431,7 +1513,12 @@ as-is (fine for `pip install git+…` / `pip install .` / editable). **Pinned to
 storage step) — both tags point at the commits verified here (bit-identical results, G3/C43).
 **2026-11-12: `thermal-energy-storage-1d@v2.1.0`** (MIT license since 2.1.0); verified against
 1.1.0: temperatures, losses and energy mix bit-identical, SOC up to +1 percentage point (fix in
-`get_soc()` with `WaterProperties`), `examples/18` buffer heat amounts −0.14 %. Consequences: keep the install
+`get_soc()` with `WaterProperties`), `examples/18` buffer heat amounts −0.14 %.
+**2026-11-16: `pyslpheat@v0.6.0`** (BDEW hourly factor fixes from 0.4.3/0.4.4: every BDEW profile
+changes hour by hour, annual energy unchanged, peaks −30 … +14 % by profile type; VDI 4655
+bit-identical; Görlitz recalculated: peak 1933 → 1463 kW, 23 of 68 pipes one size smaller) and
+**`pandapipes==0.17.0`** (was 0.14.0; results within solver tolerance, see CHANGELOG; time series
+~40 % slower, see G2). TES stays at v2.1.0 (no newer tag). Consequences: keep the install
 docs on the GitHub/git-URL path and drop any bare `pip install districtheatingsim` PyPI hint
 (F5: `index.rst:91`). Revisit only if PyPI distribution is wanted later (then publish both deps).
 ### F2. No console/GUI entry point (fixed 2026-06-16)
@@ -1616,6 +1703,11 @@ sizing unchanged (same 68 ISOPLUS types). **Done:**
   4 workers 94–149 s → 50–59 s (≈ 1.6–2.6×; timings on the dev laptop vary strongly). Pinned by
   `tests/test_net_simulation.py::TestSplitTimeRange` + `TestParallelTimeSeries` (slow, real worker
   processes, heat results equal to sequential). *Not verified in the frozen exe yet.*
+- **pandapipes 0.17 (2026-11-16): time series ~40 % slower.** Görlitz, 168 h, numba on:
+  17 → 24 s. Same 243 pipeflow calls and 4020 linear solves as 0.14, so the extra time is
+  per-iteration overhead of the restructured solver (`pf/system_index.py` `_check_conflict` /
+  `add` / `assemble` ≈ 5 s, 2.3× more fluid-property interpolations). Upstream; worth reporting to
+  pandapipes if full-year runs become a bottleneck.
 
 ### G3. Solar thermal dominates the energy-system optimizer (done 2026-09-29/30; storage step via TES 1.1.0 2026-10-01)
 `examples/10` (optimizer, ~160 `calculate_mix` calls) ran **28.2 s** standalone (57 s in the smoke
@@ -1866,6 +1958,56 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   pin the page patch and the bridge — the web view itself still has no headless seam.
 - ~~`GeoDataFrame.unary_union` is deprecated~~ **done 2026-09-30:** `osm/area_selection.py` uses
   `union_all()` (`tests/test_area_selection.py` passes with `-W error::DeprecationWarning`).
+
+### G11. Minimum supply temperature: slow, and aborts when the minimum cannot be met (fixed 2026-11-16)
+Found with C47. `MinimumSupplyTemperatureController` raised a station's return temperature by
+`temperature_adjustment_step` = 1 K per control iteration, each one a full bidirectional pipeflow.
+Where the supply at the station rises by only ~0.15 K per K of return raise (sliding supply 70 °C,
+station minimum 65 °C), weak stations needed up to 55 iterations per hour; pandapower stops the
+control loop at 30 (C47 raised that to 120). And `is_converged` returned `False` as long as the
+minimum was not met, before its own `max_iterations` check: a minimum that cannot be met drove the
+return up to the supply temperature until the pipeflow diverged. That is the "pipeflow error" of
+sliding supply + station minimum 65 + 5 °C + fixed return 45 °C (Görlitz hours 2900–2972, pandapipes
+0.14 and 0.17): the supply slides down to 70 °C, the stations demanded 70 °C, returns reached
+69–70 °C, pump lift 9.3 bar, divergence. **Fixed:**
+- Step: first the supply deficit, then a secant step (deficit / supply rise per K of the previous
+  raise of this hour, clamped to 0.05–0.9), at least 1 K. Deficits up to 1 K keep the old 1 K steps.
+- The return stays `min_temperature_spread` = 3 K below the station's supply
+  (`DEFAULT_MIN_TEMPERATURE_SPREAD`); with a known response the controller aims at the return where
+  the rising supply and that limit meet (that aim can land up to ~1 K closer). At the limit, or after
+  `max_iterations`, the hour counts as not met and the controller converges. The 1 K controller met
+  minima with spreads down to 0.3 K (a station working like a bypass, huge mass flows); the pipeflow
+  diverged below ~1 K. Görlitz, sliding, minimum 60 °C, 72 July hours, minimum missed: 5 K → 28 h
+  by ≤ 1.4 K, 2 K → none, 3 K (chosen) → 12 h by ≤ 0.5 K.
+- `thermohydraulic_time_series_net` logs a warning with the hours, stations and largest deficit
+  where the minimum was missed (`unmet_minimum_supply_temperature`), once for the whole run (the
+  parallel workers now call `_sequential_thermohydraulic_time_series`).
+- `initialize_geojson` checks return and minimum supply temperature of the stations against the
+  *lowest* generator supply (sliding: its minimum, was: always the maximum), with German messages
+  that name the values. The configuration above is rejected there now.
+- `pipeflow_with_damping_fallback`: the undamped attempt gets `UNDAMPED_MAX_ITER` = 40 Newton
+  iterations (converging ones need ≤ 25 on Görlitz; after large return raises most undamped attempts
+  failed only after all 100, the damped retry then needed ≤ 28). If the damped retry fails too, the
+  undamped one gets the full 100 as before.
+
+Görlitz, minimum supply 60 °C (+ 5 K), 72 h (old = commit `ac248e1`; its runs partly shared the
+machine with a second run, so its times are rough):
+
+| Scenario | old | new | results new vs old |
+|---|---|---|---|
+| static 85 °C, static return, January / July | 3.3 / 20.8 s | 4.0 / 16.7 s | identical |
+| sliding, static return, July | 2351 s | 28 s | missed in 12 h by ≤ 0.5 K; generation −0.006 %, pump energy −0.07 %, ≤ 0.9 K |
+| sliding, static return, transition (h 2900) | 9.5 s | 8.4 s | identical within 0.02 K |
+| building temperatures, static, July | 601 s | 42 s | differ by C50 (returns ≥ 25 °C) |
+| building temperatures, sliding, July | 2130 s | 50 s | C50; minimum missed in 25 h by ≤ 1.6 K |
+| sliding, station minimum 70 °C = generator minimum | aborts after 6 s | rejected at initialisation | |
+| sliding, station minimum 69 °C, transition / July | 234 / 491 s, met with spreads down to 0.3 K | 47 / 74 s | missed in 51 / 60 h by ≤ 3.6 K; pump energy −63 / −72 %, generation −0.13 / −0.21 % |
+
+Control iterations per July hour (building temperatures, static): ≤ 11 instead of ≤ 55. Tests:
+`TestMinimumSupplyTemperatureControllerSteps` (single station: a 14 K deficit in ≤ 15 iterations,
+the 1 K controller exceeded 30 already in the initial `run_control`; small deficits unchanged;
+unreachable minima accepted at 3 K and reported), `TestUnmetMinimumSupplyTemperature`,
+`TestPipeflowDampingFallback` (5), `test_infeasible_temperatures_are_rejected_at_initialisation`.
 
 ---
 

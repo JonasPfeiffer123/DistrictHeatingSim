@@ -366,15 +366,38 @@ class NetworkConfigTab(QWidget):
                 widget.setText(value)
                 break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
+    def apply_netconfiguration_defaults(self, netconfiguration):
+        """
+        Fill the temperature and pressure fields with the defaults of a network type.
+
+        :param netconfiguration: Network type (key of ``standardwerte`` in the dialog config).
+        :type netconfiguration: str
+        """
+        std = self.dialog_config["standardwerte"][netconfiguration]
+        for row, key in (
+            (self.max_supply_temp_row, "max_supply_temp"),
+            (self.min_supply_temp_row, "min_supply_temp"),
+            (self.max_air_temp_row, "max_air_temp"),
+            (self.min_air_temp_row, "min_air_temp"),
+            (self.flow_pressure_row, "flow_pressure"),
+            (self.lift_pressure_row, "lift_pressure"),
+            (self.min_supply_temperature_building_row, "min_supply_temp_building"),
+            (self.return_temp_row, "return_temp"),
+            (self.dT_RL_row, "dT_RL"),
+        ):
+            self.set_default_value(row, str(std[key]))
+        self._defaults_netconfiguration = netconfiguration
+
     def updateInputFieldsVisibility(self):
         """
         Update visibility of input fields based on selected options.
         """
         self.netconfiguration = self.netconfigurationControlInput.currentText()
-        std = self.dialog_config["standardwerte"][self.netconfiguration]
-        self.set_default_value(self.max_supply_temp_row, str(std["max_supply_temp"]))
-        self.set_default_value(self.min_supply_temp_row, str(std["min_supply_temp"]))
-        self.set_default_value(self.return_temp_row, str(std["return_temp"]))
+        # Defaults only when the network type changes: this also runs on every checkbox toggle and
+        # used to reset the temperatures typed in (and left the building minimum supply temperature
+        # and dT_RL of the previous network type).
+        if self.netconfiguration != getattr(self, "_defaults_netconfiguration", None):
+            self.apply_netconfiguration_defaults(self.netconfiguration)
 
         is_control_mode_static = self.supplyTemperatureControlInput.currentText() == "Statisch"
         is_control_mode_dynamic = self.supplyTemperatureControlInput.currentText() == "Gleitend"

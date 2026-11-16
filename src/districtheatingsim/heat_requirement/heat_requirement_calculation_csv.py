@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from pyslpheat import bdew_calculate, vdi4655_calculate
 
+from districtheatingsim.constants import ROOM_TEMPERATURE_C
 from districtheatingsim.utilities.csv_schemas import validate_csv_columns
 
 logger = logging.getLogger(__name__)
@@ -330,7 +331,8 @@ def calculate_temperature_curves(
     :rtype: Tuple[np.ndarray, np.ndarray]
 
     .. note::
-        Weather-compensated curves: T_supply = T_max + slope × (T_outdoor - T_design)
+        Weather-compensated curves: T_supply = T_max + slope × (T_outdoor - T_design), return =
+        supply - (VLT_max - RLT_max); both not below ``ROOM_TEMPERATURE_C``.
     """
     # Extract heating system parameters from building data
     supply_temperature_buildings = data["VLT_max"].values.astype(float)
@@ -361,4 +363,9 @@ def calculate_temperature_curves(
     # Calculate return temperature curves (constant spread from supply)
     return_temperature_curve = supply_temperature_curve - dT
 
-    return supply_temperature_curve, return_temperature_curve
+    # Not below room temperature: the linear curve ran far below it in summer (VLT_max 70 °C,
+    # slope 1.5, design -15 °C: supply 2.5 °C and return -12.5 °C at 30 °C outside)
+    return (
+        np.maximum(supply_temperature_curve, ROOM_TEMPERATURE_C),
+        np.maximum(return_temperature_curve, ROOM_TEMPERATURE_C),
+    )

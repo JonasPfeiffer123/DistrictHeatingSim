@@ -11,7 +11,7 @@ Marked ``slow`` (numba cold-start + an 8-step bidirectional pipeflow, ~25 s on t
 box; deselected by ``-m 'not slow'``). The geometry/demand KPIs are derived from the
 GeoJSON + load profile only — platform-independent, pinned tight (they match the GUI).
 The pipeflow-derived KPIs get a looser tolerance to survive cross-platform solver float
-drift (pandapipes is pinned to 0.14.0). Pipe sizing is asserted structurally (all
+drift (pandapipes is pinned to 0.17.0). Pipe sizing is asserted structurally (all
 ISOPLUS, 68 pipes) rather than per-size, since a borderline velocity could flip one.
 
 To regenerate the pinned values after an intentional model change, run this file and
@@ -36,13 +36,13 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _make_nd(cop_filename):
+def _make_nd(cop_filename, **overrides):
     """Build the Görlitz NetworkGenerationData (normal network) with a given COP path."""
     from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
         NetworkGenerationData,
     )
 
-    return NetworkGenerationData(
+    settings = dict(
         import_type="geoJSON",
         network_geojson_path=str(_GEOJSON),
         heat_demand_json_path=str(_LOAD),
@@ -70,6 +70,22 @@ def _make_nd(cop_filename):
         COP_filename=cop_filename,
         TRY_filename=str(_TRY),
     )
+    settings.update(overrides)
+    return NetworkGenerationData(**settings)
+
+
+def _time_series(nd, start, end):
+    """Run the GUI time-series chain on a copy of an initialised net (like NetCalculationThread)."""
+    import copy
+
+    from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+        thermohydraulic_time_series_net,
+        time_series_preprocessing,
+    )
+
+    run = copy.deepcopy(nd)
+    run.start_time_step, run.end_time_step = start, end
+    return thermohydraulic_time_series_net(time_series_preprocessing(run))
 
 
 @pytest.fixture(scope="module")
@@ -204,10 +220,144 @@ def test_net_initialisation_reads_parquet_profiles_identically(tmp_path):
 
     for attr in (
         "waerme_hast_ges_W",
-        "heizwaerme_hast_ges_W",
-        "supply_temperature_buildings_curve",
+        "heizwaerme_gebaeude_ges_W",
+        "supply_temperature_building_curve",
+        "return_temperature_building_curve",
         "yearly_time_steps",
     ):
-        if hasattr(from_json, attr):
-            np.testing.assert_array_equal(getattr(from_parquet, attr), getattr(from_json, attr))
+        np.testing.assert_array_equal(getattr(from_parquet, attr), getattr(from_json, attr))
     pd.testing.assert_frame_equal(from_parquet.net.heat_consumer, from_json.net.heat_consumer)  # NaN-aware
+
+
+@pytest.mark.slow
+def test_time_series_with_building_temperatures_and_minimum_supply_temperature():
+    # C47: "Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen" crashed the time
+    # series; with a minimum supply temperature its controllers also overwrote the time-dependent
+    # return temperatures, and at summer loads the time series aborted after 30 control iterations.
+    from districtheatingsim.constants import KELVIN_OFFSET
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    nd = initialize_geojson(
+        _make_nd(str(_COP), building_temperature_checked=True, min_supply_temperature_building=60.0)
+    )
+
+    winter = _time_series(nd, 0, 3)
+    # January: every station gets its minimum, so the returns follow the building curves (+ dT_RL)
+    t_return = winter.net_results["res_heat_consumer.t_to_k"] - KELVIN_OFFSET
+    np.testing.assert_allclose(t_return, winter.return_temperature_heat_consumer[:, 0:3].T, atol=1e-3)
+    assert np.ptp(t_return, axis=0).min() > 1.0  # time-dependent, not frozen at the first step
+
+    summer = _time_series(nd, 5008, 5009)
+    # July: weak stations raise their return temperature until the minimum (60 + 5 °C) is met. With
+    # 1 K per control iteration this hour needed 53 (pandapower's default limit is 30); with steps of
+    # the supply temperature deficit (G11) about 10.
+    assert summer.net_results["res_heat_consumer.t_from_k"].min() - KELVIN_OFFSET >= 64.9
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("building_temperatures", [False, True], ids=["static", "building_curves"])
+def test_cold_network_time_series(building_temperatures):
+    # C48: the cold-network time series crashed in both modes and applied the decentral heat pumps
+    # twice (to the network heat the initialisation had already reduced).
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    nd = initialize_geojson(
+        _make_nd(
+            str(_COP),
+            netconfiguration="kaltes Netz",
+            max_supply_temperature_heat_generator=10.0,
+            min_supply_temperature_heat_generator=5.0,
+            min_supply_temperature_building=None,
+            fixed_return_temperature_heat_consumer=5.0,
+            building_temperature_checked=building_temperatures,
+        )
+    )
+    run = _time_series(nd, 0, 3)
+
+    building = nd.waerme_gebaeude_ges_W[:, 0:3]
+    heat, power = run.waerme_hast_ges_W[:, 0:3], run.strombedarf_hast_ges_W[:, 0:3]
+    above_minimum_load = building > 0.02 * nd.waerme_gebaeude_ges_W.max(axis=1, keepdims=True)
+    assert above_minimum_load.any()
+    # network heat + heat pump electricity = building demand, with a plausible COP
+    np.testing.assert_allclose((heat + power)[above_minimum_load], building[above_minimum_load], rtol=1e-9)
+    cop = building[above_minimum_load] / power[above_minimum_load]
+    assert cop.min() > 2.0 and cop.max() < 6.0
+    # the network carries the heat net of the heat pumps
+    np.testing.assert_allclose(run.net_results["heat_consumer.qext_w"], heat.T)
+
+
+_COLD = dict(
+    netconfiguration="kaltes Netz",
+    max_supply_temperature_heat_generator=10.0,
+    min_supply_temperature_heat_generator=8.0,
+    min_supply_temperature_building=None,
+    fixed_return_temperature_heat_consumer=5.0,
+)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        # G11: with sliding control the supply drops to 70 °C, the stations demanded 65 + 5 °C; the
+        # controllers raised the return temperature until the pipeflow failed hours into the run
+        (
+            dict(
+                supply_temperature_control="Gleitend",
+                min_supply_temperature_building=65.0,
+                fixed_return_temperature_heat_consumer=45.0,
+            ),
+            r"Mindestvorlauftemperatur der HA-Stationen .* 70\.0 °C\) muss unter der minimalen "
+            r"Vorlauftemperatur der Heizzentrale \(gleitende Regelung\) \(70\.0 °C\)",
+        ),
+        (
+            dict(_COLD, supply_temperature_control="Gleitend", fixed_return_temperature_heat_consumer=8.0),
+            r"Rücklauftemperatur der HA-Stationen \(bis 8\.0 °C\) muss unter der minimalen Vorlauftemperatur",
+        ),
+        # cold network without a fixed return: the building return temperatures are far above 10 °C
+        (
+            dict(_COLD, fixed_return_temperature_heat_consumer=None),
+            "Rücklauftemperatur für alle HA-Stationen festlegen",
+        ),
+    ],
+    ids=["sliding_min_supply", "sliding_return", "cold_without_fixed_return"],
+)
+def test_infeasible_temperatures_are_rejected_at_initialisation(overrides, message):
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    with pytest.raises(ValueError, match=message):
+        initialize_geojson(_make_nd(str(_COP), **overrides))
+
+
+def test_dialog_defaults_pass_the_initialisation_checks():
+    # The cold-network defaults had a 20 °C return in a 10 °C network.
+    from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import load_dialog_config
+
+    for name, std in load_dialog_config()["standardwerte"].items():
+        lowest_supply = min(std["max_supply_temp"], std["min_supply_temp"])
+        assert std["return_temp"] < lowest_supply, name
+        assert std["min_supply_temp_building"] + std["dT_RL"] < lowest_supply, name
+
+
+@pytest.mark.slow
+def test_cold_network_with_the_dialog_defaults():
+    # The cold-network defaults of the dialog (sliding 10/8 °C, fixed return 5 °C) initialise and run.
+    from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import load_dialog_config
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    std = load_dialog_config()["standardwerte"]["kaltes Netz"]
+    nd = initialize_geojson(
+        _make_nd(
+            str(_COP),
+            netconfiguration="kaltes Netz",
+            supply_temperature_control="Gleitend",
+            max_supply_temperature_heat_generator=float(std["max_supply_temp"]),
+            min_supply_temperature_heat_generator=float(std["min_supply_temp"]),
+            max_air_temperature_heat_generator=float(std["max_air_temp"]),
+            min_air_temperature_heat_generator=float(std["min_air_temp"]),
+            min_supply_temperature_building=float(std["min_supply_temp_building"]),
+            fixed_return_temperature_heat_consumer=float(std["return_temp"]),
+            dT_RL=float(std["dT_RL"]),
+        )
+    )
+    run = _time_series(nd, 0, 3)
+    assert np.all(np.isfinite(run.net_results["res_heat_consumer.t_from_k"]))
