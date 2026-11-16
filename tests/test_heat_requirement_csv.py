@@ -142,6 +142,7 @@ def test_leap_year_profiles_cover_366_days(types, subtypes):
     assert feb29.sum() == 24
     np.testing.assert_array_equal(air[feb29], air[feb28])  # 29 Feb repeats the weather of 28 Feb
     assert total_heat_W.shape == supply.shape == (len(types), 8784)
-    # Annual energy kept (the app clips pyslpheat's few tiny negative BDEW values: +0.2 kWh for HEF)
+    # Annual energy kept (pyslpheat < 0.4.3 had a few tiny negative BDEW hours, which the app clips:
+    # +0.2 kWh for HEF; since 0.4.3 there are none and the clip is only a guard)
     np.testing.assert_allclose(total_heat_W.sum(axis=1) / 1000, demands, rtol=1e-4)
     np.testing.assert_allclose(total_heat_W, heating_W + dhw_W)

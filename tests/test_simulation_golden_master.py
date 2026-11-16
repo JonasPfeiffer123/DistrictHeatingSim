@@ -11,7 +11,7 @@ Marked ``slow`` (numba cold-start + an 8-step bidirectional pipeflow, ~25 s on t
 box; deselected by ``-m 'not slow'``). The geometry/demand KPIs are derived from the
 GeoJSON + load profile only — platform-independent, pinned tight (they match the GUI).
 The pipeflow-derived KPIs get a looser tolerance to survive cross-platform solver float
-drift (pandapipes is pinned to 0.14.0). Pipe sizing is asserted structurally (all
+drift (pandapipes is pinned to 0.17.0). Pipe sizing is asserted structurally (all
 ISOPLUS, 68 pipes) rather than per-size, since a borderline velocity could flip one.
 
 To regenerate the pinned values after an intentional model change, run this file and

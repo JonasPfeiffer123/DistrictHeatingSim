@@ -1262,6 +1262,24 @@ their investment to 0 when idle and did not crash. **Fixed:** CHP, biomass boile
 compute their investment before the no-heat return (an installed plant costs its investment,
 operated or not). Tests: `TestIdleGeneratorCosts`, `test_cost_data_without_heat` (fail on the old code).
 
+### C47. Time series crashes with time-dependent building temperatures (open, found 2026-11-16)
+Found while verifying pandapipes 0.17 (independent of the version, same on 0.14). With
+"Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen" (`building_temperature_checked`)
+`time_series_preprocessing` (`pp_net_time_series_simulation.py:372-390`) reads
+`supply_temperature_buildings_curve` / `return_temperature_buildings_curve`, but
+`initialize_geojson` sets `supply_temperature_building_curve` / `return_temperature_building_curve`
+(`NetworkDataClass.py:173-174`) → `AttributeError` for normal and cold networks. No test covers
+the option.
+
+### C48. Cold network time series crashes without building temperatures (open, found 2026-11-16)
+Found together with C47 (same on pandapipes 0.14). For `netconfiguration == "kaltes Netz"` without
+time-dependent building temperatures, `time_series_preprocessing` (`pp_net_time_series_simulation.py:411`)
+divides `waerme_hast_ges_W` (buildings × hours) by the per-building `cop` (buildings,) →
+`ValueError: operands could not be broadcast together with shapes (9,8760) (9,)`. Together with C47
+the cold-network time series fails in both modes. When fixing, check whether the COP is applied
+twice: `initialize_geojson` already subtracts the heat pump electricity for the cold network
+(`pp_net_initialisation_geojson.py:173-190`).
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1431,7 +1449,12 @@ as-is (fine for `pip install git+…` / `pip install .` / editable). **Pinned to
 storage step) — both tags point at the commits verified here (bit-identical results, G3/C43).
 **2026-11-12: `thermal-energy-storage-1d@v2.1.0`** (MIT license since 2.1.0); verified against
 1.1.0: temperatures, losses and energy mix bit-identical, SOC up to +1 percentage point (fix in
-`get_soc()` with `WaterProperties`), `examples/18` buffer heat amounts −0.14 %. Consequences: keep the install
+`get_soc()` with `WaterProperties`), `examples/18` buffer heat amounts −0.14 %.
+**2026-11-16: `pyslpheat@v0.6.0`** (BDEW hourly factor fixes from 0.4.3/0.4.4: every BDEW profile
+changes hour by hour, annual energy unchanged, peaks −30 … +14 % by profile type; VDI 4655
+bit-identical; Görlitz recalculated: peak 1933 → 1463 kW, 23 of 68 pipes one size smaller) and
+**`pandapipes==0.17.0`** (was 0.14.0; results within solver tolerance, see CHANGELOG; time series
+~40 % slower, see G2). TES stays at v2.1.0 (no newer tag). Consequences: keep the install
 docs on the GitHub/git-URL path and drop any bare `pip install districtheatingsim` PyPI hint
 (F5: `index.rst:91`). Revisit only if PyPI distribution is wanted later (then publish both deps).
 ### F2. No console/GUI entry point (fixed 2026-06-16)
@@ -1616,6 +1639,11 @@ sizing unchanged (same 68 ISOPLUS types). **Done:**
   4 workers 94–149 s → 50–59 s (≈ 1.6–2.6×; timings on the dev laptop vary strongly). Pinned by
   `tests/test_net_simulation.py::TestSplitTimeRange` + `TestParallelTimeSeries` (slow, real worker
   processes, heat results equal to sequential). *Not verified in the frozen exe yet.*
+- **pandapipes 0.17 (2026-11-16): time series ~40 % slower.** Görlitz, 168 h, numba on:
+  17 → 24 s. Same 243 pipeflow calls and 4020 linear solves as 0.14, so the extra time is
+  per-iteration overhead of the restructured solver (`pf/system_index.py` `_check_conflict` /
+  `add` / `assemble` ≈ 5 s, 2.3× more fluid-property interpolations). Upstream; worth reporting to
+  pandapipes if full-year runs become a bottleneck.
 
 ### G3. Solar thermal dominates the energy-system optimizer (done 2026-09-29/30; storage step via TES 1.1.0 2026-10-01)
 `examples/10` (optimizer, ~160 `calculate_mix` calls) ran **28.2 s** standalone (57 s in the smoke

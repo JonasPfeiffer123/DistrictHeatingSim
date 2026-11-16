@@ -15,7 +15,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from pandapipes.pipeflow import PipeflowNotConverged, pipeflow
+from pandapipes.pf.pipeflow_setup import PipeflowNotConverged
+from pandapipes.pipeflow import pipeflow
 from pandapipes.timeseries import run_time_series
 from pandapower.control.controller.const_control import ConstControl
 from pandapower.timeseries import DFData, OutputWriter

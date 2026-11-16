@@ -962,7 +962,7 @@ class TestPipeflowDampingFallback:
 
     @staticmethod
     def _fake_pipeflow(monkeypatch, fail_alphas):
-        from pandapipes.pipeflow import PipeflowNotConverged
+        from pandapipes.pf.pipeflow_setup import PipeflowNotConverged
 
         from districtheatingsim.net_simulation_pandapipes import pp_net_time_series_simulation as ts
 
@@ -997,7 +997,7 @@ class TestPipeflowDampingFallback:
 @pytest.mark.slow
 class TestNetworkInitialization:
     """End-to-end seam: build a tiny district-heating net, run the production
-    diameter-init path, and assert invariants on pandapipes 0.14 (pins the
+    diameter-init path, and assert invariants on pandapipes >= 0.14 (pins the
     KMR→ISOPLUS / inner_diameter_mm / u_w_per_mk migration, BACKLOG C11).
 
     Asserts invariants (convergence, finiteness, ISOPLUS selection), not golden

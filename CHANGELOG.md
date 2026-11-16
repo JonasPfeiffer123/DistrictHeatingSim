@@ -31,10 +31,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   network storage are unchanged (`examples/17` and 18 storage configurations bit-identical). CHP and
   biomass buffers switch on their SOC, so single switching hours shift: `examples/18` heat amounts
   −0.14 %, WGK 77.10 → 77.07 €/MWh.
+- **BDEW heat demand profiles** (pyslpheat 0.6.0, see below): pyslpheat fixed the interpolation of
+  the BDEW hourly factors (wrong sign; hours below −17.5 °C or from 27.5 °C on got no load) and now
+  keeps every day's demand when splitting it into hours. Every BDEW profile changes hour by hour;
+  the annual energy stays the same. Peak loads move by −30 % to +14 % depending on the profile type
+  (HEF −3 %, HMF −2 %, GBD −25 %, GWA +12 % with the Görlitz TRY 2015), single days by up to 50–70 %
+  (95 % of the days within ±16 %). Hours at 27.5 °C and above no longer get zero load, and no hour
+  is negative any more. VDI 4655 profiles are
+  unchanged. Only recalculated heat demands are affected; saved building profiles stay as they are.
+  Görlitz example recalculated: peak load 1933 → 1463 kW, 23 of 68 pipes one size smaller.
+- **Network simulation** (pandapipes 0.17.0): results equal to 0.14.0 within the solver
+  tolerance (Görlitz, 3 periods, static and sliding supply temperature: same pipe sizes,
+  pressures ≤ 2·10⁻⁸ bar, temperatures ≤ 3·10⁻⁴ K, KPIs ≤ 3·10⁻⁷ relative). Networks saved with
+  0.14 (JSON with the project's controllers, legacy pickle) load and give the same results.
 
 ### Build / Packaging
 - Dependency thermal-energy-storage-1d pinned to v2.1.0 (was v1.1.0). It is MIT-licensed since
   2.1.0 (was GPL-3.0); the API used here is unchanged.
+- Dependency pyslpheat pinned to v0.6.0 (was v0.4.2). Its optional GUI moved from PyQt6 to PySide6;
+  DistrictHeatingSim only uses the calculation functions, whose API is unchanged.
+- Dependency pandapipes pinned to 0.17.0 (was 0.14.0). `PipeflowNotConverged` is no longer
+  importable from `pandapipes.pipeflow`; it is now imported from `pandapipes.pf.pipeflow_setup`
+  (works with both versions). The thermohydraulic time series takes about 40 % longer with 0.17
+  (Görlitz, 168 h: 17 → 24 s; same number of iterations, overhead of the new solver architecture).
 
 ## [2.0.0] - 2026-10-17
 
