@@ -1262,23 +1262,55 @@ their investment to 0 when idle and did not crash. **Fixed:** CHP, biomass boile
 compute their investment before the no-heat return (an installed plant costs its investment,
 operated or not). Tests: `TestIdleGeneratorCosts`, `test_cost_data_without_heat` (fail on the old code).
 
-### C47. Time series crashes with time-dependent building temperatures (open, found 2026-11-16)
+### C47. Time series crashes with time-dependent building temperatures (fixed 2026-11-16)
 Found while verifying pandapipes 0.17 (independent of the version, same on 0.14). With
 "Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen" (`building_temperature_checked`)
-`time_series_preprocessing` (`pp_net_time_series_simulation.py:372-390`) reads
-`supply_temperature_buildings_curve` / `return_temperature_buildings_curve`, but
-`initialize_geojson` sets `supply_temperature_building_curve` / `return_temperature_building_curve`
-(`NetworkDataClass.py:173-174`) → `AttributeError` for normal and cold networks. No test covers
-the option.
+`time_series_preprocessing` read `supply_temperature_buildings_curve` /
+`return_temperature_buildings_curve`, but `initialize_geojson` sets `supply_temperature_building_curve`
+/ `return_temperature_building_curve` (`NetworkDataClass.py:173-174`) → `AttributeError` for normal
+and cold networks. The names had drifted apart in the `NetworkGenerationData` refactor (May 2025);
+no test covered the option (the Parquet test in `test_simulation_golden_master.py` checked the
+misspelt name behind a `hasattr` guard, i.e. nothing). **Fixed:** the curves are read under their
+real names (clear `ValueError` if a saved net lacks them). Normal network: HAST return = building
+return curve + dT_RL; a set minimum supply temperature is raised to building supply curve + dT_RL
+where that is higher (tooltip: "Ist eine Mindestvorlauftemperatur vorgegeben wird diese
+berücksichtigt"; without one the net has no controllers for it, so none is added). Secondary
+producers' mass flows use each hour's mean return temperature. Two more bugs surfaced once it ran
+(Görlitz, minimum supply 60 °C):
+- `MinimumSupplyTemperatureController.time_step` restored the *first* step's return temperature in
+  every step. Its ConstControl for `treturn_k` writes first (same level/order; pandapower sorts with
+  a non-stable `argsort`, so that order is not guaranteed either), so every hour ran with the first
+  hour's return temperature. It now skips the restore when a return-temperature ConstControl drives
+  the consumer (that one resets the step's setpoint anyway); static returns: same results.
+- pandapower's control loop stops at `max_iter=30` and raises `ControllerNotConverged`, before the
+  controller's own `max_iterations=100`. The controller raises the return temperature by 1 K per
+  iteration; with summer return temperatures of 15–20 °C, weak stations need up to 55 iterations
+  (Görlitz, July; hours 5007–5009: 36–53) → the whole time series aborted. `thermohydraulic_time_series_net` now
+  passes `max_iter=CONTROL_MAX_ITER` (120). Runs that converged before are unchanged. Such hours are
+  slow, see G11.
+Tests: `TestBuildingTemperaturePreprocessing`, `TestMinimumSupplyTemperatureControllerWithReturnProfile`
+(`test_net_simulation.py`), `test_time_series_with_building_temperatures_and_minimum_supply_temperature`
+(slow, Görlitz: January returns follow the curves, a July hour with 53 control iterations runs and
+holds 65 °C). All fail on the old code.
 
-### C48. Cold network time series crashes without building temperatures (open, found 2026-11-16)
+### C48. Cold network time series crashes without building temperatures (fixed 2026-11-16)
 Found together with C47 (same on pandapipes 0.14). For `netconfiguration == "kaltes Netz"` without
-time-dependent building temperatures, `time_series_preprocessing` (`pp_net_time_series_simulation.py:411`)
-divides `waerme_hast_ges_W` (buildings × hours) by the per-building `cop` (buildings,) →
+time-dependent building temperatures, `time_series_preprocessing` divided `waerme_hast_ges_W`
+(buildings × hours) by the per-building `cop` (buildings,) →
 `ValueError: operands could not be broadcast together with shapes (9,8760) (9,)`. Together with C47
-the cold-network time series fails in both modes. When fixing, check whether the COP is applied
-twice: `initialize_geojson` already subtracts the heat pump electricity for the cold network
-(`pp_net_initialisation_geojson.py:173-190`).
+the cold-network time series failed in both modes. Behind the crash: the COP was applied twice
+(`initialize_geojson` had already taken the heat pump electricity off `waerme_hast_ges_W`), and
+every re-run of a saved net would have applied it once more. With building temperatures the branch
+also overwrote the HAST return temperature with the building return curve + dT_RL (a hot-network
+copy; ~35 °C return in a 10 °C network) and used that as the heat pump source temperature. The
+original (pre-refactor) code kept the network temperatures. **Fixed:** new
+`utilities.heat_pump_split` splits the *buildings'* demand (`waerme_gebaeude_ges_W`) into network
+heat and heat pump electricity, so the heat pumps are applied once and a re-run gives the same
+values. Sink = building supply temperature (VLT_max, or its curve with the option, COP per hour),
+source = HAST return temperature. The network temperatures stay as initialised in both modes.
+Görlitz (10/5 °C, 24 h January): COP 2.5 static, 3.8–4.1 with the heating curve; network heat + electricity = building
+demand to 10⁻¹¹ W. Tests: `TestColdNetworkPreprocessing`, `TestHeatPumpSplit`,
+`test_cold_network_time_series[static|building_curves]` (slow, Görlitz). All fail on the old code.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
@@ -1894,6 +1926,19 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
   pin the page patch and the bridge — the web view itself still has no headless seam.
 - ~~`GeoDataFrame.unary_union` is deprecated~~ **done 2026-09-30:** `osm/area_selection.py` uses
   `union_all()` (`tests/test_area_selection.py` passes with `-W error::DeprecationWarning`).
+
+### G11. Minimum supply temperature: 1 K per control iteration is slow at low loads (open, found 2026-11-16)
+Found with C47. `MinimumSupplyTemperatureController` raises a station's return temperature by
+`temperature_adjustment_step` = 1 K per control iteration, each one a full bidirectional pipeflow.
+With return temperatures that follow the buildings (15–20 °C in summer), weak stations need up to
+55 iterations per hour to reach the minimum: Görlitz with minimum supply 60 °C needs on average
+1.2 s (static 85 °C) / 2.8 s (sliding) per July hour, the hardest hours ~12 s, instead of ~0.05 s.
+A full year would take hours. With
+static returns (e.g. 60 °C) only a few K are needed. Option: a step proportional to the deficit
+(e.g. `max(1 K, 0.5 · (T_min − T_in))`), which changes the converged return temperatures slightly
+(different overshoot), so the results of existing minimum-supply runs change. Unrelated but on the
+same settings: sliding supply + minimum 65 °C + fixed return 45 °C (Görlitz hours 2900–2972) fails
+after a few seconds with a pipeflow error, not the iteration limit (with pandapipes 0.14 and 0.17).
 
 ---
 

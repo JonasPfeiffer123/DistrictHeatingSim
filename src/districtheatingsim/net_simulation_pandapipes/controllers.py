@@ -21,6 +21,7 @@ import logging
 
 import numpy as np
 from pandapower.control.basic_controller import BasicCtrl
+from pandapower.control.controller.const_control import ConstControl
 
 from districtheatingsim.constants import KELVIN_OFFSET
 
@@ -286,17 +287,22 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         :rtype: int
 
         .. note::
-           Resets iteration counter and temperature history. Stores/restores standard return
-           temperature. Updates min_supply_temperature from data_source if available.
+           Resets iteration counter and temperature history. Undoes the previous step's raise of the
+           return temperature: a return-temperature ConstControl of the heat consumer does so by
+           writing its setpoint for the step; without one the setpoint of the first step is restored.
+           Updates min_supply_temperature from data_source if available.
         """
         self.iteration = 0
         self.previous_temperatures = []
 
         if time_step == 0:
+            self.return_temperature_has_profile = self._has_return_temperature_profile(net)
             # Store original return temperature for restoration
             self.standard_return_temperature = net.heat_consumer["treturn_k"].at[self.heat_consumer_idx]
-        else:
-            # Restore standard return temperature at start of each step
+        elif not getattr(self, "return_temperature_has_profile", False):
+            # Restore standard return temperature at start of each step. Not with a return-temperature
+            # profile: that may be time-dependent (building temperatures, BACKLOG C47), and depending on
+            # the controller order the restore overwrote it with the value of the first step.
             net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = self.standard_return_temperature
 
         # Update minimum temperature from external data source
@@ -304,6 +310,19 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             self.min_supply_temperature = self.data_source.df.at[time_step, "min_supply_temperature"]
 
         return time_step
+
+    def _has_return_temperature_profile(self, net) -> bool:
+        """Whether an in-service ConstControl sets this heat consumer's return temperature."""
+        if "controller" not in net:
+            return False
+        return any(
+            isinstance(ctrl, ConstControl)
+            and ctrl.element == "heat_consumer"
+            and ctrl.variable == "treturn_k"
+            and self.heat_consumer_idx in np.atleast_1d(ctrl.element_index)
+            for ctrl, in_service in zip(net.controller["object"], net.controller["in_service"], strict=True)
+            if in_service
+        )
 
     def get_weighted_average_temperature(self) -> float | None:
         """

@@ -45,6 +45,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pressures ≤ 2·10⁻⁸ bar, temperatures ≤ 3·10⁻⁴ K, KPIs ≤ 3·10⁻⁷ relative). Networks saved with
   0.14 (JSON with the project's controllers, legacy pickle) load and give the same results.
 
+### Fixed
+- **Time series with time-dependent building temperatures** ("Gebäudeheizungstemperaturen im
+  zeitlichen Verlauf berücksichtigen", BACKLOG C47): crashed with an `AttributeError`. The return
+  temperatures of the house stations now follow the buildings' heating curves (+ dT_RL); a set
+  minimum supply temperature is raised to building supply + dT_RL where that is higher, and the
+  secondary producers' mass flows use each hour's mean return temperature. Two more bugs on this
+  path: the minimum-supply-temperature controller reset the return temperature to the first step's
+  value in every step (overwriting the time-dependent values), and pandapower ended the control loop
+  after 30 iterations, before the controller's own limit of 100. The controller raises a return
+  temperature by 1 K per iteration, and Görlitz summer hours need up to 55 iterations, so such hours
+  aborted the whole time series. Time series that ran before give the same results.
+- **Cold-network time series** (BACKLOG C48): crashed with and without time-dependent building
+  temperatures. The decentral heat pumps are now applied once, to the buildings' demand; before,
+  they were applied a second time to the network heat the initialisation had already reduced. With
+  time-dependent building temperatures the COP follows the building supply temperature hour by
+  hour, and the network temperatures stay as set (the return temperature was overwritten with the
+  building return curve).
+
 ### Build / Packaging
 - Dependency thermal-energy-storage-1d pinned to v2.1.0 (was v1.1.0). It is MIT-licensed since
   2.1.0 (was GPL-3.0); the API used here is unchanged.

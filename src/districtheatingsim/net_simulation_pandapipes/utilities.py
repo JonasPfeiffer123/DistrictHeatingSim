@@ -215,6 +215,42 @@ def COP_WP(
     return COP_L, VLT_L
 
 
+def heat_pump_split(
+    building_heat_W: np.ndarray,
+    sink_temperature: np.ndarray,
+    source_temperature: np.ndarray,
+    values: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Split the buildings' heat demand into network heat and heat-pump electricity (cold network).
+
+    Each building's decentral heat pump covers the demand ``Q`` with the electricity ``Q / COP``
+    and draws ``Q - Q / COP`` from the network.
+
+    :param building_heat_W: Heat demand per building [W], shape ``(buildings, steps)``
+    :type building_heat_W: np.ndarray
+    :param sink_temperature: Heat pump supply temperature [°C], per building ``(buildings,)`` or
+        per building and step ``(buildings, steps)``
+    :type sink_temperature: np.ndarray
+    :param source_temperature: Heat pump source temperature [°C], shape ``(buildings,)`` or
+        ``(buildings, steps)``
+    :type source_temperature: np.ndarray
+    :param values: Heat pump performance data matrix (see :func:`COP_WP`)
+    :type values: Optional[np.ndarray]
+    :return: (network heat [W], heat pump electricity [W]), both shaped like ``building_heat_W``
+    :rtype: Tuple[np.ndarray, np.ndarray]
+    """
+    heat = np.asarray(building_heat_W, dtype=float)
+    n_buildings = heat.shape[0]
+    sink = np.asarray(sink_temperature, dtype=float).reshape(n_buildings, -1)
+    source = np.asarray(source_temperature, dtype=float).reshape(n_buildings, -1)
+    sink, source = np.broadcast_arrays(sink, source)
+    # COP_WP interpolates 1-D inputs only
+    cop, _ = COP_WP(sink.ravel(), source.ravel(), values)
+    electricity = heat / cop.reshape(sink.shape)
+    return heat - electricity, electricity
+
+
 def secondary_producer_element_indices(net, k: int) -> tuple[int, int]:
     """
     Return the ``circ_pump_mass`` and ``flow_control`` row indices of the k-th secondary producer.

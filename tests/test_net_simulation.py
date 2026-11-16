@@ -1806,3 +1806,207 @@ class TestMinimumLoad:
 
         data = time_series_preprocessing(self._network_data([[10_000.0, 0.0]], power_w=[[2_000.0, 0.0]]))
         assert data.strombedarf_hast_ges_W.tolist() == [[2_000.0, 40.0]]
+
+
+# --- C47/C48: time-dependent building temperatures and the cold network --------------------------
+
+
+def _cop_file():
+    import os
+
+    import districtheatingsim
+
+    return os.path.join(os.path.dirname(districtheatingsim.__file__), "data", "COP", "Kennlinien WP.csv")
+
+
+def _preprocessing_data(**overrides):
+    """Network data as initialize_geojson leaves it: two buildings, three time steps."""
+    from types import SimpleNamespace
+
+    heat = np.array([[10_000.0, 8_000.0, 6_000.0], [20_000.0, 16_000.0, 12_000.0]])
+    data = dict(
+        netconfiguration="Niedertemperaturnetz",
+        supply_temperature_control="Statisch",
+        max_supply_temperature_heat_generator=85.0,
+        min_supply_temperature_heat_consumer=np.array([65.0, 65.0]),
+        return_temperature_heat_consumer=np.array([60.0, 55.0]),
+        supply_temperature_buildings=np.array([70.0, 60.0]),
+        return_temperature_buildings=np.array([55.0, 50.0]),
+        supply_temperature_building_curve=np.array([[70.0, 60.0, 50.0], [60.0, 52.0, 45.0]]),
+        return_temperature_building_curve=np.array([[55.0, 45.0, 35.0], [50.0, 42.0, 35.0]]),
+        building_temperature_checked=True,
+        dT_RL=5.0,
+        COP_filename=_cop_file(),
+        secondary_producers=[],
+        waerme_gebaeude_ges_W=heat,
+        waerme_hast_ges_W=heat.copy(),
+        strombedarf_hast_ges_W=np.zeros_like(heat),
+    )
+    data.update(overrides)
+    return SimpleNamespace(**data)
+
+
+class TestBuildingTemperaturePreprocessing:
+    """C47: "Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen" crashed the time
+    series with an AttributeError (it read *_buildings_curve, the data carries *_building_curve)."""
+
+    def test_return_temperatures_follow_the_building_curves(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(_preprocessing_data())
+        np.testing.assert_array_equal(data.return_temperature_heat_consumer, [[60, 50, 40], [55, 47, 40]])
+        # the set minimum (65 °C) is raised to building supply + dT_RL where that is higher
+        np.testing.assert_array_equal(data.min_supply_temperature_heat_consumer, [[75, 65, 65], [65, 65, 65]])
+        np.testing.assert_array_equal(data.waerme_hast_ges_W, data.waerme_gebaeude_ges_W)  # no heat pumps
+
+    @pytest.mark.parametrize("min_supply", [None, np.zeros(2)], ids=["None", "zeros"])
+    def test_no_minimum_supply_temperature_is_added_without_one(self, min_supply):
+        # Without a minimum supply temperature the net has no controllers for it.
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(_preprocessing_data(min_supply_temperature_heat_consumer=min_supply))
+        assert data.min_supply_temperature_heat_consumer is min_supply
+        assert data.return_temperature_heat_consumer.shape == (2, 3)
+
+    def test_secondary_producer_mass_flow_uses_the_return_temperature_of_each_step(self):
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import SecondaryProducer
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(_preprocessing_data(secondary_producers=[SecondaryProducer(1, 50.0)]))
+        mean_return = np.array([57.5, 48.5, 40.0])
+        expected = 0.5 * data.waerme_ges_kW / (4.18 * (85.0 - mean_return))
+        np.testing.assert_allclose(data.secondary_producers[0].mass_flow, expected, rtol=1e-3)
+
+    def test_missing_building_curves_are_reported(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        with pytest.raises(ValueError, match="Temperaturverläufe der Gebäude"):
+            time_series_preprocessing(_preprocessing_data(supply_temperature_building_curve=None))
+
+
+class TestColdNetworkPreprocessing:
+    """C48: the cold-network time series crashed (per-building COP divided a (buildings, steps)
+    array) and applied the heat pumps a second time to the already reduced network heat."""
+
+    @staticmethod
+    def _cold(**overrides):
+        from districtheatingsim.net_simulation_pandapipes.utilities import heat_pump_split
+
+        settings = dict(
+            netconfiguration="kaltes Netz",
+            max_supply_temperature_heat_generator=10.0,
+            min_supply_temperature_heat_consumer=np.zeros(2),
+            return_temperature_heat_consumer=np.array([5.0, 5.0]),
+            building_temperature_checked=False,
+        )
+        settings.update(overrides)
+        data = _preprocessing_data(**settings)
+        # as initialize_geojson: heat pump electricity already taken off the network heat
+        data.waerme_hast_ges_W, data.strombedarf_hast_ges_W = heat_pump_split(
+            data.waerme_gebaeude_ges_W, data.supply_temperature_buildings, data.return_temperature_heat_consumer
+        )
+        return data
+
+    @staticmethod
+    def _cop(sink, source):
+        from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
+
+        return COP_WP(np.asarray(sink, dtype=float), np.asarray(source, dtype=float))[0]
+
+    def test_static_building_temperatures(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(self._cold())
+        cop = self._cop([70.0, 60.0], [5.0, 5.0])
+        np.testing.assert_allclose(data.strombedarf_hast_ges_W, data.waerme_gebaeude_ges_W / cop[:, None])
+        np.testing.assert_allclose(data.waerme_hast_ges_W + data.strombedarf_hast_ges_W, data.waerme_gebaeude_ges_W)
+        np.testing.assert_allclose(data.strombedarf_ges_kW, data.strombedarf_hast_ges_W.sum(axis=0) / 1000)
+
+    def test_rerun_on_a_saved_net_does_not_apply_the_heat_pumps_again(self):
+        import copy
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        once = time_series_preprocessing(self._cold())
+        twice = time_series_preprocessing(copy.deepcopy(once))
+        np.testing.assert_allclose(twice.waerme_hast_ges_W, once.waerme_hast_ges_W)
+        np.testing.assert_allclose(twice.strombedarf_hast_ges_W, once.strombedarf_hast_ges_W)
+
+    def test_cop_follows_the_building_supply_curve(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(self._cold(building_temperature_checked=True))
+        curve = data.supply_temperature_building_curve
+        for t in range(curve.shape[1]):
+            cop = self._cop(curve[:, t], [5.0, 5.0])
+            np.testing.assert_allclose(data.strombedarf_hast_ges_W[:, t], data.waerme_gebaeude_ges_W[:, t] / cop)
+        # building temperatures only reach the heat pumps; the network temperatures stay as set
+        np.testing.assert_array_equal(data.return_temperature_heat_consumer, [5.0, 5.0])
+        np.testing.assert_array_equal(data.min_supply_temperature_heat_consumer, [0.0, 0.0])
+
+    def test_missing_building_demand_is_reported(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = self._cold()
+        data.waerme_gebaeude_ges_W = None
+        with pytest.raises(ValueError, match="Wärmebedarf der Gebäude"):
+            time_series_preprocessing(data)
+
+
+class TestHeatPumpSplit:
+    def test_static_and_time_dependent_sink_temperatures(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, heat_pump_split
+
+        heat = np.array([[1000.0, 2000.0], [3000.0, 4000.0]])
+        net_heat, power = heat_pump_split(heat, np.array([55.0, 45.0]), np.array([5.0, 10.0]))
+        cop = COP_WP(np.array([55.0, 45.0]), np.array([5.0, 10.0]))[0]
+        np.testing.assert_allclose(power, heat / cop[:, None])
+        np.testing.assert_allclose(net_heat, heat - power)
+
+        sink = np.array([[55.0, 35.0], [45.0, 65.0]])
+        _, power = heat_pump_split(heat, sink, np.array([5.0, 10.0]))
+        cop = COP_WP(sink.ravel(), np.array([5.0, 5.0, 10.0, 10.0]))[0].reshape(2, 2)
+        np.testing.assert_allclose(power, heat / cop)
+
+
+class TestMinimumSupplyTemperatureControllerWithReturnProfile:
+    """C47: the minimum-supply controller restored the first step's return temperature in every
+    step and so overwrote a time-dependent return profile."""
+
+    def test_time_dependent_return_temperatures_are_kept(self):
+        from types import SimpleNamespace
+
+        import pandapipes as pp
+        from pandapipes.control.run_control import run_control
+
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            thermohydraulic_time_series_net,
+        )
+        from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
+
+        net = pp.create_empty_network(fluid="water")
+        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(4)]
+        pp.create_circ_pump_const_pressure(
+            net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto"
+        )
+        pp.create_pipe(net, j[1], j[2], std_type="ISOPLUS_DRE100_2x", length_km=0.1)
+        pp.create_heat_consumer(net, j[2], j[3], qext_w=50_000, treturn_k=55 + 273.15)
+        pp.create_pipe(net, j[3], j[0], std_type="ISOPLUS_DRE100_2x", length_km=0.1)
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+        net = create_controllers(net, np.array([50_000.0]), 85, np.array([60.0]), np.array([55.0]), [])
+        run_control(net, mode="bidirectional", iter=100)
+
+        nd = SimpleNamespace(
+            net=net,
+            waerme_hast_ges_W=np.array([[50_000.0] * 3]),
+            start_time_step=0,
+            end_time_step=3,
+            secondary_producers=[],
+            min_supply_temperature_heat_consumer=np.array([60.0]),
+            return_temperature_heat_consumer=np.array([[55.0, 45.0, 35.0]]),
+            supply_temperature_heat_generator=85.0,
+        )
+        nd = thermohydraulic_time_series_net(nd)
+
+        assert nd.net_results["res_heat_consumer.t_from_k"].min() - 273.15 > 60  # minimum met, no raise
+        assert nd.net_results["res_heat_consumer.t_to_k"][:, 0] - 273.15 == pytest.approx([55.0, 45.0, 35.0])

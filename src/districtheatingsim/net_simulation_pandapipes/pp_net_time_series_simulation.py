@@ -28,13 +28,19 @@ from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_simulation_results,
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import (
-    COP_WP,
     apply_minimum_load,
+    heat_pump_split,
     secondary_producer_element_indices,
 )
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 logger = logging.getLogger(__name__)
+
+# Control loop iterations per time step. The MinimumSupplyTemperatureController raises a return
+# temperature by 1 K per iteration and stops after its own max_iterations (100); pandapower's
+# default of 30 aborted the whole time series first, e.g. at low summer loads with return
+# temperatures that follow the buildings (BACKLOG C47).
+CONTROL_MAX_ITER = 120
 
 
 def update_heat_consumer_qext_controller(
@@ -299,6 +305,23 @@ def create_log_variables(net) -> list[tuple[str, str]]:
     return log_variables
 
 
+def _building_temperature_curves(NetworkGenerationData) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Time-dependent building supply and return temperatures [°C], shape ``(buildings, steps)``.
+
+    :raises ValueError: If the network data carries no building temperature curves (net saved
+        by an old version that could not store them)
+    """
+    supply_curve = NetworkGenerationData.supply_temperature_building_curve
+    return_curve = NetworkGenerationData.return_temperature_building_curve
+    if supply_curve is None or return_curve is None:
+        raise ValueError(
+            "Für „Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen“ fehlen die "
+            "Temperaturverläufe der Gebäude. Bitte das Netz neu generieren."
+        )
+    return np.asarray(supply_curve, dtype=float), np.asarray(return_curve, dtype=float)
+
+
 def time_series_preprocessing(NetworkGenerationData) -> Any:
     """
     Preprocess time series data including temperature control and COP calculations.
@@ -365,55 +388,38 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
         )
     logger.debug("Supply temperature net: %s °C", NetworkGenerationData.supply_temperature_heat_generator)
 
-    # Temperature processing based on network configuration
-    ### if building_temperature_checked is True, the time dependent building temperatures are used
-    ### if netconfiguration is not "kaltes Netz", no changes are made to the heat demand and no power consumption is calculated
-    if NetworkGenerationData.building_temperature_checked and NetworkGenerationData.netconfiguration != "kaltes Netz":
-        NetworkGenerationData.min_supply_temperature_heat_consumer = (
-            NetworkGenerationData.supply_temperature_buildings_curve + NetworkGenerationData.dT_RL
-        )
-        NetworkGenerationData.return_temperature_heat_consumer = (
-            NetworkGenerationData.return_temperature_buildings_curve + NetworkGenerationData.dT_RL
-        )
-
-    ### if building_temperature_checked is True, the time dependent building temperatures are used
-    ### if netconfiguration is "kaltes Netz", the heat demand and power consumption are calculated using the COP calculation
-    elif NetworkGenerationData.building_temperature_checked and NetworkGenerationData.netconfiguration == "kaltes Netz":
-        NetworkGenerationData.min_supply_temperature_heat_consumer = (
-            NetworkGenerationData.return_temperature_heat_consumer + NetworkGenerationData.dT_RL
-        )
-        NetworkGenerationData.return_temperature_heat_consumer = (
-            NetworkGenerationData.return_temperature_buildings_curve + NetworkGenerationData.dT_RL
-        )
-
-        # Calculate COP, electricity consumption, and adjusted heat demand
-        cop, _ = COP_WP(
-            NetworkGenerationData.supply_temperature_buildings_curve,
+    # Temperatures and heat pumps per network configuration (BACKLOG C47/C48)
+    cold_network = NetworkGenerationData.netconfiguration == "kaltes Netz"
+    if NetworkGenerationData.building_temperature_checked and not cold_network:
+        # The house stations follow the buildings' heating curves: return temperature = building
+        # return + dT_RL. A minimum supply temperature, if one is set (only then the net has the
+        # controllers for it), is raised to building supply + dT_RL wherever that is higher.
+        supply_curve, return_curve = _building_temperature_curves(NetworkGenerationData)
+        NetworkGenerationData.return_temperature_heat_consumer = return_curve + NetworkGenerationData.dT_RL
+        min_supply = NetworkGenerationData.min_supply_temperature_heat_consumer
+        if min_supply is not None and np.any(np.asarray(min_supply) != 0):
+            NetworkGenerationData.min_supply_temperature_heat_consumer = np.maximum(
+                np.asarray(min_supply, dtype=float).reshape(len(supply_curve), -1),
+                supply_curve + NetworkGenerationData.dT_RL,
+            )
+    elif cold_network:
+        # Decentral heat pumps lift the network heat to the building temperature; the network
+        # temperatures stay as initialised. Sink = building supply temperature (its heating curve
+        # with the option, else VLT_max), source = house-station return temperature. Computed from
+        # the buildings' demand: waerme_hast_ges_W already has the heat-pump electricity taken off
+        # (initialisation, or a previous run of a saved net).
+        if NetworkGenerationData.waerme_gebaeude_ges_W is None:
+            raise ValueError("Für das kalte Netz fehlt der Wärmebedarf der Gebäude. Bitte das Netz neu generieren.")
+        if NetworkGenerationData.building_temperature_checked:
+            sink_temperature, _ = _building_temperature_curves(NetworkGenerationData)
+        else:
+            sink_temperature = NetworkGenerationData.supply_temperature_buildings
+        NetworkGenerationData.waerme_hast_ges_W, NetworkGenerationData.strombedarf_hast_ges_W = heat_pump_split(
+            NetworkGenerationData.waerme_gebaeude_ges_W,
+            sink_temperature,
             NetworkGenerationData.return_temperature_heat_consumer,
             COP_file_values,
         )
-        strom_wp = NetworkGenerationData.waerme_hast_ges_W / cop
-        waerme_hast = NetworkGenerationData.waerme_hast_ges_W - strom_wp
-
-        NetworkGenerationData.waerme_hast_ges_W = waerme_hast
-        NetworkGenerationData.strombedarf_hast_ges_W = strom_wp
-    ### if building_temperature_checked is False, the time dependent building temperatures are not used
-    ### if netconfiguration is not "kaltes Netz", the heat demand and power consumption are calculated using the COP calculation
-    elif (
-        not NetworkGenerationData.building_temperature_checked
-        and NetworkGenerationData.netconfiguration == "kaltes Netz"
-    ):
-        cop, _ = COP_WP(
-            NetworkGenerationData.supply_temperature_buildings,
-            NetworkGenerationData.return_temperature_heat_consumer,
-            COP_file_values,
-        )
-
-        strom_wp = NetworkGenerationData.waerme_hast_ges_W / cop
-        waerme_hast = NetworkGenerationData.waerme_hast_ges_W - strom_wp
-
-        NetworkGenerationData.waerme_hast_ges_W = waerme_hast
-        NetworkGenerationData.strombedarf_hast_ges_W = strom_wp
 
     # Minimum load per house station (share of the station's own peak, BACKLOG UT-K8)
     NetworkGenerationData.waerme_hast_ges_W, NetworkGenerationData.strombedarf_hast_ges_W = apply_minimum_load(
@@ -436,7 +442,11 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
     if NetworkGenerationData.secondary_producers:
         # Calculate mass flow using the central water heat capacity
         cp = CP_WATER_KJ_KGK  # kJ/kgK
-        avg_return_temperature = np.mean(NetworkGenerationData.return_temperature_heat_consumer)
+        # Mean over the house stations, per time step if the return temperatures follow the buildings
+        return_temperature = np.asarray(NetworkGenerationData.return_temperature_heat_consumer, dtype=float)
+        avg_return_temperature = (
+            return_temperature.mean(axis=0) if return_temperature.ndim == 2 else return_temperature.mean()
+        )
         mass_flow = NetworkGenerationData.waerme_ges_kW / (
             cp * (NetworkGenerationData.supply_temperature_heat_generator - avg_return_temperature)
         )  # kW / (kJ/kgK * K) = kg/s
@@ -717,6 +727,7 @@ def thermohydraulic_time_series_net(
             time_steps,
             mode="bidirectional",
             iter=100,
+            max_iter=CONTROL_MAX_ITER,
             run=pipeflow_with_damping_fallback,
             **hook,
         )
