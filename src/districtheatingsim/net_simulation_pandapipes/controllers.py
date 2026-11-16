@@ -35,7 +35,7 @@ LEGACY_PUMP_CONTROLLER_GAIN = 0.2
 
 # Smallest supply/return difference the minimum-supply-temperature controller raises a heat
 # consumer's return temperature to [K] (BACKLOG G11).
-DEFAULT_MIN_TEMPERATURE_SPREAD = 2.0
+DEFAULT_MIN_TEMPERATURE_SPREAD = 3.0
 # A return temperature this close to its limit counts as at the limit [K]
 RETURN_LIMIT_TOLERANCE = 0.1
 # Range of the supply-temperature rise per K of return raise the secant step assumes (the lower

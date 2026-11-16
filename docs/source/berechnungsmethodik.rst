@@ -151,7 +151,7 @@ Option mindestens der Gebäudevorlauf der Stunde plus Temperaturdifferenz), hebt
 detaillierten Zeitreihe die Rücklauftemperatur einer Station an, deren Vorlauf darunter liegt: Der
 größere Massenstrom kühlt auf dem Weg zur Station weniger ab (die Station arbeitet dann wie ein
 Bypass). Den Schritt schätzt er aus der Wirkung der vorigen Anhebung (Sekantenverfahren, mindestens
-1 K), höchstens bis 2 K unter den Vorlauf der Station. Reicht das nicht, gilt die
+1 K), höchstens bis etwa 3 K unter den Vorlauf der Station. Reicht das nicht, gilt die
 Mindestvorlauftemperatur in dieser Stunde als nicht erreicht; nach der Berechnung steht im Protokoll
 (``districtheatingsim.log``), in wie vielen Stunden und an wie vielen Stationen. Mindestvorlauf- und
 Rücklauftemperatur der Stationen müssen unter der niedrigsten Vorlauftemperatur der Heizzentrale

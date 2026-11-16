@@ -1972,12 +1972,13 @@ sliding supply + station minimum 65 + 5 °C + fixed return 45 °C (Görlitz hour
 69–70 °C, pump lift 9.3 bar, divergence. **Fixed:**
 - Step: first the supply deficit, then a secant step (deficit / supply rise per K of the previous
   raise of this hour, clamped to 0.05–0.9), at least 1 K. Deficits up to 1 K keep the old 1 K steps.
-- The return stays `min_temperature_spread` = 2 K below the station's supply
+- The return stays `min_temperature_spread` = 3 K below the station's supply
   (`DEFAULT_MIN_TEMPERATURE_SPREAD`); with a known response the controller aims at the return where
-  the rising supply and that limit meet. At the limit, or after `max_iterations`, the hour counts as
-  not met and the controller converges. 2 K, not 5 K: with 5 K Görlitz (sliding, minimum 60 °C)
-  missed the minimum in 28 of 72 July hours by up to 1.4 K, which the 1 K controller had met with
-  spreads down to 1.6 K, i.e. a station working like a bypass; the pipeflow diverged below ~1 K.
+  the rising supply and that limit meet (that aim can land up to ~1 K closer). At the limit, or after
+  `max_iterations`, the hour counts as not met and the controller converges. The 1 K controller met
+  minima with spreads down to 0.3 K (a station working like a bypass, huge mass flows); the pipeflow
+  diverged below ~1 K. Görlitz, sliding, minimum 60 °C, 72 July hours, minimum missed: 5 K → 28 h
+  by ≤ 1.4 K, 2 K → none, 3 K (chosen) → 12 h by ≤ 0.5 K.
 - `thermohydraulic_time_series_net` logs a warning with the hours, stations and largest deficit
   where the minimum was missed (`unmet_minimum_supply_temperature`), once for the whole run (the
   parallel workers now call `_sequential_thermohydraulic_time_series`).
@@ -1995,17 +1996,17 @@ machine with a second run, so its times are rough):
 | Scenario | old | new | results new vs old |
 |---|---|---|---|
 | static 85 °C, static return, January / July | 3.3 / 20.8 s | 4.0 / 16.7 s | identical |
-| sliding, static return, July | 2351 s | 24 s | generation −0.004 %, pump energy −0.05 %, ≤ 0.5 K |
-| sliding, static return, transition (h 2900) | 9.5 s | 8.0 s | identical within 0.1 K |
-| building temperatures, static, July | 601 s | 50 s | differ by C50 (returns ≥ 25 °C) |
-| building temperatures, sliding, July | 2130 s | 48 s | C50; minimum missed in 9 h by ≤ 0.23 K |
+| sliding, static return, July | 2351 s | 28 s | missed in 12 h by ≤ 0.5 K; generation −0.006 %, pump energy −0.07 %, ≤ 0.9 K |
+| sliding, static return, transition (h 2900) | 9.5 s | 8.4 s | identical within 0.02 K |
+| building temperatures, static, July | 601 s | 42 s | differ by C50 (returns ≥ 25 °C) |
+| building temperatures, sliding, July | 2130 s | 50 s | C50; minimum missed in 25 h by ≤ 1.6 K |
 | sliding, station minimum 70 °C = generator minimum | aborts after 6 s | rejected at initialisation | |
-| sliding, station minimum 69 °C, transition / July | 234 / 491 s, met with spreads down to 0.3 K | 44 / 73 s | missed in 36 / 43 h by ≤ 2.2 K; pump energy −42 / −53 %, generation −0.07 / −0.14 % |
+| sliding, station minimum 69 °C, transition / July | 234 / 491 s, met with spreads down to 0.3 K | 47 / 74 s | missed in 51 / 60 h by ≤ 3.6 K; pump energy −63 / −72 %, generation −0.13 / −0.21 % |
 
 Control iterations per July hour (building temperatures, static): ≤ 11 instead of ≤ 55. Tests:
 `TestMinimumSupplyTemperatureControllerSteps` (single station: a 14 K deficit in ≤ 15 iterations,
 the 1 K controller exceeded 30 already in the initial `run_control`; small deficits unchanged;
-unreachable minima accepted at 2 K and reported), `TestUnmetMinimumSupplyTemperature`,
+unreachable minima accepted at 3 K and reported), `TestUnmetMinimumSupplyTemperature`,
 `TestPipeflowDampingFallback` (5), `test_infeasible_temperatures_are_rejected_at_initialisation`.
 
 ---

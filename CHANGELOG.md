@@ -51,12 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   July hours, minimum supply 60 °C, together with the controller change below: pump energy +26 %,
   heat generation +1.5 % (station returns of at least 25 °C instead of down to −8 °C).
 - **Minimum supply temperature** (detailed time series, BACKLOG G11): the controller steps faster
-  (see Performance) and stops 2 K below the station's supply. Where 1 K steps were enough, results
-  are identical; Görlitz with sliding supply and minimum 60 °C, 72 July hours: heat generation
-  −0.004 %, pump energy −0.05 %, temperatures within 0.5 K. A minimum just below the generator's
-  supply was met before by raising returns to 0.3 K below the supply, i.e. with huge mass flows
-  (Görlitz, sliding 70 °C, station minimum 69 °C): now it is missed in about half the hours by up to
-  2.2 K and reported, and the pump energy halves.
+  (see Performance) and keeps the return about 3 K below the station's supply. Where 1 K steps were
+  enough, results are identical; Görlitz with sliding supply and minimum 60 °C, 72 July hours: heat
+  generation −0.006 %, pump energy −0.07 %, temperatures within 0.9 K, minimum missed in 12 hours by
+  up to 0.5 K. A minimum just below the generator's supply was met before by raising returns to
+  0.3 K below the supply, i.e. with huge mass flows (Görlitz, sliding 70 °C, station minimum 69 °C):
+  now it is missed in 51–60 of 72 hours by up to 3.6 K and reported, pump energy −63 to −72 %.
 
 ### Fixed
 - **Time series with time-dependent building temperatures** ("Gebäudeheizungstemperaturen im
@@ -76,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   building return curve).
 - **Minimum supply temperature that cannot be met** (BACKLOG G11): the controller raised the return
   temperature until it reached the supply temperature and the pipeflow diverged, e.g. with sliding
-  control (supply down to 70 °C) and a station minimum of 65 + 5 °C. The return now stays 2 K below
+  control (supply down to 70 °C) and a station minimum of 65 + 5 °C. The return now stays 3 K below
   the station's supply; an hour in which that is not enough counts as not met, and the time series
   logs a warning with the hours, stations and largest deficit. The initialisation now checks the
   stations' return and minimum supply temperature against the *lowest* supply temperature of the
@@ -94,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   station's return temperature by a secant step instead of 1 K per control iteration (each a full
   pipeflow), and the undamped pipeflow attempt stops after 40 Newton iterations before the damped
   retry (after 100 if that fails too). Görlitz, minimum supply 60 °C, 72 July hours: sliding supply
-  2351 → 24 s, with time-dependent building temperatures 601 → 50 s (static) and 2130 → 48 s
+  2351 → 28 s, with time-dependent building temperatures 601 → 42 s (static) and 2130 → 50 s
   (sliding); ≤ 11 instead of ≤ 55 control iterations per hour.
 
 ### Build / Packaging
