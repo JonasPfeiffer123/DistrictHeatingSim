@@ -248,8 +248,9 @@ def test_time_series_with_building_temperatures_and_minimum_supply_temperature()
     assert np.ptp(t_return, axis=0).min() > 1.0  # time-dependent, not frozen at the first step
 
     summer = _time_series(nd, 5008, 5009)
-    # July: weak stations raise their return temperature until the minimum (60 + 5 °C) is met,
-    # 1 K per control iteration - this hour needs 53 (pandapower's default limit is 30)
+    # July: weak stations raise their return temperature until the minimum (60 + 5 °C) is met. With
+    # 1 K per control iteration this hour needed 53 (pandapower's default limit is 30); with steps of
+    # the supply temperature deficit (G11) about 10.
     assert summer.net_results["res_heat_consumer.t_from_k"].min() - KELVIN_OFFSET >= 64.9
 
 
@@ -283,3 +284,80 @@ def test_cold_network_time_series(building_temperatures):
     assert cop.min() > 2.0 and cop.max() < 6.0
     # the network carries the heat net of the heat pumps
     np.testing.assert_allclose(run.net_results["heat_consumer.qext_w"], heat.T)
+
+
+_COLD = dict(
+    netconfiguration="kaltes Netz",
+    max_supply_temperature_heat_generator=10.0,
+    min_supply_temperature_heat_generator=8.0,
+    min_supply_temperature_building=None,
+    fixed_return_temperature_heat_consumer=5.0,
+)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        # G11: with sliding control the supply drops to 70 °C, the stations demanded 65 + 5 °C; the
+        # controllers raised the return temperature until the pipeflow failed hours into the run
+        (
+            dict(
+                supply_temperature_control="Gleitend",
+                min_supply_temperature_building=65.0,
+                fixed_return_temperature_heat_consumer=45.0,
+            ),
+            r"Mindestvorlauftemperatur der HA-Stationen .* 70\.0 °C\) muss unter der minimalen "
+            r"Vorlauftemperatur der Heizzentrale \(gleitende Regelung\) \(70\.0 °C\)",
+        ),
+        (
+            dict(_COLD, supply_temperature_control="Gleitend", fixed_return_temperature_heat_consumer=8.0),
+            r"Rücklauftemperatur der HA-Stationen \(bis 8\.0 °C\) muss unter der minimalen Vorlauftemperatur",
+        ),
+        # cold network without a fixed return: the building return temperatures are far above 10 °C
+        (
+            dict(_COLD, fixed_return_temperature_heat_consumer=None),
+            "Rücklauftemperatur für alle HA-Stationen festlegen",
+        ),
+    ],
+    ids=["sliding_min_supply", "sliding_return", "cold_without_fixed_return"],
+)
+def test_infeasible_temperatures_are_rejected_at_initialisation(overrides, message):
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    with pytest.raises(ValueError, match=message):
+        initialize_geojson(_make_nd(str(_COP), **overrides))
+
+
+def test_dialog_defaults_pass_the_initialisation_checks():
+    # The cold-network defaults had a 20 °C return in a 10 °C network.
+    from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import load_dialog_config
+
+    for name, std in load_dialog_config()["standardwerte"].items():
+        lowest_supply = min(std["max_supply_temp"], std["min_supply_temp"])
+        assert std["return_temp"] < lowest_supply, name
+        assert std["min_supply_temp_building"] + std["dT_RL"] < lowest_supply, name
+
+
+@pytest.mark.slow
+def test_cold_network_with_the_dialog_defaults():
+    # The cold-network defaults of the dialog (sliding 10/8 °C, fixed return 5 °C) initialise and run.
+    from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import load_dialog_config
+    from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+
+    std = load_dialog_config()["standardwerte"]["kaltes Netz"]
+    nd = initialize_geojson(
+        _make_nd(
+            str(_COP),
+            netconfiguration="kaltes Netz",
+            supply_temperature_control="Gleitend",
+            max_supply_temperature_heat_generator=float(std["max_supply_temp"]),
+            min_supply_temperature_heat_generator=float(std["min_supply_temp"]),
+            max_air_temperature_heat_generator=float(std["max_air_temp"]),
+            min_air_temperature_heat_generator=float(std["min_air_temp"]),
+            min_supply_temperature_building=float(std["min_supply_temp_building"]),
+            fixed_return_temperature_heat_consumer=float(std["return_temp"]),
+            dT_RL=float(std["dT_RL"]),
+        )
+    )
+    run = _time_series(nd, 0, 3)
+    assert np.all(np.isfinite(run.net_results["res_heat_consumer.t_from_k"]))

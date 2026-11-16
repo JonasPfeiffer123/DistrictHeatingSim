@@ -33,6 +33,16 @@ logger = logging.getLogger(__name__)
 DEFAULT_PUMP_CONTROLLER_GAIN = 0.6
 LEGACY_PUMP_CONTROLLER_GAIN = 0.2
 
+# Smallest supply/return difference the minimum-supply-temperature controller raises a heat
+# consumer's return temperature to [K] (BACKLOG G11).
+DEFAULT_MIN_TEMPERATURE_SPREAD = 2.0
+# A return temperature this close to its limit counts as at the limit [K]
+RETURN_LIMIT_TOLERANCE = 0.1
+# Range of the supply-temperature rise per K of return raise the secant step assumes (the lower
+# bound caps the step at 20 times the deficit)
+MIN_SUPPLY_RESPONSE = 0.05
+MAX_SUPPLY_RESPONSE = 0.9
+
 
 class BadPointPressureLiftController(BasicCtrl):
     """
@@ -230,8 +240,13 @@ class MinimumSupplyTemperatureController(BasicCtrl):
     :type tolerance: float
     :param max_iterations: Maximum iterations per time step, defaults to 100
     :type max_iterations: int
-    :param temperature_adjustment_step: Temperature adjustment step [°C], defaults to 1.0
+    :param temperature_adjustment_step: Smallest raise of the return temperature per iteration [K],
+        defaults to 1.0; a larger supply temperature deficit is raised by the deficit
     :type temperature_adjustment_step: float
+    :param min_temperature_spread: Smallest difference between supply and return temperature the
+        return is raised to [K], defaults to ``DEFAULT_MIN_TEMPERATURE_SPREAD``; if the minimum is not
+        met there, it cannot be met at this hour and the controller stops
+    :type min_temperature_spread: float
     :param debug: Log every control decision (INFO level), defaults to False
     :type debug: bool
     :param \\**kwargs: Additional arguments for base controller
@@ -249,6 +264,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
        Critical for cold networks with heat pumps. Monitors supply temperature, adjusts return
        temperature setpoint to increase supply (higher return → higher mass flow → higher supply).
        Uses weighted averaging for stability. Supports time-varying requirements via data_source.
+       A minimum that cannot be met (return at its limit, or ``max_iterations`` reached) is
+       accepted for the hour instead of stopping the time series.
     """
 
     def __init__(
@@ -260,6 +277,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         max_iterations: int = 100,
         temperature_adjustment_step: float = 1.0,
         debug: bool = False,
+        min_temperature_spread: float = DEFAULT_MIN_TEMPERATURE_SPREAD,
         **kwargs,
     ):
         super().__init__(net, **kwargs)
@@ -268,12 +286,15 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         self.tolerance = tolerance
         self.max_iterations = max_iterations
         self.temperature_adjustment_step = temperature_adjustment_step
+        self.min_temperature_spread = min_temperature_spread
         self.debug = debug
 
         # Controller state variables
         self.data_source = None
         self.iteration = 0
         self.previous_temperatures: list[float] = []
+        self.return_temperature_limited = False
+        self.previous_raise: tuple[float, float] | None = None  # (return, supply) before the last raise
 
     def time_step(self, net, time_step: int) -> int:
         """
@@ -294,6 +315,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         """
         self.iteration = 0
         self.previous_temperatures = []
+        self.return_temperature_limited = False
+        self.previous_raise = None
 
         if time_step == 0:
             self.return_temperature_has_profile = self._has_return_temperature_profile(net)
@@ -350,7 +373,12 @@ class MinimumSupplyTemperatureController(BasicCtrl):
 
         .. note::
            Standby mode if all qext_w == 0. Uses weighted averaging for stability.
-           Increases return temp if supply < minimum (higher return → higher mass flow → higher supply).
+           Increases return temp if supply < minimum (higher return → higher mass flow → higher supply),
+           at least by ``temperature_adjustment_step``: first by the supply temperature deficit, then
+           by a secant step (deficit / supply rise per K of the previous raise). 1 K steps needed up to
+           55 pipeflows per hour at summer loads, where the supply rises by only ~0.15 K per K
+           (BACKLOG G11). The return stays ``min_temperature_spread`` below the supply; closer, the
+           mass flow grows without bound and the pipeflow diverges.
         """
         self.iteration += 1
 
@@ -361,7 +389,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             return super().control_step(net)
 
         # Get current inlet temperature
-        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
+        T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
+        current_T_in = T_in
 
         # Apply weighted averaging for stability
         weighted_avg_T_in = self.get_weighted_average_temperature()
@@ -370,12 +399,36 @@ class MinimumSupplyTemperatureController(BasicCtrl):
 
         # Adjust return temperature if supply temperature too low
         if current_T_in < self.min_supply_temperature:
-            new_T_out = net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] + self.temperature_adjustment_step
-            net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = new_T_out
+            T_out = net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] - KELVIN_OFFSET
+            # The limit rises with the supply temperature the raise brings; once the return has
+            # reached it, the minimum cannot be met at this hour.
+            spread = getattr(self, "min_temperature_spread", DEFAULT_MIN_TEMPERATURE_SPREAD)
+            limit = T_in - spread
+            if T_out >= limit - RETURN_LIMIT_TOLERANCE:
+                self.return_temperature_limited = True
+            else:
+                deficit = self.min_supply_temperature - T_in
+                # Supply rise per K of return raise, measured on the previous raise of this time
+                # step: nearly constant (larger mass flow, smaller loss on the way)
+                response = None
+                previous = getattr(self, "previous_raise", None)
+                if previous is not None:
+                    raised, gained = T_out - previous[0], T_in - previous[1]
+                    if raised > 0 and gained > 0:
+                        response = min(max(gained / raised, MIN_SUPPLY_RESPONSE), MAX_SUPPLY_RESPONSE)
+                step = deficit / response if response is not None and deficit > 0 else deficit
+                step = max(self.temperature_adjustment_step, step)
+                if response is not None:
+                    # aim at the return temperature where the rising supply and its limit meet
+                    limit = (T_in - response * T_out - spread) / (1 - response)
+                self.previous_raise = (float(T_out), float(T_in))
+                T_out = min(T_out + step, limit)
+                net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = T_out + KELVIN_OFFSET
 
             if self.debug:
                 logger.info(
-                    f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - KELVIN_OFFSET:.1f}°C."
+                    f"Minimum supply temperature not met. Adjusted target output temperature to "
+                    f"{T_out:.1f}°C{' (at its limit)' if self.return_temperature_limited else ''}."
                 )
 
         return super().control_step(net)
@@ -391,7 +444,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
 
         .. note::
            Converged if: all qext_w == 0 (standby) OR (supply >= minimum AND change < tolerance)
-           OR max iterations reached. Maintains temperature history for weighted averaging.
+           OR return temperature at its limit OR max iterations reached. Maintains temperature
+           history for weighted averaging.
         """
         # Standby mode - all consumers inactive
         if all(net.heat_consumer["qext_w"] == 0):
@@ -421,7 +475,9 @@ class MinimumSupplyTemperatureController(BasicCtrl):
                     f"current_temperature_out: {current_T_out:.1f}°C, "
                     f"current_mass_flow: {current_mass_flow:.3f} kg/s"
                 )
-            return False
+            # Not reachable at this hour: accept it (the time series reports it) instead of raising
+            # the return until the pipeflow fails or pandapower stops the whole time series.
+            return getattr(self, "return_temperature_limited", False) or self.iteration >= self.max_iterations
 
         # Check temperature stability convergence
         if converged_T_in:

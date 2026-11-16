@@ -44,6 +44,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tolerance (Görlitz, 3 periods, static and sliding supply temperature: same pipe sizes,
   pressures ≤ 2·10⁻⁸ bar, temperatures ≤ 3·10⁻⁴ K, KPIs ≤ 3·10⁻⁷ relative). Networks saved with
   0.14 (JSON with the project's controllers, legacy pickle) load and give the same results.
+- **Building heating curves** (BACKLOG C50): the supply and return temperature curves no longer go
+  below room temperature (20 °C). The linear heating curve ran far below it in summer (Görlitz:
+  return down to −13 °C). Applies to new heat demands and, in the time series, to saved ones. Only
+  "Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen" uses the curves: Görlitz, 72
+  July hours, minimum supply 60 °C, together with the controller change below: pump energy +26 %,
+  heat generation +1.5 % (station returns of at least 25 °C instead of down to −8 °C).
+- **Minimum supply temperature** (detailed time series, BACKLOG G11): the controller steps faster
+  (see Performance) and stops 2 K below the station's supply. Where 1 K steps were enough, results
+  are identical; Görlitz with sliding supply and minimum 60 °C, 72 July hours: heat generation
+  −0.004 %, pump energy −0.05 %, temperatures within 0.5 K. A minimum just below the generator's
+  supply was met before by raising returns to 0.3 K below the supply, i.e. with huge mass flows
+  (Görlitz, sliding 70 °C, station minimum 69 °C): now it is missed in about half the hours by up to
+  2.2 K and reported, and the pump energy halves.
 
 ### Fixed
 - **Time series with time-dependent building temperatures** ("Gebäudeheizungstemperaturen im
@@ -53,15 +66,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secondary producers' mass flows use each hour's mean return temperature. Two more bugs on this
   path: the minimum-supply-temperature controller reset the return temperature to the first step's
   value in every step (overwriting the time-dependent values), and pandapower ended the control loop
-  after 30 iterations, before the controller's own limit of 100. The controller raises a return
-  temperature by 1 K per iteration, and Görlitz summer hours need up to 55 iterations, so such hours
-  aborted the whole time series. Time series that ran before give the same results.
+  after 30 iterations, before the controller's own limit of 100, so Görlitz summer hours that needed
+  up to 55 aborted the whole time series (the control loop now allows 120; see the controller below).
 - **Cold-network time series** (BACKLOG C48): crashed with and without time-dependent building
   temperatures. The decentral heat pumps are now applied once, to the buildings' demand; before,
   they were applied a second time to the network heat the initialisation had already reduced. With
   time-dependent building temperatures the COP follows the building supply temperature hour by
   hour, and the network temperatures stay as set (the return temperature was overwritten with the
   building return curve).
+- **Minimum supply temperature that cannot be met** (BACKLOG G11): the controller raised the return
+  temperature until it reached the supply temperature and the pipeflow diverged, e.g. with sliding
+  control (supply down to 70 °C) and a station minimum of 65 + 5 °C. The return now stays 2 K below
+  the station's supply; an hour in which that is not enough counts as not met, and the time series
+  logs a warning with the hours, stations and largest deficit. The initialisation now checks the
+  stations' return and minimum supply temperature against the *lowest* supply temperature of the
+  heat generator (with sliding control its minimum, was: its maximum) and names the values.
+- **Net generation dialog** (BACKLOG C49): ticking a checkbox or switching the supply temperature
+  control reset the supply and return temperatures typed in to the defaults; switching the network
+  type kept the building minimum supply temperature and dT_RL of the previous type. The defaults
+  are now applied only when the network type changes, then for all its fields. The cold-network
+  defaults could not be initialised (20 °C return in a 10 °C network) and are now 10/8 °C supply,
+  5 °C return, building minimum 2 °C; a cold network without a fixed return temperature gets a
+  message pointing to the option.
+
+### Performance
+- **Minimum supply temperature in the detailed time series** (BACKLOG G11): the controller raises a
+  station's return temperature by a secant step instead of 1 K per control iteration (each a full
+  pipeflow), and the undamped pipeflow attempt stops after 40 Newton iterations before the damped
+  retry (after 100 if that fails too). Görlitz, minimum supply 60 °C, 72 July hours: sliding supply
+  2351 → 24 s, with time-dependent building temperatures 601 → 50 s (static) and 2130 → 48 s
+  (sliding); ≤ 11 instead of ≤ 55 control iterations per hour.
 
 ### Build / Packaging
 - Dependency thermal-energy-storage-1d pinned to v2.1.0 (was v1.1.0). It is MIT-licensed since

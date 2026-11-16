@@ -1312,6 +1312,38 @@ Görlitz (10/5 °C, 24 h January): COP 2.5 static, 3.8–4.1 with the heating cu
 demand to 10⁻¹¹ W. Tests: `TestColdNetworkPreprocessing`, `TestHeatPumpSplit`,
 `test_cold_network_time_series[static|building_curves]` (slow, Görlitz). All fail on the old code.
 
+### C49. Net generation dialog: temperatures reset, cold-network defaults infeasible (fixed 2026-11-16)
+Found with C48. `NetworkConfigTab.updateInputFieldsVisibility` runs on every checkbox toggle and
+on every switch of the supply temperature control, and each time it set the maximum/minimum
+supply temperature and the HAST return temperature back to the defaults of the network type, so
+values typed in before ticking e.g. "Rücklauftemperatur für alle HA-Stationen festlegen" were
+lost without notice. A switch of the network type, on the other hand, kept the building minimum
+supply temperature and dT_RL of the previous type. The cold-network defaults
+(`dialog_config.json`) could not be initialised: return 20 °C in a 10 °C network, building
+minimum 30 + 5 °C, and without a fixed return the building returns (+ dT_RL) are far above the
+network temperature anyway (English message without a hint). **Fixed:** the defaults are applied
+only when the network type changes, then for all its fields (`apply_netconfiguration_defaults`);
+cold-network defaults 10/8 °C supply, 5 °C return, building minimum 2 °C (HAST 7 °C); the
+initialisation messages are German, name the values, and for a cold network without a fixed return
+point to the option. Tests: `tests/test_network_config_tab.py` (2 of 3 fail on the old code),
+`test_dialog_defaults_pass_the_initialisation_checks`, `test_cold_network_with_the_dialog_defaults`
+(slow, Görlitz with the cold defaults), `test_infeasible_temperatures_are_rejected_at_initialisation`.
+
+### C50. Building heating curves far below room temperature in summer (fixed 2026-11-16)
+Found while profiling G11. `calculate_temperature_curves` (`heat_requirement_calculation_csv.py`)
+extends the heating curve `VLT_max − slope · (T_out − T_design)` linearly without a lower bound and
+sets the return a constant `VLT_max − RLT_max` below it. Görlitz (VLT_max 70 °C, RLT_max 55 °C,
+slope 1.5, design −15 °C): supply down to 1.9 °C, return down to −13.1 °C, return below 20 °C in
+4570 of 8760 hours. Only the time-dependent building temperatures (C47) use the curves in a
+calculation: summer HAST returns of −8 °C to 15 °C gave large spreads and small mass flows, so the
+minimum supply temperature needed large return raises (a large part of G11). Cold networks were not
+affected (`COP_WP` raises the sink to 35 °C), the building tab plots the curves. **Fixed:** both
+curves are not below `constants.ROOM_TEMPERATURE_C` (20 °C), at the source and, for heat demands
+calculated before, when the time series reads them (`_building_temperature_curves`). Tests:
+`test_heating_curves_stay_at_or_above_room_temperature` (`test_heat_requirement_csv.py`),
+`test_building_curves_below_room_temperature_are_raised_to_it`. The model keeps the constant spread
+(at part load a radiator's spread shrinks); 20 °C is only the physical floor.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
@@ -1927,18 +1959,54 @@ test, which runs it as a subprocess next to the other examples); **26.8 s** of i
 - ~~`GeoDataFrame.unary_union` is deprecated~~ **done 2026-09-30:** `osm/area_selection.py` uses
   `union_all()` (`tests/test_area_selection.py` passes with `-W error::DeprecationWarning`).
 
-### G11. Minimum supply temperature: 1 K per control iteration is slow at low loads (open, found 2026-11-16)
-Found with C47. `MinimumSupplyTemperatureController` raises a station's return temperature by
+### G11. Minimum supply temperature: slow, and aborts when the minimum cannot be met (fixed 2026-11-16)
+Found with C47. `MinimumSupplyTemperatureController` raised a station's return temperature by
 `temperature_adjustment_step` = 1 K per control iteration, each one a full bidirectional pipeflow.
-With return temperatures that follow the buildings (15–20 °C in summer), weak stations need up to
-55 iterations per hour to reach the minimum: Görlitz with minimum supply 60 °C needs on average
-1.2 s (static 85 °C) / 2.8 s (sliding) per July hour, the hardest hours ~12 s, instead of ~0.05 s.
-A full year would take hours. With
-static returns (e.g. 60 °C) only a few K are needed. Option: a step proportional to the deficit
-(e.g. `max(1 K, 0.5 · (T_min − T_in))`), which changes the converged return temperatures slightly
-(different overshoot), so the results of existing minimum-supply runs change. Unrelated but on the
-same settings: sliding supply + minimum 65 °C + fixed return 45 °C (Görlitz hours 2900–2972) fails
-after a few seconds with a pipeflow error, not the iteration limit (with pandapipes 0.14 and 0.17).
+Where the supply at the station rises by only ~0.15 K per K of return raise (sliding supply 70 °C,
+station minimum 65 °C), weak stations needed up to 55 iterations per hour; pandapower stops the
+control loop at 30 (C47 raised that to 120). And `is_converged` returned `False` as long as the
+minimum was not met, before its own `max_iterations` check: a minimum that cannot be met drove the
+return up to the supply temperature until the pipeflow diverged. That is the "pipeflow error" of
+sliding supply + station minimum 65 + 5 °C + fixed return 45 °C (Görlitz hours 2900–2972, pandapipes
+0.14 and 0.17): the supply slides down to 70 °C, the stations demanded 70 °C, returns reached
+69–70 °C, pump lift 9.3 bar, divergence. **Fixed:**
+- Step: first the supply deficit, then a secant step (deficit / supply rise per K of the previous
+  raise of this hour, clamped to 0.05–0.9), at least 1 K. Deficits up to 1 K keep the old 1 K steps.
+- The return stays `min_temperature_spread` = 2 K below the station's supply
+  (`DEFAULT_MIN_TEMPERATURE_SPREAD`); with a known response the controller aims at the return where
+  the rising supply and that limit meet. At the limit, or after `max_iterations`, the hour counts as
+  not met and the controller converges. 2 K, not 5 K: with 5 K Görlitz (sliding, minimum 60 °C)
+  missed the minimum in 28 of 72 July hours by up to 1.4 K, which the 1 K controller had met with
+  spreads down to 1.6 K, i.e. a station working like a bypass; the pipeflow diverged below ~1 K.
+- `thermohydraulic_time_series_net` logs a warning with the hours, stations and largest deficit
+  where the minimum was missed (`unmet_minimum_supply_temperature`), once for the whole run (the
+  parallel workers now call `_sequential_thermohydraulic_time_series`).
+- `initialize_geojson` checks return and minimum supply temperature of the stations against the
+  *lowest* generator supply (sliding: its minimum, was: always the maximum), with German messages
+  that name the values. The configuration above is rejected there now.
+- `pipeflow_with_damping_fallback`: the undamped attempt gets `UNDAMPED_MAX_ITER` = 40 Newton
+  iterations (converging ones need ≤ 25 on Görlitz; after large return raises most undamped attempts
+  failed only after all 100, the damped retry then needed ≤ 28). If the damped retry fails too, the
+  undamped one gets the full 100 as before.
+
+Görlitz, minimum supply 60 °C (+ 5 K), 72 h (old = commit `ac248e1`; its runs partly shared the
+machine with a second run, so its times are rough):
+
+| Scenario | old | new | results new vs old |
+|---|---|---|---|
+| static 85 °C, static return, January / July | 3.3 / 20.8 s | 4.0 / 16.7 s | identical |
+| sliding, static return, July | 2351 s | 24 s | generation −0.004 %, pump energy −0.05 %, ≤ 0.5 K |
+| sliding, static return, transition (h 2900) | 9.5 s | 8.0 s | identical within 0.1 K |
+| building temperatures, static, July | 601 s | 50 s | differ by C50 (returns ≥ 25 °C) |
+| building temperatures, sliding, July | 2130 s | 48 s | C50; minimum missed in 9 h by ≤ 0.23 K |
+| sliding, station minimum 70 °C = generator minimum | aborts after 6 s | rejected at initialisation | |
+| sliding, station minimum 69 °C, transition / July | 234 / 491 s, met with spreads down to 0.3 K | 44 / 73 s | missed in 36 / 43 h by ≤ 2.2 K; pump energy −42 / −53 %, generation −0.07 / −0.14 % |
+
+Control iterations per July hour (building temperatures, static): ≤ 11 instead of ≤ 55. Tests:
+`TestMinimumSupplyTemperatureControllerSteps` (single station: a 14 K deficit in ≤ 15 iterations,
+the 1 K controller exceeded 30 already in the initial `run_control`; small deficits unchanged;
+unreachable minima accepted at 2 K and reported), `TestUnmetMinimumSupplyTemperature`,
+`TestPipeflowDampingFallback` (5), `test_infeasible_temperatures_are_rejected_at_initialisation`.
 
 ---
 

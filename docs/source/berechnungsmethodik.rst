@@ -139,6 +139,31 @@ Jahreszeitreihe
   (Pumpe, Mindestvorlauftemperatur). Genauer, aber Minuten bis Stunden; optional auf mehrere
   Prozesse verteilt.
 
+Temperaturen an den Hausstationen
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Die Rücklauftemperatur einer Hausstation ist die Rücklauftemperatur des Gebäudes plus die
+Temperaturdifferenz Netz/HAST, oder ein fester Wert für alle Stationen. Mit „Gebäudeheizungstemperaturen
+im zeitlichen Verlauf berücksichtigen“ folgt sie in der Zeitreihe stündlich der Heizkurve des Gebäudes.
+
+Ist eine Mindestvorlauftemperatur gesetzt (Gebäude-Mindestvorlauf plus Temperaturdifferenz; mit der
+Option mindestens der Gebäudevorlauf der Stunde plus Temperaturdifferenz), hebt ein Regler in der
+detaillierten Zeitreihe die Rücklauftemperatur einer Station an, deren Vorlauf darunter liegt: Der
+größere Massenstrom kühlt auf dem Weg zur Station weniger ab (die Station arbeitet dann wie ein
+Bypass). Den Schritt schätzt er aus der Wirkung der vorigen Anhebung (Sekantenverfahren, mindestens
+1 K), höchstens bis 2 K unter den Vorlauf der Station. Reicht das nicht, gilt die
+Mindestvorlauftemperatur in dieser Stunde als nicht erreicht; nach der Berechnung steht im Protokoll
+(``districtheatingsim.log``), in wie vielen Stunden und an wie vielen Stationen. Mindestvorlauf- und
+Rücklauftemperatur der Stationen müssen unter der niedrigsten Vorlauftemperatur der Heizzentrale
+liegen (bei gleitender Regelung deren Minimum), sonst bricht die Initialisierung mit einer Meldung ab.
+
+Im **kalten Netz** decken dezentrale Wärmepumpen den Gebäudebedarf. Das Netz liefert den Bedarf
+abzüglich des Wärmepumpenstroms (Bedarf / COP). Der COP kommt aus dem Kennfeld, mit der
+Gebäudevorlauftemperatur als Senke (VLT_max, mit der Option oben stündlich nach Heizkurve) und der
+Rücklauftemperatur der Station als Quelle. Die Netztemperaturen bleiben dabei, wie eingestellt; da
+die Rücklauftemperaturen der Gebäude über der Netztemperatur liegen, braucht das kalte Netz eine feste
+Rücklauftemperatur für alle Stationen.
+
 
 Erzeuger und Wirtschaftlichkeit
 -------------------------------

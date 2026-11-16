@@ -91,6 +91,18 @@ def test_bdew_portfolio_with_residential_types_is_hourly():
     assert total_heat_W.shape == (3, 8760)
 
 
+def test_heating_curves_stay_at_or_above_room_temperature():
+    # C50: the linear heating curve ran far below room temperature in summer (VLT_max 70 °C,
+    # slope 1.5, design -12 °C: return down to about -10 °C)
+    df = _buildings(["EFH", "MFH"], ["05", "05"], [20000.0, 60000.0])
+    *_, supply, return_, air = generate_profiles_from_csv(df, _TRY, "Datensatz", year=2023)
+
+    linear = 70.0 - 1.5 * (np.maximum(air, -12.0) + 12.0)
+    assert supply.min() == return_.min() == 20.0
+    np.testing.assert_allclose(supply, np.broadcast_to(np.maximum(linear, 20.0), supply.shape))
+    np.testing.assert_allclose(return_, np.broadcast_to(np.maximum(linear - 15.0, 20.0), return_.shape))
+
+
 def test_mixing_vdi_and_bdew_types_is_rejected():
     df = _buildings(["EFH", "GKO"], ["05", "01"], [20000.0, 40000.0])
     with pytest.raises(ValueError, match="HEF .* HMF"):

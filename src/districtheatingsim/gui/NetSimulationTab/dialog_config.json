@@ -16,13 +16,13 @@
     },
     "kaltes Netz": {
       "max_supply_temp": 10,
-      "min_supply_temp": 5,
+      "min_supply_temp": 8,
       "max_air_temp": 15,
       "min_air_temp": -10,
       "flow_pressure": 4,
       "lift_pressure": 1.5,
-      "min_supply_temp_building": 30,
-      "return_temp": 20,
+      "min_supply_temp_building": 2,
+      "return_temp": 5,
       "dT_RL": 5,
       "default_pipe_type": "ISOPLUS_DRE100_2x"
     }

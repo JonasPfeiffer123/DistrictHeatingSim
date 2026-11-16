@@ -139,10 +139,33 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         )
     logger.debug("Return temperature heat consumers: %s °C", return_temperature_heat_consumer)
 
-    # Validate temperature constraints
-    if np.any(return_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
+    # Validate temperature constraints against the lowest supply temperature of the heat generator:
+    # with sliding control it drops to its minimum (BACKLOG G11: a house-station minimum at that
+    # temperature cannot be met and drove the return temperature up until the pipeflow failed).
+    lowest_supply_temperature = NetworkGenerationData.max_supply_temperature_heat_generator
+    supply_temperature_label = "Vorlauftemperatur der Heizzentrale"
+    if (
+        NetworkGenerationData.supply_temperature_control == "Gleitend"
+        and NetworkGenerationData.min_supply_temperature_heat_generator is not None
+    ):
+        lowest_supply_temperature = min(
+            lowest_supply_temperature, NetworkGenerationData.min_supply_temperature_heat_generator
+        )
+        supply_temperature_label = "minimalen Vorlauftemperatur der Heizzentrale (gleitende Regelung)"
+
+    if np.any(return_temperature_heat_consumer >= lowest_supply_temperature):
+        hint = ""
+        if (
+            NetworkGenerationData.netconfiguration == "kaltes Netz"
+            and NetworkGenerationData.fixed_return_temperature_heat_consumer is None
+        ):
+            hint = (
+                " Im kalten Netz liegen die Rücklauftemperaturen der Gebäude über der Netztemperatur; bitte "
+                "„Rücklauftemperatur für alle HA-Stationen festlegen“ aktivieren."
+            )
         raise ValueError(
-            "Return temperature must not be higher than the supply temperature at the injection point. Please check your inputs."
+            f"Die Rücklauftemperatur der HA-Stationen (bis {np.max(return_temperature_heat_consumer):.1f} °C) "
+            f"muss unter der {supply_temperature_label} ({lowest_supply_temperature:.1f} °C) liegen.{hint}"
         )
 
     # Calculate minimum supply temperature for heat consumers
@@ -158,9 +181,11 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     logger.debug("Minimum supply temperature heat consumers: %s °C", min_supply_temperature_heat_consumer)
 
     # Validate minimum supply temperature constraints
-    if np.any(min_supply_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
+    if np.any(min_supply_temperature_heat_consumer >= lowest_supply_temperature):
         raise ValueError(
-            "Supply temperature at the heat consumer cannot be higher than the supply temperature at the injection point. Please check your inputs."
+            "Die Mindestvorlauftemperatur der HA-Stationen (minimale Vorlauftemperatur Gebäude + "
+            f"Temperaturdifferenz Netz/HAST = {np.max(min_supply_temperature_heat_consumer):.1f} °C) muss unter "
+            f"der {supply_temperature_label} ({lowest_supply_temperature:.1f} °C) liegen."
         )
 
     # Initialize heat and power arrays

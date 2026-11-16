@@ -961,7 +961,8 @@ class TestPipeflowDampingFallback:
     that does not converge — same robustness as the old always-damped run, ~half the cost."""
 
     @staticmethod
-    def _fake_pipeflow(monkeypatch, fail_alphas):
+    def _fake_pipeflow(monkeypatch, fails):
+        """``fails(alpha, iter)`` decides whether a call diverges."""
         from pandapipes.pf.pipeflow_setup import PipeflowNotConverged
 
         from districtheatingsim.net_simulation_pandapipes import pp_net_time_series_simulation as ts
@@ -970,28 +971,49 @@ class TestPipeflowDampingFallback:
 
         def fake(net, **kwargs):
             calls.append(kwargs)
-            if kwargs["alpha"] in fail_alphas:
+            if fails(kwargs["alpha"], kwargs["iter"]):
                 raise PipeflowNotConverged("diverged")
 
         monkeypatch.setattr(ts, "pipeflow", fake)
         return ts.pipeflow_with_damping_fallback, calls, PipeflowNotConverged
 
+    @staticmethod
+    def _attempts(calls):
+        return [(c["alpha"], c["iter"]) for c in calls]
+
     def test_undamped_only_when_it_converges(self, monkeypatch):
-        run, calls, _ = self._fake_pipeflow(monkeypatch, fail_alphas=())
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import UNDAMPED_MAX_ITER
+
+        run, calls, _ = self._fake_pipeflow(monkeypatch, lambda alpha, iter: False)
         run(None, mode="bidirectional", iter=100)
-        assert [c["alpha"] for c in calls] == [1.0]
-        assert calls[0]["mode"] == "bidirectional" and calls[0]["iter"] == 100
+        assert self._attempts(calls) == [(1.0, UNDAMPED_MAX_ITER)]
+        assert calls[0]["mode"] == "bidirectional"
 
     def test_damped_retry_after_divergence(self, monkeypatch):
-        run, calls, _ = self._fake_pipeflow(monkeypatch, fail_alphas=(1.0,))
-        run(None, mode="bidirectional", iter=100)
-        assert [c["alpha"] for c in calls] == [1.0, 0.5]
+        # G11: the undamped attempt gets fewer iterations, the damped retry the full number
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import UNDAMPED_MAX_ITER
 
-    def test_raises_when_damped_retry_fails_too(self, monkeypatch):
-        run, calls, not_converged = self._fake_pipeflow(monkeypatch, fail_alphas=(1.0, 0.5))
+        run, calls, _ = self._fake_pipeflow(monkeypatch, lambda alpha, iter: alpha == 1.0)
+        run(None, mode="bidirectional", iter=100)
+        assert self._attempts(calls) == [(1.0, UNDAMPED_MAX_ITER), (0.5, 100)]
+
+    def test_full_undamped_attempt_when_the_damped_retry_fails(self, monkeypatch):
+        # converges undamped only with more iterations: still solved, as before the shorter first attempt
+        run, calls, _ = self._fake_pipeflow(monkeypatch, lambda alpha, iter: alpha == 0.5 or iter < 100)
+        run(None, mode="bidirectional", iter=100)
+        assert self._attempts(calls)[1:] == [(0.5, 100), (1.0, 100)]
+
+    def test_raises_when_every_attempt_fails(self, monkeypatch):
+        run, calls, not_converged = self._fake_pipeflow(monkeypatch, lambda alpha, iter: True)
         with pytest.raises(not_converged):
             run(None, mode="bidirectional", iter=100)
-        assert [c["alpha"] for c in calls] == [1.0, 0.5]
+        assert [c["alpha"] for c in calls] == [1.0, 0.5, 1.0]
+
+    def test_no_shorter_attempt_with_few_iterations(self, monkeypatch):
+        run, calls, not_converged = self._fake_pipeflow(monkeypatch, lambda alpha, iter: True)
+        with pytest.raises(not_converged):
+            run(None, mode="bidirectional", iter=20)
+        assert self._attempts(calls) == [(1.0, 20), (0.5, 20)]
 
 
 @pytest.mark.slow
@@ -1877,6 +1899,19 @@ class TestBuildingTemperaturePreprocessing:
         expected = 0.5 * data.waerme_ges_kW / (4.18 * (85.0 - mean_return))
         np.testing.assert_allclose(data.secondary_producers[0].mass_flow, expected, rtol=1e-3)
 
+    def test_building_curves_below_room_temperature_are_raised_to_it(self):
+        # C50: saved heat demands carry heating curves down to -13 °C in summer
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
+
+        data = time_series_preprocessing(
+            _preprocessing_data(
+                supply_temperature_building_curve=np.array([[70.0, 25.0, 2.5], [60.0, 18.0, 5.0]]),
+                return_temperature_building_curve=np.array([[55.0, 10.0, -12.5], [50.0, 8.0, -5.0]]),
+            )
+        )
+        np.testing.assert_array_equal(data.return_temperature_heat_consumer, [[60, 25, 25], [55, 25, 25]])
+        np.testing.assert_array_equal(data.min_supply_temperature_heat_consumer, [[75, 65, 65], [65, 65, 65]])
+
     def test_missing_building_curves_are_reported(self):
         from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import time_series_preprocessing
 
@@ -1969,44 +2004,133 @@ class TestHeatPumpSplit:
         np.testing.assert_allclose(power, heat / cop)
 
 
+def _single_consumer_time_series(
+    min_supply, return_temperature, steps=3, qext_w=50_000.0, length_km=0.1, std_type="ISOPLUS_DRE100_2x"
+):
+    """Pump (85 °C) → supply pipe → one heat consumer with a minimum supply temperature → return pipe,
+    initialised like create_network (steady-state run_control) and run as a time series.
+    ``return_temperature``: ``[static]`` or ``[[one value per step]]``."""
+    from types import SimpleNamespace
+
+    import pandapipes as pp
+    from pandapipes.control.run_control import run_control
+
+    from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+        thermohydraulic_time_series_net,
+    )
+    from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
+
+    return_temperature = np.asarray(return_temperature, dtype=float)
+    design_return = float(return_temperature.ravel()[0])
+    net = pp.create_empty_network(fluid="water")
+    j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(4)]
+    pp.create_circ_pump_const_pressure(net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto")
+    pp.create_pipe(net, j[1], j[2], std_type=std_type, length_km=length_km)
+    pp.create_heat_consumer(net, j[2], j[3], qext_w=qext_w, treturn_k=design_return + 273.15)
+    pp.create_pipe(net, j[3], j[0], std_type=std_type, length_km=length_km)
+    pp.pipeflow(net, mode="bidirectional", iter=100)
+    net = create_controllers(net, np.array([qext_w]), 85, np.array([min_supply]), np.array([design_return]), [])
+    run_control(net, mode="bidirectional", iter=100)
+
+    nd = SimpleNamespace(
+        net=net,
+        waerme_hast_ges_W=np.array([[qext_w] * steps]),
+        start_time_step=0,
+        end_time_step=steps,
+        secondary_producers=[],
+        min_supply_temperature_heat_consumer=np.array([min_supply]),
+        return_temperature_heat_consumer=return_temperature,
+        supply_temperature_heat_generator=85.0,
+    )
+    return thermohydraulic_time_series_net(nd)
+
+
+def _min_supply_controller(net):
+    from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController
+
+    return next(c for c in net.controller.object if isinstance(c, MinimumSupplyTemperatureController))
+
+
 class TestMinimumSupplyTemperatureControllerWithReturnProfile:
     """C47: the minimum-supply controller restored the first step's return temperature in every
     step and so overwrote a time-dependent return profile."""
 
     def test_time_dependent_return_temperatures_are_kept(self):
-        from types import SimpleNamespace
-
-        import pandapipes as pp
-        from pandapipes.control.run_control import run_control
-
-        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
-            thermohydraulic_time_series_net,
-        )
-        from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
-
-        net = pp.create_empty_network(fluid="water")
-        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=_T_FLOW_K) for _ in range(4)]
-        pp.create_circ_pump_const_pressure(
-            net, j[0], j[1], p_flow_bar=4, plift_bar=1.5, t_flow_k=_T_FLOW_K, type="auto"
-        )
-        pp.create_pipe(net, j[1], j[2], std_type="ISOPLUS_DRE100_2x", length_km=0.1)
-        pp.create_heat_consumer(net, j[2], j[3], qext_w=50_000, treturn_k=55 + 273.15)
-        pp.create_pipe(net, j[3], j[0], std_type="ISOPLUS_DRE100_2x", length_km=0.1)
-        pp.pipeflow(net, mode="bidirectional", iter=100)
-        net = create_controllers(net, np.array([50_000.0]), 85, np.array([60.0]), np.array([55.0]), [])
-        run_control(net, mode="bidirectional", iter=100)
-
-        nd = SimpleNamespace(
-            net=net,
-            waerme_hast_ges_W=np.array([[50_000.0] * 3]),
-            start_time_step=0,
-            end_time_step=3,
-            secondary_producers=[],
-            min_supply_temperature_heat_consumer=np.array([60.0]),
-            return_temperature_heat_consumer=np.array([[55.0, 45.0, 35.0]]),
-            supply_temperature_heat_generator=85.0,
-        )
-        nd = thermohydraulic_time_series_net(nd)
+        nd = _single_consumer_time_series(60.0, [[55.0, 45.0, 35.0]])
 
         assert nd.net_results["res_heat_consumer.t_from_k"].min() - 273.15 > 60  # minimum met, no raise
         assert nd.net_results["res_heat_consumer.t_to_k"][:, 0] - 273.15 == pytest.approx([55.0, 45.0, 35.0])
+
+
+class TestMinimumSupplyTemperatureControllerSteps:
+    """G11: the controller raised the return temperature by 1 K per iteration (up to 55 pipeflows
+    per hour, pandapower stops at 30) and, with a minimum it cannot reach, until the pipeflow failed
+    (sliding supply 70 °C with a house-station minimum of 70 °C)."""
+
+    # 300 m DN40 at 20 kW: 66 °C at the consumer with a 40 °C return
+    _WEAK = dict(qext_w=20_000.0, length_km=0.3, std_type="ISOPLUS_DRE40_2x", steps=2)
+
+    def test_large_deficit_is_closed_in_a_few_iterations(self):
+        # 13 K below the minimum: 1 K steps needed more than 30 iterations already in run_control
+        nd = _single_consumer_time_series(80.0, [40.0], **self._WEAK)
+
+        assert nd.net_results["res_heat_consumer.t_from_k"].min() - 273.15 >= 80.0
+        assert _min_supply_controller(nd.net).iteration <= 15
+
+    def test_small_deficit_keeps_the_1_k_steps(self):
+        nd = _single_consumer_time_series(70.0, [40.0], **self._WEAK)
+        t_from = nd.net_results["res_heat_consumer.t_from_k"] - 273.15
+        assert t_from.min() >= 70.0 and t_from.max() < 70.5  # no overshoot beyond the last step
+
+    @pytest.mark.parametrize("min_supply", [84.5, 90.0], ids=["close_to_supply", "above_supply"])
+    def test_unreachable_minimum_is_accepted_and_reported(self, min_supply, caplog):
+        from districtheatingsim.net_simulation_pandapipes.controllers import DEFAULT_MIN_TEMPERATURE_SPREAD
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            unmet_minimum_supply_temperature,
+        )
+
+        with caplog.at_level("WARNING"):
+            nd = _single_consumer_time_series(min_supply, [40.0], **self._WEAK)
+
+        t_from = nd.net_results["res_heat_consumer.t_from_k"] - 273.15
+        t_to = nd.net_results["res_heat_consumer.t_to_k"] - 273.15
+        # the return stopped at its limit below the supply instead of running into it
+        assert (t_from - t_to).min() == pytest.approx(DEFAULT_MIN_TEMPERATURE_SPREAD, abs=0.2)
+        unmet = unmet_minimum_supply_temperature(nd)
+        assert unmet["hours"] == unmet["steps"] == 2 and unmet["stations"] == 1
+        assert unmet["max_deficit_K"] == pytest.approx(min_supply - t_from.min(), abs=1e-6)
+        assert "Mindestvorlauftemperatur in 2 von 2 Stunden" in caplog.text
+
+
+class TestUnmetMinimumSupplyTemperature:
+    @staticmethod
+    def _data(min_supply, supply_c, start=0):
+        from types import SimpleNamespace
+
+        supply_k = np.asarray(supply_c, dtype=float) + 273.15
+        return SimpleNamespace(
+            min_supply_temperature_heat_consumer=None if min_supply is None else np.asarray(min_supply, dtype=float),
+            net_results={"res_heat_consumer.t_from_k": supply_k},
+            start_time_step=start,
+            end_time_step=start + supply_k.shape[0],
+        )
+
+    @pytest.mark.parametrize("min_supply", [None, [0.0, 0.0]], ids=["None", "zeros"])
+    def test_nothing_to_report_without_a_minimum(self, min_supply):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            unmet_minimum_supply_temperature,
+        )
+
+        assert unmet_minimum_supply_temperature(self._data(min_supply, [[50.0, 50.0]])) is None
+
+    def test_time_dependent_minimum_is_taken_for_the_simulated_range(self):
+        from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+            unmet_minimum_supply_temperature,
+        )
+
+        min_supply = [[90.0, 70.0, 70.0, 70.0], [60.0, 60.0, 66.0, 60.0]]  # (stations, year steps)
+        # (simulated steps 1-3, stations); station 0 misses only within the tolerance, the step-0
+        # minimum of 90 °C is not simulated
+        supply = [[69.95, 65.0], [70.5, 61.0], [71.0, 59.0]]
+        unmet = unmet_minimum_supply_temperature(self._data(min_supply, supply, start=1))
+        assert unmet == {"hours": 2, "steps": 3, "stations": 1, "max_deficit_K": pytest.approx(5.0)}

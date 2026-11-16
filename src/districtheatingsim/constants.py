@@ -19,6 +19,10 @@ KELVIN_OFFSET = 273.15
 #: district-heating temperatures; consistent with the 4187 J/kgK in thermal_storage).
 CP_WATER_KJ_KGK = 4.18
 
+#: Room temperature [°C]: lower limit of the buildings' heating-curve supply and return
+#: temperatures (a heating circuit is not colder than the room it heats).
+ROOM_TEMPERATURE_C = 20.0
+
 
 # ── CO₂ emission factors [t CO₂ / MWh] ────────────────────────────────────────
 
