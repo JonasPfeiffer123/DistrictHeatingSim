@@ -2009,6 +2009,40 @@ the 1 K controller exceeded 30 already in the initial `run_control`; small defic
 unreachable minima accepted at 3 K and reported), `TestUnmetMinimumSupplyTemperature`,
 `TestPipeflowDampingFallback` (5), `test_infeasible_temperatures_are_rejected_at_initialisation`.
 
+### G12. Golden master ran with a 0 °C house-station return; minimum load checked against pandapipes 0.18 (fixed 2026-11-17)
+Found while checking whether pandapipes 0.18 (#867, "fix when flow is close to zero") makes the 2 %
+minimum load per house station (`MIN_LOAD_SHARE`, UT-K8) unnecessary. It does not.
+- 0.18 only changes the hydraulic Jacobian: a branch at standstill (|Re| ≤ 1e-8) gets the laminar
+  slope (Hagen-Poiseuille) instead of none, which left parallel stagnant pipes singular; the friction
+  derivative is now taken with respect to Re. The residuals are unchanged. Görlitz (a tree, no
+  meshes): 0.17 and 0.18 agree to 4e-16 bar with the same pipeflow calls and Newton iterations, also
+  in the runs that abort; the golden-master and net-simulation tests pass under 0.18.
+- The minimum load is still needed. Görlitz, summer hours 2700–6300 in six 600-h blocks, 0.18:
+
+  | Configuration | 2 % minimum load | 0 % |
+  |---|---|---|
+  | return RLT_max + dT_RL (as in the GUI) | 6/6 run | 3/6 abort |
+  | building temperatures, station minimum 60 °C | 6/6 run | 2/6 abort |
+
+  Every abort is an hour in which one station has a tiny non-zero load (58–242 W): the damped and
+  the undamped pipeflow both fail after 100 iterations. Exactly 0 W is fine, pandapipes sets a
+  `qext_w`/`treturn_k` heat consumer with `qext_w` = 0 (or return ≥ supply) to zero mass flow. The
+  ill-conditioned case is mdot = qext / (cp · (T_supply − T_return)) at a tiny load, in the thermal
+  heat-consumer model that #867 does not touch. Cost of the 2 %: +0.05 % annual demand (Görlitz),
+  +0.1–0.6 % generation per summer block. Smaller shares were not tested with the GUI return.
+- The golden-master helper `_make_nd` passed `fixed_return_temperature_heat_consumer=0.0` and
+  `min_supply_temperature_building=0.0` (flags unchecked); the dialog passes `None` for an unchecked
+  option, and `initialize_geojson` only tests `is None`. So the golden master ran with a fixed 0 °C
+  return (ΔT 85 K instead of 25 K, under a third of the mass flow) and a 5 °C minimum supply
+  (0 + dT_RL) with a controller per station (29 controllers instead of 20). A station's supply never
+  falls to a 0 °C return, so the low-load case above was not covered: there, 0 % minimum load ran
+  through all six blocks. **Fixed:** the helper passes `None` and derives the `*_checked` flags from
+  the values. Re-pinned: design mass flow 6.0 → 20.5 kg/s, larger pipes (up to DN125, still 68
+  ISOPLUS `_2x`), generation 5.9204 → 6.0436 MWh (+2.1 %), pumpstrom 0.0023542 → 0.0075248 MWh
+  (×3.2); topology and demand KPIs unchanged. The test with building temperatures and a minimum
+  supply (`test_time_series_with_building_temperatures_and_minimum_supply_temperature`) now
+  initialises with the building returns as well and passes unchanged.
+
 ---
 
 ## H. User test 2026-10-08 (`ANWENDERTEST_2026-10-08.md`)

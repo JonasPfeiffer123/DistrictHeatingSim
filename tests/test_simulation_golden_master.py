@@ -37,7 +37,12 @@ pytestmark = pytest.mark.skipif(
 
 
 def _make_nd(cop_filename, **overrides):
-    """Build the Görlitz NetworkGenerationData (normal network) with a given COP path."""
+    """Build the Görlitz NetworkGenerationData (normal network) with a given COP path.
+
+    Like the dialog (``NetGenerationDialog``): an option that is not checked is passed as ``None``,
+    and the ``*_checked`` flags follow the values. ``0.0`` is not "off" - it set a fixed 0 °C
+    house-station return and a 5 °C minimum supply (0 + dT_RL) with a controller per station.
+    """
     from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
         NetworkGenerationData,
     )
@@ -54,10 +59,8 @@ def _make_nd(cop_filename, **overrides):
         min_air_temperature_heat_generator=-12.0,
         flow_pressure_pump=4.0,
         lift_pressure_pump=1.5,
-        min_supply_temperature_building_checked=False,
-        min_supply_temperature_building=0.0,
-        fixed_return_temperature_heat_consumer_checked=False,
-        fixed_return_temperature_heat_consumer=0.0,
+        min_supply_temperature_building=None,
+        fixed_return_temperature_heat_consumer=None,
         dT_RL=5.0,
         building_temperature_checked=False,
         pipetype="ISOPLUS_DRE100_2x",
@@ -71,6 +74,10 @@ def _make_nd(cop_filename, **overrides):
         TRY_filename=str(_TRY),
     )
     settings.update(overrides)
+    settings["min_supply_temperature_building_checked"] = settings["min_supply_temperature_building"] is not None
+    settings["fixed_return_temperature_heat_consumer_checked"] = (
+        settings["fixed_return_temperature_heat_consumer"] is not None
+    )
     return NetworkGenerationData(**settings)
 
 
@@ -167,9 +174,12 @@ class TestGoerlitzGoldenMaster:
         # Re-pinned for UT-K8 (per-station minimum load): generation -2.6 %, pumpstrom -4.4 %.
         # Re-pinned for the pressure loss limit (300 Pa/m next to v_max; this test sizes with
         # v_max 2 m/s): pump lift 2.22 -> 1.39 bar, pumpstrom -29.6 %, generation +0.06 %.
+        # Re-pinned for G12: the stations return at building RLT_max + dT_RL = 60 °C like in the GUI
+        # (the helper had set a fixed 0 °C return): design mass flow 6.0 -> 20.5 kg/s, larger pipes
+        # (up to DN125), generation +2.1 %, pumpstrom x3.2.
         _, k = goerlitz_run
-        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(5.9204, rel=1e-2)
-        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0023542, rel=2e-2)
+        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.0436, rel=1e-2)
+        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0075248, rel=2e-2)
         # Distribution loss = generation − demand (negative here: an 8-step generation
         # is compared against the annual demand — a known partial-range artifact).
         assert k["Verteilverluste [MWh]"] == pytest.approx(
