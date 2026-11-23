@@ -134,3 +134,24 @@ def test_benchmark_uses_existing_supply_route(district, fake_solver, monkeypatch
     assert rows[0]["gap"] is None
     assert rows[1]["gap"] == 0.05
     assert rows[1]["trench_length_m"] == pytest.approx(result["supply_network"].length.sum())
+
+
+def test_offline_graph_joins_vertices_but_not_crossings(tmp_path):
+    example = Path(__file__).resolve().parents[1] / "examples" / "benchmark_steiner_solvers.py"
+    load_graph = runpy.run_path(str(example))["street_graph_from_geojson"]
+    streets = gpd.GeoDataFrame(
+        geometry=[
+            LineString([(0, 0), (5, 0), (10, 0)]),
+            LineString([(5, 0), (5, 5)]),
+            LineString([(8, -5), (8, 5)]),
+        ],
+        crs="EPSG:25833",
+    )
+    path = tmp_path / "streets.geojson"
+    streets.to_file(path, driver="GeoJSON")
+    terminals = gpd.GeoDataFrame(geometry=[Point(0, 0), Point(10, 0)], crs=streets.crs)
+    graph = load_graph(path, terminals)
+    assert nx.is_weakly_connected(graph)
+    assert graph.graph["discarded_street_nodes"] == 2
+    assert graph.to_undirected().size(weight="length") == pytest.approx(15)
+    assert {(node["x"], node["y"]) for _, node in graph.nodes(data=True)} == {(0, 0), (5, 0), (10, 0), (5, 5)}

@@ -120,6 +120,9 @@ a time-limited result is not necessarily optimal (the relative gap is logged).
 Run `python examples/benchmark_steiner_solvers.py` to compare tree length, runtime,
 certified gap and post-processed trench length on the example district. It reuses
 one GraphML snapshot for both solvers; see the script for the metric definitions.
+Add `--offline` to use the bundled OSM street layer without downloading. This is
+a different street selection from the live OSMnx query; both solvers still use
+the same graph and all 73 example buildings.
 
 Start DistrictHeatingSim with the `districtheatingsim` command (installed by `pip install .`), or
 `python -m districtheatingsim`. The welcome screen creates a new project with the assistant
