@@ -6,6 +6,7 @@ Author: M.Eng. Jonas Pfeiffer
 """
 
 import logging
+import math
 import os
 import time
 import traceback
@@ -104,10 +105,14 @@ def download_street_graph(
 
 
 def create_steiner_tree(
-    street_graph: nx.MultiDiGraph, terminal_points: gpd.GeoDataFrame, weight: str = "length"
+    street_graph: nx.MultiDiGraph,
+    terminal_points: gpd.GeoDataFrame,
+    weight: str = "length",
+    solver: str = "networkx",
+    time_limit: float = 60.0,
 ) -> nx.Graph:
     """
-    Create Steiner Tree connecting terminal points on street network using Kou approximation.
+    Connect terminal points with NetworkX's approximation or optional SteinerPy/HiGHS.
 
     :param street_graph: Street network graph from OSMnx with node coordinates
     :type street_graph: nx.MultiDiGraph
@@ -115,18 +120,25 @@ def create_steiner_tree(
     :type terminal_points: gpd.GeoDataFrame
     :param weight: Edge attribute for optimization (default 'length')
     :type weight: str
+    :param solver: 'networkx' (default) or 'steinerpy' (requires the steiner extra)
+    :param time_limit: SteinerPy solver limit in seconds, excluding preprocessing
     :return: Undirected Steiner Tree subgraph connecting all terminals
     :rtype: nx.Graph
     :raises ValueError: If terminal_points is empty or street_graph has no nodes
     :raises KeyError: If weight attribute not found in edge data
 
     .. note::
-       Kou algorithm complexity: O(|T|² |E| log |V|). Node coordinates preserved for edge-splitting.
+       Node and edge attributes are preserved. SteinerPy's certified relative gap is
+       stored in ``tree.graph['steiner_gap']``; only zero certifies optimality.
     """
     if terminal_points.empty:
         raise ValueError("Terminal points GeoDataFrame is empty")
     if len(street_graph.nodes) == 0:
         raise ValueError("Street graph has no nodes")
+    if solver not in ("networkx", "steinerpy"):
+        raise ValueError("solver must be 'networkx' or 'steinerpy'")
+    if solver == "steinerpy" and (not math.isfinite(time_limit) or time_limit <= 0):
+        raise ValueError("time_limit must be a positive finite number")
 
     logger.info(f"Creating Steiner Tree for {len(terminal_points)} terminals")
 
@@ -139,7 +151,31 @@ def create_steiner_tree(
     logger.debug(f"Mapped {len(terminal_nodes)} terminals to graph nodes")
 
     # Create Steiner Tree
-    steiner_tree = nx.algorithms.approximation.steiner_tree(street_graph.to_undirected(), terminal_nodes, weight=weight)
+    graph = street_graph.to_undirected()
+    if solver == "networkx":
+        steiner_tree = nx.algorithms.approximation.steiner_tree(graph, terminal_nodes, weight=weight)
+    else:
+        try:
+            from steinerpy import Problem
+        except ImportError as exc:
+            raise ImportError("SteinerPy requires: pip install 'districtheatingsim[steiner]'") from exc
+
+        # SteinerPy needs a simple graph; keep the cheapest parallel street, not an arbitrary one.
+        simple = nx.Graph()
+        simple.graph.update(graph.graph)
+        simple.add_nodes_from(graph.nodes(data=True))
+        for u, v, data in graph.edges(data=True):
+            if u != v and (not simple.has_edge(u, v) or data[weight] < simple[u][v][weight]):
+                simple.add_edge(u, v, **data)
+        solution = Problem(simple, terminals=terminal_nodes, weight=weight).get_solution(
+            solver="highs", time_limit=time_limit
+        )
+        steiner_tree = simple.edge_subgraph(solution.edges).copy()
+        steiner_tree.add_nodes_from((node, simple.nodes[node]) for node in set(terminal_nodes))
+        if not nx.is_tree(steiner_tree):
+            raise RuntimeError("SteinerPy did not return a tree connecting all terminals")
+        steiner_tree.graph["steiner_gap"] = solution.gap
+        logger.info("SteinerPy relative optimality gap: %s", solution.gap)
 
     logger.info(f"Steiner Tree: {len(steiner_tree.nodes)} nodes, {len(steiner_tree.edges)} edges")
 
@@ -572,6 +608,8 @@ def generate_osmnx_network(
     include_building_data: bool = True,
     export_geojson: bool = True,
     target_crs: str = "EPSG:25833",
+    steiner_solver: str = "networkx",
+    steiner_time_limit: float = 60.0,
 ) -> dict[str, Any]:
     """
     Generate complete district heating network using OSMnx and Steiner Tree.
@@ -602,6 +640,8 @@ def generate_osmnx_network(
     :type export_geojson: bool
     :param target_crs: Target coordinate reference system
     :type target_crs: str
+    :param steiner_solver: 'networkx' (default) or optional 'steinerpy'
+    :param steiner_time_limit: SteinerPy solver limit in seconds, excluding preprocessing
     :return: Dictionary with network GeoDataFrames and statistics
     :rtype: Dict[str, Any]
     :raises ValueError: If buildings is empty or has invalid CRS
@@ -647,7 +687,13 @@ def generate_osmnx_network(
 
     # Step 3: Create Steiner Tree
     logger.info("Step 3/12: Creating Steiner Tree")
-    steiner_tree = create_steiner_tree(street_graph=street_graph, terminal_points=all_terminals, weight="length")
+    steiner_tree = create_steiner_tree(
+        street_graph=street_graph,
+        terminal_points=all_terminals,
+        weight="length",
+        solver=steiner_solver,
+        time_limit=steiner_time_limit,
+    )
 
     # Step 4: Connect terminals with edge-splitting
     logger.info("Step 4/12: Connecting terminals with edge-splitting")
@@ -773,6 +819,8 @@ def generate_and_export_osmnx_layers(
     node_threshold: float = 0.1,
     remove_dead_ends_flag: bool = True,
     target_crs: str = "EPSG:25833",
+    steiner_solver: str = "networkx",
+    steiner_time_limit: float = 60.0,
 ) -> None:
     """
     Generate OSMnx-based district heating network and export as GeoJSON files.
@@ -803,6 +851,8 @@ def generate_and_export_osmnx_layers(
     :type remove_dead_ends_flag: bool
     :param target_crs: Target coordinate reference system
     :type target_crs: str
+    :param steiner_solver: 'networkx' (default) or optional 'steinerpy'
+    :param steiner_time_limit: SteinerPy solver limit in seconds, excluding preprocessing
     :raises FileNotFoundError: If CSV file not found
     :raises KeyError: If required CSV columns missing
     :raises ValueError: If invalid data or parameters
@@ -870,6 +920,8 @@ def generate_and_export_osmnx_layers(
             include_building_data=True,
             export_geojson=True,
             target_crs=target_crs,
+            steiner_solver=steiner_solver,
+            steiner_time_limit=steiner_time_limit,
         )
 
         # Print final summary
