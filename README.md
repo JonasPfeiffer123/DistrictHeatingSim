@@ -110,6 +110,17 @@ By following these steps, you should be able to successfully install and run Dis
 
 ## Usage
 
+The OSMnx Python API also supports an optional [SteinerPy](https://github.com/berendmarkhorst/SteinerPy)
+solver with HiGHS. Install with `pip install -e '.[steiner]'`, then pass
+`steiner_solver="steinerpy"` and optionally `steiner_time_limit=60.0` to
+`generate_osmnx_network()` or `generate_and_export_osmnx_layers()`. NetworkX remains
+the default; the GUI is unchanged. The limit excludes solver preprocessing, and
+a time-limited result is not necessarily optimal (the relative gap is logged).
+
+Run `python examples/benchmark_steiner_solvers.py` to compare tree length, runtime,
+certified gap and post-processed trench length on the example district. It reuses
+one GraphML snapshot for both solvers; see the script for the metric definitions.
+
 Start DistrictHeatingSim with the `districtheatingsim` command (installed by `pip install .`), or
 `python -m districtheatingsim`. The welcome screen creates a new project with the assistant
 ("Neues Projekt") or opens an existing one; the bundled Görlitz example opens as a working copy in

@@ -45,6 +45,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+steiner = [
+    "steinerpy>=1.1,<2",
+]
 elevation = [
     "rasterio>=1.3",
 ]
